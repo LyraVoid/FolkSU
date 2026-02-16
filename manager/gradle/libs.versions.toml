@@ -1,14 +1,14 @@
 [versions]
-agp = "9.0.0"
-kotlin = "2.3.0"
-compose-bom = "2026.01.00"
+agp = "9.0.1"
+kotlin = "2.3.10"
+compose-bom = "2026.02.00"
 lifecycle = "2.10.0"
-activity-compose = "1.12.2"
-appcompat = "1.7.0"
+activity-compose = "1.12.4"
+appcompat = "1.7.1"
 kotlinx-coroutines = "1.10.2"
 coil-compose = "2.7.0"
-navigation3 = "1.1.0-alpha02"
-navigationevent = "1.0.1"
+navigation3 = "1.1.0-alpha04"
+navigationevent = "1.0.2"
 sheets-compose-dialogs = "1.3.0"
 markwon = "4.6.2"
 webkit = "1.15.0"
@@ -18,7 +18,7 @@ ndk = "29.0.14206865"
 libsu = "6.0.0"
 apksign = "1.4"
 okhttp = "5.3.2"
-material3 = "1.5.0-alpha12"
+material3 = "1.5.0-alpha14"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
@@ -70,7 +70,7 @@ markwon = { group = "io.noties.markwon", name = "core", version.ref = "markwon" 
 
 lsposed-cxx = { module = "org.lsposed.libcxx:libcxx", version.ref = "ndk" }
 
-material-kolor = { group = "com.materialkolor", name = "material-kolor", version = "4.1.0" }
+material-kolor = { group = "com.materialkolor", name = "material-kolor", version = "4.1.1" }
 
 sheet-compose-dialogs-core = { group = "com.maxkeppeler.sheets-compose-dialogs", name = "core", version.ref = "sheets-compose-dialogs" }
 sheet-compose-dialogs-list = { group = "com.maxkeppeler.sheets-compose-dialogs", name = "list", version.ref = "sheets-compose-dialogs" }
