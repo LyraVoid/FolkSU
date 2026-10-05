@@ -45,7 +45,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -211,7 +210,7 @@ private fun TopBar() {
 @Composable
 private fun HomeCard(
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+    containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
     contentColor: Color = contentColorFor(containerColor),
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,

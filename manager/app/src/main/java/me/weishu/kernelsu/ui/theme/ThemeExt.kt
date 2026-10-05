@@ -25,6 +25,22 @@ fun ColorScheme.amoledBackground(amoled: Boolean): ColorScheme =
         surfaceContainerHighest = Color.Black,
     )
 
+/**
+ * Pins the error family to the fixed Material 3 error palette.
+ *
+ * MaterialKolor derives error from the seed, so the hue drifts with the user's
+ * wallpaper: the same "not installed" card can render as the standard soft
+ * `errorContainer` on one wallpaper and a loud saturated red on another. Attention
+ * and destructive states must stay recognisable, so we keep the semantic error
+ * role fixed (FolkPatch does the same in its themes).
+ */
+fun ColorScheme.withSemanticError(isDark: Boolean): ColorScheme = copy(
+    error = if (isDark) Color(0xFFFFB4AB) else Color(0xFFBA1A1A),
+    onError = if (isDark) Color(0xFF690005) else Color(0xFFFFFFFF),
+    errorContainer = if (isDark) Color(0xFF93000A) else Color(0xFFFFDAD6),
+    onErrorContainer = if (isDark) Color(0xFFFFDAD6) else Color(0xFF410002),
+)
+
 @Composable
 fun rememberKernelSUColorScheme(
     seedColor: Color,
@@ -45,7 +61,7 @@ fun rememberKernelSUColorScheme(
         isAmoled = isAmoled,
         style = paletteStyle,
         specVersion = colorSpec.effectiveFor(paletteStyle),
-    ).amoledBackground(isAmoled)
+    ).withSemanticError(isDark).amoledBackground(isAmoled)
 }
 
 @Composable
