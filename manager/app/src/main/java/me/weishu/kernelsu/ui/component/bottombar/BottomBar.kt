@@ -1,6 +1,12 @@
 package me.weishu.kernelsu.ui.component.bottombar
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.pager.PagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cottage
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -10,15 +16,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import me.weishu.kernelsu.ui.LocalUiMode
-import me.weishu.kernelsu.ui.UiMode
+import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.util.shouldShowSplitPane
-import top.yukonga.miuix.kmp.blur.Backdrop
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.utils.springAnimateToPage
 
 class MainPagerState(
@@ -86,6 +90,16 @@ data class NavigationBadgeState(
     val moduleUpdatableCount: Int = 0,
 )
 
+enum class BottomBarDestination(
+    @get:StringRes val label: Int,
+    val icon: ImageVector,
+) {
+    Home(R.string.home, Icons.Rounded.Cottage),
+    SuperUser(R.string.superuser, Icons.Rounded.Security),
+    Module(R.string.module, Icons.Rounded.Extension),
+    Setting(R.string.settings, Icons.Rounded.Settings)
+}
+
 internal enum class BadgeTone { Alert, Accent }
 
 @Immutable
@@ -105,21 +119,13 @@ internal fun badgeFor(index: Int, state: NavigationBadgeState): NavBadge? = when
 }
 
 @Composable
-fun useNavigationRail(enableFloatingBottomBar: Boolean): Boolean {
-    return shouldShowSplitPane() && !(LocalUiMode.current == UiMode.Miuix && enableFloatingBottomBar)
+fun useNavigationRail(): Boolean {
+    return shouldShowSplitPane()
 }
 
 @Composable
-fun BottomBar(
-    blurBackdrop: LayerBackdrop?,
-    backdrop: Backdrop,
-    navigationBadge: NavigationBadgeState,
-    modifier: Modifier = Modifier,
-) {
-    when (LocalUiMode.current) {
-        UiMode.Miuix -> BottomBarMiuix(blurBackdrop, backdrop, navigationBadge, modifier)
-        UiMode.Material -> BottomBarMaterial(navigationBadge)
-    }
+fun BottomBar(navigationBadge: NavigationBadgeState) {
+    BottomBarMaterial(navigationBadge)
 }
 
 @Composable
@@ -127,8 +133,5 @@ fun SideRail(
     navigationBadge: NavigationBadgeState,
     modifier: Modifier = Modifier,
 ) {
-    when (LocalUiMode.current) {
-        UiMode.Miuix -> NavigationRailMiuix(navigationBadge, modifier)
-        UiMode.Material -> NavigationRailMaterial(navigationBadge, modifier)
-    }
+    NavigationRailMaterial(navigationBadge, modifier)
 }

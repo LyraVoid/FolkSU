@@ -8,8 +8,6 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
-import me.weishu.kernelsu.ui.LocalUiMode
-import me.weishu.kernelsu.ui.UiMode
 
 enum class ColorMode(val value: Int) {
     SYSTEM(0),
@@ -66,22 +64,7 @@ fun ColorSpec.SpecVersion.effectiveFor(style: PaletteStyle): ColorSpec.SpecVersi
 
 object ThemeController {
     fun getAppSettings(repo: SettingsRepository = SettingsRepositoryImpl()): AppSettings {
-        val uiMode = repo.uiMode
-        var colorModeValue = repo.themeMode
-
-        if (uiMode == "miuix") {
-            val miuixMonet = repo.miuixMonet
-            val colorMode = ColorMode.fromValue(colorModeValue)
-            colorModeValue = if (!miuixMonet && colorMode.isMonet) {
-                colorMode.toNonMonetMode()
-            } else if (miuixMonet && !colorMode.isMonet) {
-                colorMode.toMonetMode()
-            } else {
-                colorModeValue
-            }
-        }
-
-        val colorMode = ColorMode.fromValue(colorModeValue)
+        val colorMode = ColorMode.fromValue(repo.themeMode)
         val keyColor = repo.keyColor
         val paletteStyleStr = repo.colorStyle
         val paletteStyle = try {
@@ -103,21 +86,12 @@ object ThemeController {
 @Composable
 fun KernelSUTheme(
     appSettings: AppSettings = ThemeController.getAppSettings(),
-    uiMode: UiMode = LocalUiMode.current,
     content: @Composable () -> Unit
 ) {
-
-    when (uiMode) {
-        UiMode.Miuix -> MiuixKernelSUTheme(
-            appSettings = appSettings,
-            content = content
-        )
-
-        UiMode.Material -> MaterialKernelSUTheme(
-            appSettings = appSettings,
-            content = content
-        )
-    }
+    MaterialKernelSUTheme(
+        appSettings = appSettings,
+        content = content
+    )
 }
 
 @Composable
@@ -131,12 +105,6 @@ fun isInDarkTheme(): Boolean {
 }
 
 val LocalColorMode = staticCompositionLocalOf { 0 }
-
-val LocalEnableBlur = staticCompositionLocalOf { false }
-
-val LocalEnableFloatingBottomBar = staticCompositionLocalOf { false }
-
-val LocalEnableFloatingBottomBarBlur = staticCompositionLocalOf { false }
 
 val LocalEnableNavigationBadge = staticCompositionLocalOf { true }
 
