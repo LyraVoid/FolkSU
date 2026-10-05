@@ -10,3 +10,4 @@ __pycache__
 /repack-config.json
 /userspace/ksud/.lkm_image_bootstrap.o
 /.research
+/design
