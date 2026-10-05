@@ -8,3 +8,6 @@ captures
 .cxx
 local.properties
 key.jks
+keystore.properties
+*.jks
+*.keystore
