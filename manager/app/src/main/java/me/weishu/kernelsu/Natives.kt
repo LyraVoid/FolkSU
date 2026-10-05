@@ -127,6 +127,7 @@ object Natives {
         external get
 
     fun isFullFeatured(): Boolean {
+        if (DebugFlags.forceFullFeatured) return true
         return isManager && kernelUAPIVersion == managerUAPIVersion && rootAvailable()
     }
 
