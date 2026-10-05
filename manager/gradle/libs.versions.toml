@@ -8,6 +8,7 @@ core-splashscreen = "1.2.0"
 kotlinx-coroutines = "1.11.0"
 navigationevent = "1.1.2"
 navigation3 = "1.1.7"
+graphics-shapes = "1.1.0"
 commonmark = "0.30.0"
 webkit = "1.17.0"
 parcelablelist = "2.0.1"
@@ -71,6 +72,8 @@ lsposed-cxx = { module = "org.lsposed.libcxx:libcxx", version.ref = "ndk" }
 
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
+
+androidx-graphics-shapes = { module = "androidx.graphics:graphics-shapes", version.ref = "graphics-shapes" }
 
 okhttp = { module = "com.squareup.okhttp3:okhttp" }
 okhttp-bom = { module = "com.squareup.okhttp3:okhttp-bom", version.ref = "okhttp" }

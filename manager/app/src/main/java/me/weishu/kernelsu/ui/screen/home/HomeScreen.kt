@@ -22,6 +22,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.magica.MagicaService
+import me.weishu.kernelsu.ui.LocalMainPagerState
+import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
 import me.weishu.kernelsu.ui.component.dialog.rememberLoadingDialog
 import me.weishu.kernelsu.ui.navigation3.Navigator
 import me.weishu.kernelsu.ui.navigation3.Route
@@ -33,9 +35,12 @@ fun HomePager(
     navigator: Navigator,
     bottomInnerPadding: Dp,
     isCurrentPage: Boolean = true,
+    superuserCount: Int = 0,
+    moduleEnabledCount: Int = 0,
 ) {
     val viewModel = viewModel<HomeViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val mainPagerState = LocalMainPagerState.current
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val loadingDialog = rememberLoadingDialog()
@@ -75,11 +80,15 @@ fun HomePager(
                 }
             }
         },
+        onOpenSuperUser = { mainPagerState.animateToPage(BottomBarDestination.SuperUser.ordinal) },
+        onOpenModule = { mainPagerState.animateToPage(BottomBarDestination.Module.ordinal) },
     )
 
     HomePagerMaterial(
         state = uiState,
         actions = actions,
         bottomInnerPadding = bottomInnerPadding,
+        superuserCount = superuserCount,
+        moduleEnabledCount = moduleEnabledCount,
     )
 }
