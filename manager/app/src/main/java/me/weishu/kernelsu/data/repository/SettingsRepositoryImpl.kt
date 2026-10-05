@@ -64,14 +64,6 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getBoolean("enable_predictive_back", false)
         set(value) = prefs.edit { putBoolean("enable_predictive_back", value) }
 
-    override var enableSwipeDismiss: Boolean
-        get() = prefs.getBoolean("enable_swipe_dismiss", true)
-        set(value) = prefs.edit { putBoolean("enable_swipe_dismiss", value) }
-
-    override var pagerInterceptionMode: Int
-        get() = prefs.getInt("pager_interception_mode", 1)
-        set(value) = prefs.edit { putInt("pager_interception_mode", value.coerceIn(0, 2)) }
-
     override var enableNavigationBadge: Boolean
         get() = prefs.getBoolean("enable_navigation_badge", true)
         set(value) = prefs.edit { putBoolean("enable_navigation_badge", value) }

@@ -37,8 +37,6 @@ class SettingsViewModel(
             val themeMode = repo.themeMode
             val keyColor = repo.keyColor
             val enablePredictiveBack = repo.enablePredictiveBack
-            val enableSwipeDismiss = repo.enableSwipeDismiss
-            val pagerInterceptionMode = repo.pagerInterceptionMode
             val enableNavigationBadge = repo.enableNavigationBadge
             val pageScale = repo.pageScale
             val moduleDescriptionMaxLines = repo.moduleDescriptionMaxLines
@@ -74,8 +72,6 @@ class SettingsViewModel(
                     themeMode = themeMode,
                     keyColor = keyColor,
                     enablePredictiveBack = enablePredictiveBack,
-                    enableSwipeDismiss = enableSwipeDismiss,
-                    pagerInterceptionMode = pagerInterceptionMode,
                     enableNavigationBadge = enableNavigationBadge,
                     pageScale = pageScale,
                     moduleDescriptionMaxLines = moduleDescriptionMaxLines,
@@ -141,16 +137,6 @@ class SettingsViewModel(
     fun setEnablePredictiveBack(enabled: Boolean) {
         repo.enablePredictiveBack = enabled
         _uiState.update { it.copy(enablePredictiveBack = enabled) }
-    }
-
-    fun setEnableSwipeDismiss(enabled: Boolean) {
-        repo.enableSwipeDismiss = enabled
-        _uiState.update { it.copy(enableSwipeDismiss = enabled) }
-    }
-
-    fun setPagerInterceptionMode(mode: Int) {
-        repo.pagerInterceptionMode = mode
-        _uiState.update { it.copy(pagerInterceptionMode = mode.coerceIn(0, 2)) }
     }
 
     fun setEnableNavigationBadge(enabled: Boolean) {

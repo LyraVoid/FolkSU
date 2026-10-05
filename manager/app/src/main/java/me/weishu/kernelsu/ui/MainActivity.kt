@@ -87,11 +87,9 @@ import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.LocalColorMode
 import me.weishu.kernelsu.ui.theme.LocalEnableNavigationBadge
 import me.weishu.kernelsu.ui.theme.LocalModuleDescriptionMaxLines
-import me.weishu.kernelsu.ui.util.PagerInterceptionMode
 import me.weishu.kernelsu.ui.util.PagerNavigationSpringSpec
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.install
-import me.weishu.kernelsu.ui.util.pagerGestureOverride
 import me.weishu.kernelsu.ui.util.rememberContentReady
 import me.weishu.kernelsu.ui.viewmodel.MainActivityViewModel
 import me.weishu.kernelsu.ui.viewmodel.MainPagerConfig
@@ -160,7 +158,6 @@ class MainActivity : ComponentActivity() {
                     val mainScreenEntry = @Composable {
                         MainScreen(
                             initialPage = selectedMainPage,
-                            pagerInterceptionMode = uiState.pagerInterceptionMode,
                             onPageChanged = viewModel::setSelectedMainPage,
                         )
                     }
@@ -229,7 +226,6 @@ val LocalMainPagerState = staticCompositionLocalOf<MainPagerState> { error("Loca
 @Composable
 fun MainScreen(
     initialPage: Int = 0,
-    pagerInterceptionMode: Int = PagerInterceptionMode.CrossAxisInterceptor.ordinal,
     onPageChanged: (Int) -> Unit = {},
 ) {
     val navController = LocalNavigator.current
@@ -240,9 +236,6 @@ fun MainScreen(
         animatePageChanges = !useNavigationRail,
     )
     val isFullFeatured = Natives.isFullFeatured()
-    val pagerMode = PagerInterceptionMode.entries.getOrElse(pagerInterceptionMode) {
-        PagerInterceptionMode.Native
-    }
     var userScrollEnabled by remember(isFullFeatured) { mutableStateOf(isFullFeatured) }
 
     val enableNavigationBadge = LocalEnableNavigationBadge.current
@@ -318,12 +311,6 @@ fun MainScreen(
         val pagerContent = @Composable { bottomInnerPadding: Dp ->
             Box(modifier = Modifier) {
                 HorizontalPager(
-                    modifier = Modifier
-                        .pagerGestureOverride(
-                            pagerState = mainPagerState.pagerState,
-                            mode = pagerMode,
-                            enabled = userScrollEnabled,
-                        ),
                     state = mainPagerState.pagerState,
                     beyondViewportPageCount = if (contentReady) 3 else 0,
                     overscrollEffect = null,

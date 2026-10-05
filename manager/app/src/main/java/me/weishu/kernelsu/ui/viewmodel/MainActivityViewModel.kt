@@ -46,8 +46,6 @@ class MainActivityViewModel(
             appSettings = ThemeController.getAppSettings(),
             pageScale = settingRepo.pageScale,
             enableNavigationBadge = settingRepo.enableNavigationBadge,
-            enableSwipeDismiss = settingRepo.enableSwipeDismiss,
-            pagerInterceptionMode = settingRepo.pagerInterceptionMode,
             moduleDescriptionMaxLines = settingRepo.moduleDescriptionMaxLines,
         )
     }
@@ -61,8 +59,6 @@ class MainActivityViewModel(
             "page_scale",
             "module_description_max_lines",
             "enable_navigation_badge",
-            "enable_swipe_dismiss",
-            "pager_interception_mode",
         )
     }
 }
