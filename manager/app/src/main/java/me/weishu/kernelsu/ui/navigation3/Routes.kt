@@ -1,6 +1,7 @@
 package me.weishu.kernelsu.ui.navigation3
 
 import android.os.Parcelable
+import androidx.navigation3.runtime.NavKey
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import me.weishu.kernelsu.ui.screen.flash.FlashIt
@@ -9,10 +10,9 @@ import me.weishu.kernelsu.ui.util.FlashItSerializer
 import me.weishu.kernelsu.ui.util.RepoModuleArgSerializer
 import me.weishu.kernelsu.ui.util.TemplateInfoSerializer
 import me.weishu.kernelsu.ui.viewmodel.TemplateViewModel
-import top.yukonga.miuix.kmp.nav.core.NavKey
 
 /**
- * Type-safe navigation keys for miuix-nav.
+ * Type-safe navigation keys for navigation3.
  * Each destination is a NavKey (data object/data class) and can be saved/restored in the back stack.
  */
 @Serializable

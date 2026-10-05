@@ -5,7 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
-import top.yukonga.miuix.kmp.nav.core.LocalNavTransitionScope
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 
 /**
  * Returns true only after the navigation transition animation has completed
@@ -21,7 +21,7 @@ import top.yukonga.miuix.kmp.nav.core.LocalNavTransitionScope
  */
 @Composable
 fun rememberContentReady(): Boolean {
-    val transitionRunning = LocalNavTransitionScope.current.isRunning
+    val transitionRunning = LocalNavAnimatedContentScope.current.transition.isRunning
     val ready = remember { mutableStateOf(false) }
 
     LaunchedEffect(transitionRunning) {

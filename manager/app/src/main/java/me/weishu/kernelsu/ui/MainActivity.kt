@@ -39,12 +39,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
@@ -85,21 +87,16 @@ import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.LocalColorMode
 import me.weishu.kernelsu.ui.theme.LocalEnableNavigationBadge
 import me.weishu.kernelsu.ui.theme.LocalModuleDescriptionMaxLines
+import me.weishu.kernelsu.ui.util.PagerInterceptionMode
+import me.weishu.kernelsu.ui.util.PagerNavigationSpringSpec
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.install
+import me.weishu.kernelsu.ui.util.pagerGestureOverride
 import me.weishu.kernelsu.ui.util.rememberContentReady
 import me.weishu.kernelsu.ui.viewmodel.MainActivityViewModel
 import me.weishu.kernelsu.ui.viewmodel.MainPagerConfig
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
-import top.yukonga.miuix.kmp.nav.core.NavDisplay
-import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
-import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
-import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
-import top.yukonga.miuix.kmp.utils.PagerGestureNestedScrollConnection
-import top.yukonga.miuix.kmp.utils.PagerInterceptionMode
-import top.yukonga.miuix.kmp.utils.PagerNavigationSpringSpec
-import top.yukonga.miuix.kmp.utils.pagerGestureOverride
 
 class MainActivity : ComponentActivity() {
 
@@ -160,15 +157,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 KernelSUTheme(appSettings = appSettings) {
                     IntentDispatcher(intentChannel = intentChannel)
-                    val swipeDismiss = if (uiState.enableSwipeDismiss) {
-                        if (LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl) {
-                            NavSwipeDirection.RightToLeft
-                        } else {
-                            NavSwipeDirection.LeftToRight
-                        }
-                    } else {
-                        NavSwipeDirection.None
-                    }
                     val mainScreenEntry = @Composable {
                         MainScreen(
                             initialPage = selectedMainPage,
@@ -180,7 +168,6 @@ class MainActivity : ComponentActivity() {
                     val navDisplay = @Composable {
                         NavDisplay(
                             backStack = navigator.backStack,
-                            effects = NavDisplayEffects(cornerClipRadius = rememberNavSystemCornerRadius()),
                             onBack = {
                                 when (val top = navigator.current()) {
                                     is Route.TemplateEditor -> {
@@ -193,29 +180,31 @@ class MainActivity : ComponentActivity() {
 
                                     else -> navigator.pop()
                                 }
-                            }) {
-                            entry<Route.Main>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                            entry<Route.About>(swipeDismiss = swipeDismiss) { AboutScreen() }
-                            entry<Route.Sulog>(swipeDismiss = swipeDismiss) { SulogScreen() }
-                            entry<Route.ColorPalette>(swipeDismiss = swipeDismiss) { ColorPaletteScreen() }
-                            entry<Route.AppProfileTemplate>(swipeDismiss = swipeDismiss) { AppProfileTemplateScreen() }
-                            entry<Route.TemplateEditor>(swipeDismiss = swipeDismiss) { key -> TemplateEditorScreen(key.template, key.readOnly) }
-                            entry<Route.AppProfile>(swipeDismiss = swipeDismiss) { key -> AppProfileScreen(key.uid) }
-                            entry<Route.ModuleRepo>(swipeDismiss = swipeDismiss) { ModuleRepoScreen() }
-                            entry<Route.ModuleRepoDetail>(swipeDismiss = swipeDismiss) { key -> ModuleRepoDetailScreen(key.module) }
-                            entry<Route.Install>(swipeDismiss = swipeDismiss) { InstallScreen() }
-                            entry<Route.Flash>(swipeDismiss = swipeDismiss) { key -> FlashScreen(key.flashIt) }
-                            entry<Route.ExecuteModuleAction>(swipeDismiss = swipeDismiss) { key ->
-                                ExecuteModuleActionScreen(
-                                    key.moduleId,
-                                    key.fromShortcut
-                                )
-                            }
-                            entry<Route.Home>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                            entry<Route.SuperUser>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                            entry<Route.Module>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                            entry<Route.Settings>(swipeDismiss = swipeDismiss) { mainScreenEntry() }
-                        }
+                            },
+                            entryProvider = entryProvider<NavKey> {
+                                entry<Route.Main> { mainScreenEntry() }
+                                entry<Route.About> { AboutScreen() }
+                                entry<Route.Sulog> { SulogScreen() }
+                                entry<Route.ColorPalette> { ColorPaletteScreen() }
+                                entry<Route.AppProfileTemplate> { AppProfileTemplateScreen() }
+                                entry<Route.TemplateEditor> { key -> TemplateEditorScreen(key.template, key.readOnly) }
+                                entry<Route.AppProfile> { key -> AppProfileScreen(key.uid) }
+                                entry<Route.ModuleRepo> { ModuleRepoScreen() }
+                                entry<Route.ModuleRepoDetail> { key -> ModuleRepoDetailScreen(key.module) }
+                                entry<Route.Install> { InstallScreen() }
+                                entry<Route.Flash> { key -> FlashScreen(key.flashIt) }
+                                entry<Route.ExecuteModuleAction> { key ->
+                                    ExecuteModuleActionScreen(
+                                        key.moduleId,
+                                        key.fromShortcut
+                                    )
+                                }
+                                entry<Route.Home> { mainScreenEntry() }
+                                entry<Route.SuperUser> { mainScreenEntry() }
+                                entry<Route.Module> { mainScreenEntry() }
+                                entry<Route.Settings> { mainScreenEntry() }
+                            },
+                        )
                     }
 
                     androidx.compose.material3.Scaffold(
@@ -254,7 +243,6 @@ fun MainScreen(
     val pagerMode = PagerInterceptionMode.entries.getOrElse(pagerInterceptionMode) {
         PagerInterceptionMode.Native
     }
-    val interceptPagerGestures = pagerMode == PagerInterceptionMode.CrossAxisInterceptor
     var userScrollEnabled by remember(isFullFeatured) { mutableStateOf(isFullFeatured) }
 
     val enableNavigationBadge = LocalEnableNavigationBadge.current
@@ -339,15 +327,11 @@ fun MainScreen(
                     state = mainPagerState.pagerState,
                     beyondViewportPageCount = if (contentReady) 3 else 0,
                     overscrollEffect = null,
-                    userScrollEnabled = userScrollEnabled && !interceptPagerGestures,
-                    pageNestedScrollConnection = if (interceptPagerGestures) {
-                        PagerGestureNestedScrollConnection
-                    } else {
-                        pageNestedScrollConnection(
-                            state = mainPagerState.pagerState,
-                            orientation = androidx.compose.foundation.gestures.Orientation.Horizontal,
-                        )
-                    },
+                    userScrollEnabled = userScrollEnabled,
+                    pageNestedScrollConnection = pageNestedScrollConnection(
+                        state = mainPagerState.pagerState,
+                        orientation = androidx.compose.foundation.gestures.Orientation.Horizontal,
+                    ),
                     flingBehavior = flingBehavior(
                         state = mainPagerState.pagerState,
                         snapAnimationSpec = PagerNavigationSpringSpec,

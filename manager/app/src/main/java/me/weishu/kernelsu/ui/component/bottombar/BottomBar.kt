@@ -23,7 +23,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.util.shouldShowSplitPane
-import top.yukonga.miuix.kmp.utils.springAnimateToPage
+import me.weishu.kernelsu.ui.util.springAnimateToPage
 
 class MainPagerState(
     val pagerState: PagerState,

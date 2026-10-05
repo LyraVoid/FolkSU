@@ -2,20 +2,20 @@ package me.weishu.kernelsu.ui.navigation3
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberNavBackStack
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
-import top.yukonga.miuix.kmp.nav.core.NavBackStack
-import top.yukonga.miuix.kmp.nav.core.NavKey
-import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 
 /**
- * Simple navigation helper that owns a miuix-nav back stack.
+ * Simple navigation helper that owns a navigation3 back stack.
  * Supports push/replace/pop/popUntil over the shared [NavBackStack].
  */
 @Suppress("unused")
 class Navigator(
-    val backStack: NavBackStack,
+    val backStack: NavBackStack<NavKey>,
 ) {
 
     private val resultBus = mutableMapOf<String, MutableSharedFlow<Any>>()
@@ -124,7 +124,7 @@ class Navigator(
 
 @Composable
 fun rememberNavigator(startRoute: Route): Navigator {
-    val backStack = rememberNavBackStack<Route>(startRoute)
+    val backStack = rememberNavBackStack(startRoute)
     return androidx.compose.runtime.remember(backStack) { Navigator(backStack) }
 }
 
