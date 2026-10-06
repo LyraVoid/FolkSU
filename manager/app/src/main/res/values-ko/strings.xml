@@ -145,7 +145,6 @@
     <string name="refresh_complete">새로 고침 성공</string>
     <string name="install_select_partition">파티션 선택</string>
     <string name="module_repos">리포지토리</string>
-    <string name="module_repos_sort_name">이름 (A → Z)</string>
     <string name="module_repos_source_code">소스 코드</string>
     <string name="metamodule_uninstall_confirm">정말 %s 모듈을 제거할까요? 이 동작은 모든 모듈에 영향을 미치며, 메타모듈에서 제공하는 일부 기능(마운트 등)은 더 이상 작동하지 않습니다.</string>
     <string name="home_gki_warning">v3.0.0 부터, GKI 동작 모드는 테스트 환경에서만 사용됩니다. 일상적인 사용은 권장하지 않으며, 이미지 파일은 더 이상 제공되지 않습니다.</string>

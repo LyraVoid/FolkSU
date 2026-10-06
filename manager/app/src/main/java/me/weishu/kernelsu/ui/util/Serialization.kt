@@ -7,11 +7,11 @@ import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import me.weishu.kernelsu.ui.screen.flash.FlashIt
-import me.weishu.kernelsu.ui.screen.modulerepo.RepoModuleArg
+import me.weishu.kernelsu.ui.screen.modulerepo.StoreModuleArg
 import me.weishu.kernelsu.ui.viewmodel.TemplateViewModel
 
 object FlashItSerializer : BaseParcelableSerializer<FlashIt>(FlashIt::class.java)
-object RepoModuleArgSerializer : BaseParcelableSerializer<RepoModuleArg>(RepoModuleArg::class.java)
+object StoreModuleArgSerializer : BaseParcelableSerializer<StoreModuleArg>(StoreModuleArg::class.java)
 object TemplateInfoSerializer : BaseParcelableSerializer<TemplateViewModel.TemplateInfo>(TemplateViewModel.TemplateInfo::class.java)
 
 open class BaseParcelableSerializer<T : Parcelable>(

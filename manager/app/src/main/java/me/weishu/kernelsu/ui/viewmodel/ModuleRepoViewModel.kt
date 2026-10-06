@@ -12,186 +12,207 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.data.repository.ModuleRepoRepository
-import me.weishu.kernelsu.data.repository.ModuleRepoRepositoryImpl
+import me.weishu.kernelsu.data.modulestore.ModuleStoreRegistry
+import me.weishu.kernelsu.data.modulestore.StoreRepository
+import me.weishu.kernelsu.data.modulestore.StoreSourceKind
+import me.weishu.kernelsu.data.modulestore.isHttpUrl
 import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.ui.component.SearchStatus
 import me.weishu.kernelsu.ui.screen.modulerepo.ModuleRepoUiState
-import me.weishu.kernelsu.ui.screen.modulerepo.RepoSort
-import me.weishu.kernelsu.ui.util.PinyinUtil
 import me.weishu.kernelsu.ui.util.isNetworkAvailable
-import java.text.Collator
-import java.util.Locale
 
+/**
+ * Drives the module store list from [ModuleStoreRegistry].
+ *
+ * The active source is resolved from the persisted selection on every load, so switching the
+ * source through the UI only has to update the selection and request a reload. Search is applied
+ * client-side over the already fetched list.
+ */
 class ModuleRepoViewModel(
-    private val repo: ModuleRepoRepository = ModuleRepoRepositoryImpl(),
-    private val settingsRepo: SettingsRepository = SettingsRepositoryImpl()
+    private val settingsRepo: SettingsRepository = SettingsRepositoryImpl(),
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "ModuleRepoViewModel"
     }
 
-    typealias RepoModule = me.weishu.kernelsu.data.model.RepoModule
-
     private val _uiState = MutableStateFlow(ModuleRepoUiState())
     val uiState: StateFlow<ModuleRepoUiState> = _uiState.asStateFlow()
 
-    private val searchQuery = MutableStateFlow("")
+    private var hasLoaded = false
 
     init {
-        val ordinal = settingsRepo.moduleRepoSortOrder
-        val initial = RepoSort.entries.getOrElse(ordinal) { RepoSort.UPDATED }
         _uiState.update {
             it.copy(
-                sortOrder = initial,
-                offline = !isNetworkAvailable(ksuApp)
-            )
-        }
-
-        viewModelScope.launchSearchQueryCollector(searchQuery, ::applySearchText)
-    }
-
-    private fun sortModules(list: List<RepoModule>, order: RepoSort): List<RepoModule> {
-        if (list.isEmpty()) return list
-        return when (order) {
-            RepoSort.UPDATED -> list.sortedByDescending { it.latestReleaseTime }
-            RepoSort.CREATED -> list.sortedByDescending { it.createdAt }
-            RepoSort.NAME -> {
-                val collator = Collator.getInstance(Locale.getDefault())
-                list.sortedWith(compareBy(collator) { it.moduleName })
-            }
-
-            RepoSort.STARS -> list.sortedByDescending { it.stargazerCount }
-        }
-    }
-
-    private fun filterModules(modules: List<RepoModule>, text: String): List<RepoModule> {
-        if (text.isEmpty()) return emptyList()
-
-        return modules.filter {
-            it.moduleId.contains(text, true) ||
-                    it.moduleName.contains(text, true) ||
-                    it.authors.contains(text, true) ||
-                    it.summary.contains(text, true) ||
-                    PinyinUtil.toPinyin(it.moduleName).contains(text, true)
-        }
-    }
-
-    private suspend fun applySearchText(text: String) {
-        _uiState.update {
-            it.copy(
-                searchStatus = it.searchStatus.copy(
-                    resultStatus = searchLoadingStatusFor(text)
-                )
-            )
-        }
-
-        if (text.isEmpty()) {
-            _uiState.update { state ->
-                state.copy(
-                    searchResults = emptyList(),
-                    searchStatus = state.searchStatus.copy(resultStatus = SearchStatus.ResultStatus.DEFAULT)
-                )
-            }
-            return
-        }
-
-        val result = withContext(Dispatchers.IO) {
-            sortModules(filterModules(_uiState.value.modules, text), _uiState.value.sortOrder)
-        }
-
-        _uiState.update {
-            it.copy(
-                searchResults = result,
-                searchStatus = it.searchStatus.copy(resultStatus = searchResultStatusFor(text, result.isEmpty()))
+                sourceKind = settingsRepo.repoSourceKind,
+                customUrl = settingsRepo.repoCustomUrl,
+                selectedRepositoryUrl = settingsRepo.repoSelectedRepositoryUrl,
             )
         }
     }
 
-    private fun refreshSearchResults() {
+    /** Loads the store once, on first composition of the screen. */
+    fun ensureLoaded() {
+        if (hasLoaded) return
+        hasLoaded = true
+        reload(initialLoading = true)
+    }
+
+    /** Reloads the current source while keeping the current content visible. */
+    fun refresh() = reload(initialLoading = false)
+
+    private fun reload(initialLoading: Boolean) {
         val state = _uiState.value
-        val text = state.searchStatus.searchText
-        val results = sortModules(filterModules(state.modules, text), state.sortOrder)
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoading = initialLoading,
+                    isRefreshing = !initialLoading,
+                    error = null,
+                    offline = !isNetworkAvailable(ksuApp),
+                    modules = if (initialLoading) emptyList() else it.modules,
+                    searchResults = if (initialLoading) emptyList() else it.searchResults,
+                )
+            }
+            val source = ModuleStoreRegistry.sourceFor(
+                kind = state.sourceKind,
+                customUrl = state.customUrl,
+                repositoryUrl = state.selectedRepositoryUrl,
+            )
+            val result = withContext(Dispatchers.IO) { source.list(null) }
+            result.onSuccess { modules ->
+                _uiState.update {
+                    it.copy(
+                        modules = modules,
+                        isLoading = false,
+                        isRefreshing = false,
+                        offline = !isNetworkAvailable(ksuApp),
+                    )
+                }
+                applySearch(_uiState.value.searchStatus.searchText)
+            }.onFailure { error ->
+                Log.e(TAG, "list modules failed", error)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isRefreshing = false,
+                        error = error,
+                        offline = !isNetworkAvailable(ksuApp),
+                    )
+                }
+                Toast.makeText(
+                    ksuApp,
+                    ksuApp.getString(R.string.module_repo_error),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+        }
+    }
+
+    /** Handles a selection from the source switcher. */
+    fun selectSourceKind(kind: StoreSourceKind) {
+        when (kind) {
+            StoreSourceKind.OFFICIAL -> {
+                if (_uiState.value.sourceKind == kind) return
+                settingsRepo.repoSourceKind = kind
+                _uiState.update { it.copy(sourceKind = kind) }
+                reload(initialLoading = true)
+            }
+
+            StoreSourceKind.CLUSTER -> {
+                _uiState.update { it.copy(showRepositoryPicker = true) }
+                loadRepositories()
+            }
+
+            StoreSourceKind.CUSTOM -> {
+                _uiState.update { it.copy(showRepositoryPicker = false, showCustomUrlDialog = true) }
+            }
+        }
+    }
+
+    private fun loadRepositories() {
+        if (_uiState.value.repositories.isNotEmpty() || _uiState.value.repositoryPickerLoading) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(repositoryPickerLoading = true) }
+            val cluster = ModuleStoreRegistry.clusterFor(_uiState.value.selectedRepositoryUrl)
+            val result = withContext(Dispatchers.IO) { cluster.listRepositories() }
+            result.onSuccess { repositories ->
+                _uiState.update { it.copy(repositories = repositories, repositoryPickerLoading = false) }
+            }.onFailure { error ->
+                Log.e(TAG, "list repositories failed", error)
+                _uiState.update { it.copy(repositoryPickerLoading = false) }
+            }
+        }
+    }
+
+    fun selectRepository(repository: StoreRepository) {
+        settingsRepo.repoSourceKind = StoreSourceKind.CLUSTER
+        settingsRepo.repoSelectedRepositoryUrl = repository.url
         _uiState.update {
             it.copy(
-                searchResults = results,
-                searchStatus = it.searchStatus.copy(resultStatus = searchResultStatusFor(text, results.isEmpty()))
+                sourceKind = StoreSourceKind.CLUSTER,
+                selectedRepositoryUrl = repository.url,
+                showRepositoryPicker = false,
             )
         }
+        reload(initialLoading = true)
     }
 
-    fun refresh() {
-        if (_uiState.value.isRefreshing) return
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isRefreshing = true,
-                    error = null,
-                    offline = !isNetworkAvailable(ksuApp)
-                )
-            }
-            val result = repo.fetchModules()
-
-            withContext(Dispatchers.Main) {
-                result.onSuccess { modules ->
-                    val order = _uiState.value.sortOrder
-                    val sorted = withContext(Dispatchers.Default) { sortModules(modules, order) }
-                    _uiState.update {
-                        it.copy(
-                            modules = sorted,
-                            offline = !isNetworkAvailable(ksuApp)
-                        )
-                    }
-                    refreshSearchResults()
-                    _uiState.update { it.copy(isRefreshing = false) }
-                }.onFailure { e ->
-                    Log.e(TAG, "fetch modules failed", e)
-                    Toast.makeText(
-                        ksuApp,
-                        ksuApp.getString(R.string.network_offline), Toast.LENGTH_SHORT
-                    ).show()
-                    _uiState.update {
-                        it.copy(
-                            isRefreshing = false,
-                            error = e,
-                            offline = !isNetworkAvailable(ksuApp)
-                        )
-                    }
-                }
-            }
+    fun confirmCustomUrl(url: String) {
+        val normalized = url.trim()
+        if (!normalized.isHttpUrl()) return
+        settingsRepo.repoSourceKind = StoreSourceKind.CUSTOM
+        settingsRepo.repoCustomUrl = normalized
+        _uiState.update {
+            it.copy(
+                sourceKind = StoreSourceKind.CUSTOM,
+                customUrl = normalized,
+                showCustomUrlDialog = false,
+            )
         }
+        reload(initialLoading = true)
     }
 
-    fun setSortOrder(order: RepoSort) {
-        if (_uiState.value.sortOrder == order) return
-        settingsRepo.moduleRepoSortOrder = order.ordinal
-        viewModelScope.launch {
-            val state = _uiState.value
-            val (sortedModules, sortedSearch) = withContext(Dispatchers.Default) {
-                sortModules(state.modules, order) to sortModules(state.searchResults, order)
-            }
-            _uiState.update {
-                it.copy(
-                    sortOrder = order,
-                    modules = sortedModules,
-                    searchResults = sortedSearch,
-                )
-            }
-        }
+    fun dismissRepositoryPicker() {
+        _uiState.update { it.copy(showRepositoryPicker = false) }
     }
 
-    fun updateSearchStatus(status: SearchStatus) {
-        val previous = _uiState.value.searchStatus
-        _uiState.update { it.copy(searchStatus = status) }
-        if (previous.searchText != status.searchText) {
-            searchQuery.value = status.searchText
-        }
+    fun openCustomUrlDialog() {
+        _uiState.update { it.copy(showRepositoryPicker = false, showCustomUrlDialog = true) }
+    }
+
+    fun dismissCustomUrlDialog() {
+        _uiState.update { it.copy(showCustomUrlDialog = false) }
     }
 
     fun updateSearchText(text: String) {
-        updateSearchStatus(_uiState.value.searchStatus.copy(searchText = text))
+        _uiState.update { it.copy(searchStatus = it.searchStatus.copy(searchText = text)) }
+        applySearch(text)
+    }
+
+    private fun applySearch(text: String) {
+        val query = text.trim()
+        val results = if (query.isEmpty()) {
+            emptyList()
+        } else {
+            _uiState.value.modules.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                    it.description.contains(query, ignoreCase = true)
+            }
+        }
+        _uiState.update {
+            it.copy(
+                searchResults = results,
+                searchStatus = it.searchStatus.copy(
+                    resultStatus = when {
+                        query.isEmpty() -> SearchStatus.ResultStatus.DEFAULT
+                        results.isEmpty() -> SearchStatus.ResultStatus.EMPTY
+                        else -> SearchStatus.ResultStatus.SHOW
+                    }
+                ),
+            )
+        }
     }
 }

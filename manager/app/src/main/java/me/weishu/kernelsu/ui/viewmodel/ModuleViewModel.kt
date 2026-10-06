@@ -37,8 +37,6 @@ import me.weishu.kernelsu.ui.screen.module.ModuleEffect
 import me.weishu.kernelsu.ui.screen.module.ModuleUiState
 import me.weishu.kernelsu.ui.util.PinyinUtil
 import me.weishu.kernelsu.ui.util.hasMagisk
-import me.weishu.kernelsu.ui.util.module.fetchModuleDetail
-import me.weishu.kernelsu.ui.util.module.fetchReleaseDescriptionHtml
 import okhttp3.Request
 import java.text.Collator
 import java.util.Locale
@@ -437,41 +435,14 @@ class ModuleViewModel(
         val changelogUrl = updateInfo.changelog
 
         var changelog = ""
-        var html = false
 
         if (changelogUrl.isNotBlank()) {
             withContext(Dispatchers.IO) {
-                if (changelogUrl.startsWith("#") && changelogUrl.contains('@')) {
-                    val parts = changelogUrl.substring(1).split('@', limit = 2)
-                    if (parts.size == 2) {
-                        fetchReleaseDescriptionHtml(parts[0], parts[1])?.let {
-                            changelog = it
-                            html = true
-                        }
-                    }
-                }
-
-                if (changelog.isBlank()) {
-                    changelog = runCatching {
-                        ksuApp.okhttpClient.newCall(
-                            Request.Builder().url(changelogUrl).build()
-                        ).execute().body.string()
-                    }.getOrDefault("")
-                }
-            }
-        }
-
-        if (changelog.isBlank()) {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    val latestTag = fetchModuleDetail(module.id)?.latestTag.orEmpty()
-                    if (latestTag.isNotBlank()) {
-                        fetchReleaseDescriptionHtml(module.id, latestTag)?.let {
-                            changelog = it
-                            html = true
-                        }
-                    }
-                }
+                changelog = runCatching {
+                    ksuApp.okhttpClient.newCall(
+                        Request.Builder().url(changelogUrl).build()
+                    ).execute().body.string()
+                }.getOrDefault("")
             }
         }
 
@@ -483,8 +454,8 @@ class ModuleViewModel(
             ),
             title = if (changelog.isNotBlank()) res.getString(R.string.module_changelog) else res.getString(R.string.module_update),
             content = changelog.ifBlank { res.getString(R.string.module_start_downloading).format(module.name) },
-            markdown = changelog.isNotBlank() && !html,
-            html = html,
+            markdown = changelog.isNotBlank(),
+            html = false,
             confirm = res.getString(R.string.module_update),
         )
     }

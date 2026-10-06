@@ -151,7 +151,6 @@
     <string name="refresh_refresh">Verfrissend…</string>
     <string name="refresh_complete">Succesvol vernieuwd</string>
     <string name="module_repos">Rest</string>
-    <string name="module_repos_sort_name">Naam (A → Z)</string>
     <string name="module_repos_source_code">Broncode</string>
     <string name="metamodule_uninstall_confirm">Weet je zeker dat je module %s wilt verwijderen? Deze actie heeft gevolgen voor alle modules en bepaalde functies van de metamodule (zoals mounten) zullen niet meer werken.</string>
     <string name="safe_mode_module_disabled">Module-installatie is uitgeschakeld in de veilige modus</string>

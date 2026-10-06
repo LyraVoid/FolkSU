@@ -58,3 +58,4 @@ WSA, ChromeOS 和运行在容器上的 Android 也可以与 KernelSU 一起工�
 - [Magisk](https://github.com/topjohnwu/Magisk)：强大的 root 工具箱。
 - [genuine](https://github.com/brevent/genuine/)：apk v2 签名验证。
 - [Diamorphine](https://github.com/m0nad/Diamorphine)：一些 rootkit 技巧。
+- [MMRL](https://github.com/MMRLApp/MMRL)：模块仓库格式参考。

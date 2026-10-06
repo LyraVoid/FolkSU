@@ -7,7 +7,6 @@ import me.weishu.kernelsu.data.model.ModuleUpdateInfo
 import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.ui.util.isNetworkAvailable
 import me.weishu.kernelsu.ui.util.listModules
-import me.weishu.kernelsu.ui.util.module.sanitizeVersionString
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
@@ -86,3 +85,7 @@ class ModuleRepositoryImpl : ModuleRepository {
         }
     }
 }
+
+/** Keeps only characters that are safe in a version token used for display and file names. */
+private fun sanitizeVersionString(version: String): String =
+    version.replace(Regex("[^a-zA-Z0-9.\\-_]"), "_")

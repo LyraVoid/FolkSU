@@ -2,6 +2,7 @@ package me.weishu.kernelsu.data.repository
 
 import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.model.FolkMountStatus
+import me.weishu.kernelsu.data.modulestore.StoreSourceKind
 
 interface SettingsRepository {
     var checkUpdate: Boolean
@@ -18,13 +19,15 @@ interface SettingsRepository {
     var enableWebDebugging: Boolean
     var moduleSortEnabledFirst: Boolean
     var moduleSortActionFirst: Boolean
-    var moduleRepoSortOrder: Int
     var superuserShowSystemApps: Boolean
     var superuserShowOnlyPrimaryUserApps: Boolean
     var superuserSortOption: Int
     var suLogFilters: Set<String>?
     var autoJailbreak: Boolean
     var useSoftReboot: Boolean
+    var repoSourceKind: StoreSourceKind
+    var repoCustomUrl: String
+    var repoSelectedRepositoryUrl: String
     val intentToken: String
 
     suspend fun getSuCompatStatus(): String

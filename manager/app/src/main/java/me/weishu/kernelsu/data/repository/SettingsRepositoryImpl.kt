@@ -13,9 +13,9 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.model.FolkMountStatus
+import me.weishu.kernelsu.data.modulestore.StoreSourceKind
 import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.magica.BootCompletedReceiver
-import me.weishu.kernelsu.ui.screen.modulerepo.RepoSort
 import me.weishu.kernelsu.ui.util.execKsud
 import me.weishu.kernelsu.ui.util.execKsudResult
 import me.weishu.kernelsu.ui.util.getFeaturePersistValue
@@ -98,10 +98,6 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getBoolean("module_sort_action_first", false)
         set(value) = prefs.edit { putBoolean("module_sort_action_first", value) }
 
-    override var moduleRepoSortOrder: Int
-        get() = prefs.getInt("module_repo_sort_order", RepoSort.UPDATED.ordinal)
-        set(value) = prefs.edit { putInt("module_repo_sort_order", value) }
-
     override var superuserShowSystemApps: Boolean
         get() = prefs.getBoolean("show_system_apps", false)
         set(value) = prefs.edit { putBoolean("show_system_apps", value) }
@@ -138,6 +134,18 @@ class SettingsRepositoryImpl : SettingsRepository {
     override var useSoftReboot: Boolean
         get() = prefs.getBoolean(KEY_USE_SOFT_REBOOT, false)
         set(value) = prefs.edit { putBoolean(KEY_USE_SOFT_REBOOT, value) }
+
+    override var repoSourceKind: StoreSourceKind
+        get() = StoreSourceKind.fromValue(prefs.getString("repo_source", null))
+        set(value) = prefs.edit { putString("repo_source", value.value) }
+
+    override var repoCustomUrl: String
+        get() = prefs.getString("repo_custom_url", "").orEmpty()
+        set(value) = prefs.edit { putString("repo_custom_url", value) }
+
+    override var repoSelectedRepositoryUrl: String
+        get() = prefs.getString("repo_cluster_url", "").orEmpty()
+        set(value) = prefs.edit { putString("repo_cluster_url", value) }
 
     override val intentToken: String
         get() {
