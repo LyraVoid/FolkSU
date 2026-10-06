@@ -234,7 +234,10 @@ private fun GridHomeContent(
                     .weight(1f)
                     .fillMaxHeight(),
                 pairSpacing = GridTileSpacing,
-                contentPadding = PaddingValues(16.dp),
+                // The type ladder's line boxes sit closer together than the plain Material ones, so
+                // the extra inset is what brings the two tiles to the height this grid is meant to
+                // have.
+                contentPadding = PaddingValues(18.dp),
                 emphasis = CountCardEmphasis.Value,
             )
         }
