@@ -48,7 +48,12 @@ fun MaterialKernelSUTheme(
 
     val wallpaperPage = LocalWallpaperPage.current
     val wallpaperActive = WallpaperConfig.isActive
-    val pageSeed = WallpaperConfig.pageSeed(wallpaperPage)
+    // The accent palette is derived from one fixed image, never from the page currently on screen:
+    // a page swipe must not re-theme every component (`animateAsState` would then drag the whole
+    // app through a color transition and make the swipe feel laggy). Only the background itself and
+    // its content polarity follow the page.
+    val seedPage = if (WallpaperConfig.multiBackgroundEnabled) WallpaperConfig.PAGE_HOME else wallpaperPage
+    val pageSeed = WallpaperConfig.pageSeed(seedPage)
     val wallpaperSeed = if (
         wallpaperActive && WallpaperConfig.useWallpaperColor && pageSeed != 0
     ) {

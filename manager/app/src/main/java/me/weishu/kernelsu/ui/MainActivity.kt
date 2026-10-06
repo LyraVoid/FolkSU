@@ -319,8 +319,12 @@ fun MainScreen(
         NavigationBadgeState()
     }
     val settledPage = mainPagerState.pagerState.settledPage
-    LaunchedEffect(settledPage) {
-        onPageChanged(settledPage)
+    val livePage = mainPagerState.pagerState.currentPage
+    // Report the page as soon as the swipe crosses into it rather than when the fling settles, so
+    // anything scoped to the page (the wallpaper layer) follows the gesture instead of arriving a
+    // beat late.
+    LaunchedEffect(livePage) {
+        onPageChanged(livePage)
     }
 
     val currentPage = mainPagerState.pagerState.currentPage

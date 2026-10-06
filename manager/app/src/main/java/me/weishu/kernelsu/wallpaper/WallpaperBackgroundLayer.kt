@@ -1,15 +1,22 @@
 package me.weishu.kernelsu.wallpaper
 
 import android.net.Uri
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -61,19 +68,70 @@ fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
                 blurRadiusPx = blurPx,
             )
         } else {
-            image?.let { bitmap ->
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(blurRadius.dp),
-                )
-            }
+            // The previous frame stays on screen while the next one decodes, so a page swap fades
+            // into the new image instead of cutting to black.
+            StackedFadeImage(
+                bitmap = image,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(blurRadius.dp),
+            )
         }
         if (scrim > 0f) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim)))
+        }
+    }
+}
+
+/**
+ * Draws [bitmap], fading a newly decoded frame in *over* the previous one.
+ *
+ * A symmetric crossfade lets the layer under the wallpaper show through while both frames are only
+ * partially opaque, which reads as a dark flash on every page switch. Keeping the outgoing frame
+ * fully opaque underneath means the base is never visible and only the luminance of the two images
+ * themselves blends.
+ */
+@Composable
+private fun StackedFadeImage(
+    bitmap: ImageBitmap?,
+    modifier: Modifier = Modifier,
+) {
+    var shown by remember { mutableStateOf(bitmap) }
+    var incoming by remember { mutableStateOf<ImageBitmap?>(null) }
+    val progress = remember { Animatable(1f) }
+
+    LaunchedEffect(bitmap) {
+        if (bitmap != null && bitmap !== shown) {
+            if (shown == null) {
+                shown = bitmap
+            } else {
+                incoming = bitmap
+                progress.snapTo(0f)
+                progress.animateTo(1f, tween(durationMillis = 400, easing = LinearEasing))
+                shown = bitmap
+                incoming = null
+            }
+        }
+    }
+
+    Box(modifier) {
+        shown?.let { frame ->
+            Image(
+                bitmap = frame,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        incoming?.let { frame ->
+            Image(
+                bitmap = frame,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(progress.value),
+            )
         }
     }
 }
