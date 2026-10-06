@@ -47,9 +47,9 @@ fun isLSPosedModule(name: String): Boolean = name.contains("LSPosed", ignoreCase
 /**
  * The facts the order is decided from. A module carries them; this file reads no disk.
  *
- * There is deliberately no `enabled` here. A module that is switched off keeps the place its kind
- * earns, because sinking it to the bottom would move it out from under the finger that just
- * toggled it - which is exactly when someone is looking for it.
+ * [enabled] is consulted only when enabled-first is on. Without that option a module that is
+ * switched off keeps the place its kind earns, because sinking it to the bottom would move it out
+ * from under the finger that just toggled it - which is exactly when someone is looking for it.
  */
 data class ModuleSortFacts(
     val id: String,
@@ -57,6 +57,7 @@ data class ModuleSortFacts(
     val metaModule: Boolean,
     val hasWebUi: Boolean,
     val hasActionScript: Boolean,
+    val enabled: Boolean = true,
 )
 
 /** Which group [this] belongs to, or `null` when no group claims it. */
@@ -70,19 +71,25 @@ fun ModuleSortFacts.sortGroup(): ModuleSortGroup? = when {
 }
 
 /**
- * Orders the list by the ticked groups in [priorities], then by id in the reader's own alphabet.
- * A group that was not ticked does not disappear; its modules fall in with everything else below
- * the ticked ones, still in the alphabet among themselves.
+ * Orders the list by the ticked groups in [priorities], then, when [enabledFirst] is on, by whether
+ * a module is switched on, then by id in the reader's own alphabet. A group that was not ticked
+ * does not disappear; its modules fall in with everything else below the ticked ones, still in the
+ * alphabet among themselves.
+ *
+ * The enabled-first step ranks within a group, so a switched-off module of a highly ranked kind
+ * still precedes a switched-on module of a lower one.
  */
 fun moduleSortComparator(
     collator: Collator,
     priorities: Set<ModuleSortGroup> = ModuleSortPriorityGroups.toSet(),
+    enabledFirst: Boolean = false,
 ): Comparator<ModuleSortFacts> {
     val ranking = ModuleSortPriorityGroups.filter { it in priorities }
     return compareBy<ModuleSortFacts> { facts ->
         val index = facts.sortGroup()?.let(ranking::indexOf) ?: -1
         index.takeIf { it >= 0 } ?: ranking.size
-    }.thenBy(collator) { it.id }
+    }.thenBy { facts -> enabledFirst && !facts.enabled }
+        .thenBy(collator) { it.id }
 }
 
 /**

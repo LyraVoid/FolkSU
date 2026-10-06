@@ -104,6 +104,7 @@ class ModuleViewModel(
             it.copy(
                 checkModuleUpdate = settingsRepo.checkModuleUpdate,
                 sortGroups = settingsRepo.moduleSortGroups,
+                sortEnabledFirst = settingsRepo.moduleSortEnabledFirst,
                 customOrder = settingsRepo.moduleSortCustomOrder,
             )
         }
@@ -118,6 +119,12 @@ class ModuleViewModel(
         }
         settingsRepo.moduleSortGroups = newValue
         _uiState.update { it.copy(sortGroups = newValue) }
+        updateModuleList()
+    }
+
+    fun setSortEnabledFirst(enabled: Boolean) {
+        settingsRepo.moduleSortEnabledFirst = enabled
+        _uiState.update { it.copy(sortEnabledFirst = enabled) }
         updateModuleList()
     }
 
@@ -237,6 +244,7 @@ class ModuleViewModel(
         metaModule = metamodule,
         hasWebUi = hasWebUi,
         hasActionScript = hasActionScript,
+        enabled = enabled,
     )
 
     private fun moduleComparator(state: ModuleUiState): Comparator<Module> {
@@ -246,7 +254,7 @@ class ModuleViewModel(
             ) { it.toSortFacts() }
         }
         return compareBy<Module, ModuleSortFacts>(
-            moduleSortComparator(collator, state.sortGroups),
+            moduleSortComparator(collator, state.sortGroups, state.sortEnabledFirst),
         ) { it.toSortFacts() }
     }
 

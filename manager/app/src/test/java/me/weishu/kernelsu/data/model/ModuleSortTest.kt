@@ -16,19 +16,22 @@ class ModuleSortTest {
         meta: Boolean = false,
         webUi: Boolean = false,
         action: Boolean = false,
+        enabled: Boolean = true,
     ) = ModuleSortFacts(
         id = id,
         name = name,
         metaModule = meta,
         hasWebUi = webUi,
         hasActionScript = action,
+        enabled = enabled,
     )
 
     private fun sorted(
         modules: List<ModuleSortFacts>,
         priorities: Set<ModuleSortGroup> = ModuleSortPriorityGroups.toSet(),
+        enabledFirst: Boolean = false,
     ): List<String> = modules
-        .sortedWith(moduleSortComparator(collator, priorities))
+        .sortedWith(moduleSortComparator(collator, priorities, enabledFirst))
         .map { it.id }
 
     @Test
@@ -87,6 +90,57 @@ class ModuleSortTest {
     fun `unticking everything is plain alphabetical order`() {
         val modules = listOf(facts("bbb_web", webUi = true), facts("aaa_plain"))
         assertEquals(listOf("aaa_plain", "bbb_web"), sorted(modules, emptySet()))
+    }
+
+    @Test
+    fun `enabled first floats enabled modules above disabled ones within their group`() {
+        val modules = listOf(
+            facts("aaa_disabled", enabled = false),
+            facts("zzz_enabled", enabled = true),
+        )
+
+        assertEquals(listOf("aaa_disabled", "zzz_enabled"), sorted(modules))
+        assertEquals(
+            listOf("zzz_enabled", "aaa_disabled"),
+            sorted(modules, enabledFirst = true),
+        )
+    }
+
+    @Test
+    fun `enabled first does not reorder across groups`() {
+        // The metamodule is switched off, but it still outranks the switched-on Zygisk module.
+        val modules = listOf(
+            facts("aaa_zygisk", enabled = true),
+            facts("zzz_meta", meta = true, enabled = false),
+        )
+
+        assertEquals(
+            listOf("zzz_meta", "aaa_zygisk"),
+            sorted(modules, enabledFirst = true),
+        )
+    }
+
+    @Test
+    fun `custom order overrides enabled first`() {
+        val modules = listOf(
+            facts("aaa_disabled", enabled = false),
+            facts("zzz_enabled", enabled = true),
+        )
+
+        // The custom order has no enabled-first step, so a disabled module named first stays first.
+        val ordered = modules
+            .sortedWith(customOrderComparator(collator, listOf("aaa_disabled", "zzz_enabled")))
+            .map { it.id }
+        assertEquals(listOf("aaa_disabled", "zzz_enabled"), ordered)
+    }
+
+    @Test
+    fun `enabled first is a no-op when every module shares the same state`() {
+        val allEnabled = listOf(facts("bbb_web", webUi = true), facts("aaa_plain"))
+        val allDisabled = allEnabled.map { it.copy(enabled = false) }
+
+        assertEquals(sorted(allEnabled), sorted(allEnabled, enabledFirst = true))
+        assertEquals(sorted(allDisabled), sorted(allDisabled, enabledFirst = true))
     }
 
     @Test

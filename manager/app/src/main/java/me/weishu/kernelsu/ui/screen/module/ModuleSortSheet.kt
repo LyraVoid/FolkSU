@@ -46,21 +46,25 @@ import me.weishu.kernelsu.ui.component.material.FolkTextButton
 import me.weishu.kernelsu.ui.component.material.SegmentedCheckboxItem
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
+import me.weishu.kernelsu.ui.component.material.SegmentedSwitchItem
 import me.weishu.kernelsu.R as AppR
 
 /**
- * The list's sort controls: which kinds of module are lifted above the alphabet, and a manual
- * order that overrides them. Opened from the module top bar.
+ * The list's sort controls: which kinds of module are lifted above the alphabet, whether switched-on
+ * modules float to the top within each kind, and a manual order that overrides them both. Opened
+ * from the module top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ModuleSortSheet(
     show: Boolean,
     groups: Set<ModuleSortGroup>,
+    enabledFirst: Boolean,
     customOrder: List<String>,
     displayModules: List<Module>,
     onDismiss: () -> Unit,
     onGroupChange: (ModuleSortGroup, Boolean) -> Unit,
+    onEnabledFirstChange: (Boolean) -> Unit,
     onCustomOrderChange: (List<String>) -> Unit,
     onResetCustomOrder: () -> Unit,
 ) {
@@ -98,6 +102,16 @@ internal fun ModuleSortSheet(
                             onCheckedChange = { onGroupChange(group, it) },
                         )
                     }
+                }
+            }
+
+            SegmentedColumn {
+                item {
+                    SegmentedSwitchItem(
+                        title = stringResource(AppR.string.module_sort_enabled_first),
+                        checked = enabledFirst,
+                        onCheckedChange = onEnabledFirstChange,
+                    )
                 }
             }
 

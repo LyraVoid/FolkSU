@@ -402,6 +402,7 @@ fun ModulePagerMaterial(
             ScrollToTopOnChange(
                 listState,
                 uiState.sortGroups,
+                uiState.sortEnabledFirst,
                 uiState.customOrder,
                 refreshTick.intValue,
                 isBusy = { latestRefreshing.value },
@@ -421,10 +422,12 @@ fun ModulePagerMaterial(
     ModuleSortSheet(
         show = showSortSheet,
         groups = uiState.sortGroups,
+        enabledFirst = uiState.sortEnabledFirst,
         customOrder = uiState.customOrder,
         displayModules = uiState.moduleList,
         onDismiss = { showSortSheet = false },
         onGroupChange = actions.onSetSortGroup,
+        onEnabledFirstChange = actions.onSetSortEnabledFirst,
         onCustomOrderChange = actions.onSetCustomOrder,
         onResetCustomOrder = actions.onResetCustomOrder,
     )

@@ -139,6 +139,9 @@ fun ModulePager(
         onSetSortGroup = { group, selected ->
             viewModel.setSortGroup(group, selected)
         },
+        onSetSortEnabledFirst = { enabled ->
+            viewModel.setSortEnabledFirst(enabled)
+        },
         onSetCustomOrder = { ids ->
             viewModel.setCustomOrder(ids)
         },

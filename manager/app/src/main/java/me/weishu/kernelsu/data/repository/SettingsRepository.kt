@@ -19,6 +19,7 @@ interface SettingsRepository {
     var moduleDescriptionMaxLines: Int
     var enableWebDebugging: Boolean
     var moduleSortGroups: Set<ModuleSortGroup>
+    var moduleSortEnabledFirst: Boolean
     var moduleSortCustomOrder: List<String>
     var superuserShowSystemApps: Boolean
     var superuserShowOnlyPrimaryUserApps: Boolean

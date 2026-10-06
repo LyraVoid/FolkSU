@@ -97,6 +97,10 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = ModuleSortPriorityStore.decode(prefs.getString(ModuleSortPriorityStore.Key, null))
         set(value) = prefs.edit { putString(ModuleSortPriorityStore.Key, ModuleSortPriorityStore.encode(value)) }
 
+    override var moduleSortEnabledFirst: Boolean
+        get() = prefs.getBoolean("module_sort_enabled_first", false)
+        set(value) = prefs.edit { putBoolean("module_sort_enabled_first", value) }
+
     override var moduleSortCustomOrder: List<String>
         get() = ModuleCustomOrderStore.decode(prefs.getString(ModuleCustomOrderStore.Key, null))
         set(value) = prefs.edit {
