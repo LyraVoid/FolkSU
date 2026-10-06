@@ -693,7 +693,13 @@ pub trait MountOps {
     /// Returns an error when the move fails.
     fn mount_move(&self, source: &Path, target: &Path) -> Result<()>;
 
-    /// Make the mount at `path` private (no propagation to peers).
+    /// Make the mount at `path`, and every mount below it, private.
+    ///
+    /// Deliberately recursive (`MS_PRIVATE | MS_REC`). A bind clone inherits the
+    /// propagation of its source, so a module file sourced from `/data` would
+    /// otherwise remain a member of that mount's peer group: creating it, and
+    /// unmounting it later, would then propagate to every namespace sharing the
+    /// group.
     ///
     /// # Errors
     /// Returns an error when the propagation change fails.
@@ -806,9 +812,13 @@ impl<'a, O: MountOps> MountTransaction<'a, O> {
                 };
                 ops.mount_bind(&module_path, &target)?;
                 if !has_tmpfs {
+                    // Publish first so a PRIVATE failure can still undo it.
                     self.publish(&target);
-                    ops.make_private(&target)?;
                 }
+                // The clone inherits the source mount's peer group whether or not
+                // it has been published yet; detach it so it can neither leak nor
+                // receive unmounts.
+                ops.make_private(&target)?;
             }
             NodeFileType::Symlink => {
                 let Some(module_path) = current.module_path.clone() else {

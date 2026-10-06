@@ -459,8 +459,13 @@ impl MountOps for AndroidOps {
     }
 
     fn make_private(&self, path: &Path) -> Result<()> {
-        mount_change(path, MountPropagationFlags::PRIVATE)
-            .with_context(|| format!("make {} private", path.display()))
+        // Recursive on purpose: privatise the whole subtree so every bind clone
+        // we created below `path` leaves its source mount's peer group as well.
+        mount_change(
+            path,
+            MountPropagationFlags::PRIVATE | MountPropagationFlags::REC,
+        )
+        .with_context(|| format!("make {} private", path.display()))
     }
 
     fn unmount_detach(&self, path: &Path) -> Result<()> {
