@@ -16,11 +16,10 @@ import androidx.compose.ui.graphics.luminance
 val LocalWallpaperDim = compositionLocalOf<Float?> { null }
 
 // Intrinsic perceived luminance of the wallpaper below which light-mode content switches to
-// dark-neutral roles. The crossover where dark text stops being legible over the wall is ~0.18;
-// 0.22 leaves a small safety margin while avoiding unnecessary darkening for mid-tone images.
-// The user's dim is deliberately NOT part of this decision: dim only darkens the wallpaper and
-// must never flip the whole app into dark-neutral roles.
-private const val WALLPAPER_DARK_THRESHOLD = 0.22f
+// dark-neutral roles, measured after the user's dim. Mirrors the reference implementation, which
+// decides on `luminance * (1 - dim)` with the same threshold: dimming the wallpaper must count,
+// because a heavily dimmed bright image behaves like a dark one. Dark themes always stay dark.
+private const val WALLPAPER_DARK_THRESHOLD = 0.5f
 
 // Minimum contrast ratio between normal text and its background (WCAG AA).
 private const val MIN_CONTRAST = 4.5f
@@ -64,18 +63,19 @@ fun adaptColorScheme(
 }
 
 /**
- * Whether light-mode content should switch to dark-neutral roles because the wallpaper itself is
+ * Whether the app should switch to dark-neutral roles (light text) because the wallpaper reads as
  * dark.
  *
  * Dark themes always stay dark (never flip to light just because the wallpaper is bright);
- * readability there is handled by the user's night dim. The criterion is the wallpaper's intrinsic
- * luminance: the user's dim only darkens the wallpaper, so it must not move this decision. An
- * unknown luminance (-1) keeps the app theme's polarity.
+ * readability there is left to the user's night dim. In light mode the wallpaper's luminance is
+ * measured *after* the user's dim, so a dimmed bright image behaves like a dark one and the contrast
+ * guard below then has a chance to keep the resulting light text legible. An unknown luminance (-1)
+ * keeps the app theme's polarity.
  */
-fun useDarkNeutral(darkTheme: Boolean, luminance: Float): Boolean {
+fun useDarkNeutral(darkTheme: Boolean, luminance: Float, dim: Float): Boolean {
     if (darkTheme) return true
     if (luminance < 0f) return false
-    return luminance < WALLPAPER_DARK_THRESHOLD
+    return luminance * (1f - dim.coerceIn(0f, 1f)) < WALLPAPER_DARK_THRESHOLD
 }
 
 /**

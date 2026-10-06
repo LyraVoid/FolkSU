@@ -70,7 +70,7 @@ fun MaterialKernelSUTheme(
     // In wallpaper mode the neutral roles follow the wallpaper's effective brightness so text stays
     // legible; a dark theme never flips to light, readability there is left to the night dim.
     val wallpaperDim = WallpaperConfig.effectiveDim(darkTheme)
-    val darkNeutral = useDarkNeutral(darkTheme, WallpaperConfig.derivedLuminance)
+    val darkNeutral = useDarkNeutral(darkTheme, WallpaperConfig.derivedLuminance, wallpaperDim)
     val neutralScheme = rememberKernelSUColorScheme(
         seedColor = baseSeed,
         isDark = darkNeutral,

@@ -10,7 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -97,6 +96,7 @@ import me.weishu.kernelsu.ui.component.rebootlistpopup.RebootListPopup
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkShape
 import me.weishu.kernelsu.ui.theme.FolkType
+import me.weishu.kernelsu.ui.theme.isInDarkTheme
 import me.weishu.kernelsu.wallpaper.AnimatedFileImage
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
@@ -390,7 +390,7 @@ private fun GridStatusCard(
  */
 @Composable
 private fun WorkCardBackgroundImage(uri: String) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isInDarkTheme()
     val path = remember(uri) { Uri.parse(uri).path }
     val file = remember(path) { path?.let { File(it) } }
     if (file != null && isAnimatedImageFile(file)) {
