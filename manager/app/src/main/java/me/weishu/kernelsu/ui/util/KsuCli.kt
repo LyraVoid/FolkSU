@@ -109,6 +109,16 @@ fun execKsud(args: String, newShell: Boolean = false, globalMnt: Boolean = false
     }
 }
 
+/**
+ * Run a ksud command and return the full [Shell.Result] so callers can inspect
+ * the exit code and stdout. Callers own the argument string; command tokens must
+ * never be user-controlled.
+ */
+suspend fun execKsudResult(args: String): Shell.Result = withContext(Dispatchers.IO) {
+    getRootShell().newJob()
+        .add("${getKsuDaemonPath()} $args").to(ArrayList<String>(), null).exec()
+}
+
 suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.IO) {
     val shell = getRootShell()
     val out = shell.newJob()

@@ -8,13 +8,19 @@ import androidx.core.content.edit
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import com.topjohnwu.superuser.ShellUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.data.model.FolkMountMode
+import me.weishu.kernelsu.data.model.FolkMountStatus
 import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.magica.BootCompletedReceiver
 import me.weishu.kernelsu.ui.screen.modulerepo.RepoSort
 import me.weishu.kernelsu.ui.util.execKsud
+import me.weishu.kernelsu.ui.util.execKsudResult
 import me.weishu.kernelsu.ui.util.getFeaturePersistValue
 import me.weishu.kernelsu.ui.util.getFeatureStatus
+import org.json.JSONObject
 import java.security.SecureRandom
 
 private const val SETTINGS_PREFS = "settings"
@@ -172,6 +178,30 @@ class SettingsRepositoryImpl : SettingsRepository {
     override suspend fun getSulogPersistValue(): Long? = getFeaturePersistValue("sulog")
 
     override fun setSulogEnabled(enabled: Boolean): Boolean = execKsud("feature set sulog ${if (enabled) 1 else 0}", true)
+
+    override suspend fun getFolkMountStatus(): Result<FolkMountStatus> = withContext(Dispatchers.IO) {
+        runCatching {
+            val result = execKsudResult("mount status --json")
+            check(result.isSuccess) { "ksud mount status failed (exit ${result.code})" }
+            val payload = result.out.firstOrNull { it.isNotBlank() }
+                ?: error("ksud mount status returned no payload")
+            val json = JSONObject(payload)
+            val schema = json.optInt("schema_version", -1)
+            check(schema == FolkMountStatus.SCHEMA_VERSION) {
+                "unsupported folk mount schema_version $schema"
+            }
+            FolkMountStatus.fromJson(json)
+        }
+    }
+
+    override suspend fun setFolkMountMode(mode: FolkMountMode): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            // `mode.token` is a fixed enum value; never interpolate arbitrary input.
+            check(execKsud("mount set-mode ${mode.token}", true)) {
+                "ksud mount set-mode ${mode.token} failed"
+            }
+        }
+    }
 
     override suspend fun getAdbRootStatus(): String = getFeatureStatus("adb_root")
 

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LayersClear
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
@@ -47,6 +48,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.data.model.FolkMountMode
+import me.weishu.kernelsu.data.model.FolkMountProvider
 import me.weishu.kernelsu.ui.component.KsuIsValid
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
@@ -286,6 +289,77 @@ fun SettingPagerMaterial(
                                 enabled = uiState.isLateLoadMode,
                                 checked = uiState.autoJailbreak,
                                 onCheckedChange = actions.onSetAutoJailbreak
+                            )
+                        }
+                    )
+                )
+
+                SegmentedColumn(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
+                    content = listOf(
+                        {
+                            val folkMountStatus = uiState.folkMountStatus
+                            val available = folkMountStatus != null && !uiState.folkMountReadError
+                            val mode = folkMountStatus?.configuredMode
+                            val modeItems = listOf(
+                                stringResource(id = R.string.settings_folk_mount_mode_auto),
+                                stringResource(id = R.string.settings_folk_mount_mode_builtin),
+                                stringResource(id = R.string.settings_folk_mount_mode_metamodule),
+                            )
+                            val summary = when {
+                                uiState.isFolkMountLoading ->
+                                    stringResource(id = R.string.settings_folk_mount_summary)
+
+                                !available ->
+                                    stringResource(id = R.string.settings_folk_mount_unavailable_summary)
+
+                                else -> {
+                                    val base = stringResource(
+                                        id = when (mode) {
+                                            FolkMountMode.AUTO -> R.string.settings_folk_mount_mode_auto_summary
+                                            FolkMountMode.BUILTIN -> R.string.settings_folk_mount_mode_builtin_summary
+                                            FolkMountMode.METAMODULE -> R.string.settings_folk_mount_mode_metamodule_summary
+                                            null -> R.string.settings_folk_mount_summary
+                                        }
+                                    )
+                                    val bootLine = when (folkMountStatus.bootProvider) {
+                                        FolkMountProvider.BUILTIN -> stringResource(
+                                            id = R.string.settings_folk_mount_boot_provider,
+                                            stringResource(id = R.string.settings_folk_mount_provider_builtin)
+                                        )
+
+                                        FolkMountProvider.METAMODULE -> stringResource(
+                                            id = R.string.settings_folk_mount_boot_provider,
+                                            stringResource(id = R.string.settings_folk_mount_provider_metamodule)
+                                        )
+
+                                        null -> stringResource(id = R.string.settings_folk_mount_boot_provider_unknown)
+                                    }
+                                    val compatHint = if (
+                                        mode == FolkMountMode.BUILTIN && folkMountStatus.metamoduleEnabled
+                                    ) {
+                                        stringResource(id = R.string.settings_folk_mount_metamodule_compat_hint)
+                                    } else {
+                                        null
+                                    }
+                                    listOfNotNull(
+                                        base,
+                                        bootLine,
+                                        stringResource(id = R.string.settings_folk_mount_reboot_hint),
+                                        compatHint,
+                                    ).joinToString("\n")
+                                }
+                            }
+                            SegmentedDropdownItem(
+                                icon = Icons.Filled.Layers,
+                                title = stringResource(id = R.string.settings_folk_mount),
+                                summary = summary,
+                                items = if (available) modeItems else emptyList(),
+                                enabled = available && !uiState.isFolkMountLoading && !uiState.isFolkMountWriting,
+                                selectedIndex = mode?.ordinal ?: 0,
+                                onItemSelected = { index ->
+                                    FolkMountMode.entries.getOrNull(index)?.let(actions.onSetFolkMountMode)
+                                }
                             )
                         }
                     )

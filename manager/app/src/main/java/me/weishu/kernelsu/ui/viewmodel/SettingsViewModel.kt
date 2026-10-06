@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ksuApp
@@ -31,6 +32,7 @@ class SettingsViewModel(
     }
 
     fun refresh() {
+        _uiState.update { it.copy(isFolkMountLoading = true) }
         viewModelScope.launch {
             val checkUpdate = repo.checkUpdate
             val checkModuleUpdate = repo.checkModuleUpdate
@@ -65,6 +67,8 @@ class SettingsViewModel(
             val useSoftReboot = repo.useSoftReboot
             val isLateLoadMode = Natives.isLateLoadMode
 
+            val folkMountResult = repo.getFolkMountStatus()
+
             _uiState.update {
                 it.copy(
                     checkUpdate = checkUpdate,
@@ -94,6 +98,9 @@ class SettingsViewModel(
                     autoJailbreak = autoJailbreak,
                     useSoftReboot = useSoftReboot,
                     isLateLoadMode = isLateLoadMode,
+                    folkMountStatus = folkMountResult.getOrNull(),
+                    folkMountReadError = folkMountResult.isFailure,
+                    isFolkMountLoading = false,
                 )
             }
         }
@@ -234,6 +241,41 @@ class SettingsViewModel(
             if (repo.setSulogEnabled(enabled)) {
                 repo.execKsudFeatureSave()
                 _uiState.update { it.copy(isSulogEnabled = enabled) }
+            }
+        }
+    }
+
+    fun setFolkMountMode(mode: FolkMountMode) {
+        val state = _uiState.value
+        // Ignore taps while unavailable, while loading, or while a write is in flight.
+        val status = state.folkMountStatus
+            ?: return
+        if (state.folkMountReadError || state.isFolkMountLoading || state.isFolkMountWriting) return
+        // No-op when the selection did not change.
+        if (status.configuredMode == mode) return
+
+        _uiState.update { it.copy(isFolkMountWriting = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repo.setFolkMountMode(mode).isSuccess) {
+                // Re-read on success; on a failed re-read keep the old status.
+                val refreshed = repo.getFolkMountStatus()
+                _uiState.update {
+                    it.copy(
+                        folkMountStatus = refreshed.getOrNull() ?: it.folkMountStatus,
+                        folkMountReadError = refreshed.isFailure,
+                        isFolkMountWriting = false,
+                    )
+                }
+            } else {
+                // Keep the previous selection and surface the failure.
+                _uiState.update { it.copy(isFolkMountWriting = false) }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        ksuApp,
+                        R.string.settings_folk_mount_write_failed,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }

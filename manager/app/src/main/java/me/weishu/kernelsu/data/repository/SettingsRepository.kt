@@ -1,5 +1,8 @@
 package me.weishu.kernelsu.data.repository
 
+import me.weishu.kernelsu.data.model.FolkMountMode
+import me.weishu.kernelsu.data.model.FolkMountStatus
+
 interface SettingsRepository {
     var checkUpdate: Boolean
     var checkModuleUpdate: Boolean
@@ -42,6 +45,9 @@ interface SettingsRepository {
     suspend fun getSulogStatus(): String
     suspend fun getSulogPersistValue(): Long?
     fun setSulogEnabled(enabled: Boolean): Boolean
+
+    suspend fun getFolkMountStatus(): Result<FolkMountStatus>
+    suspend fun setFolkMountMode(mode: FolkMountMode): Result<Unit>
 
     suspend fun getAdbRootStatus(): String
     suspend fun getAdbRootPersistValue(): Long?

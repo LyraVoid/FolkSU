@@ -3,6 +3,8 @@ package me.weishu.kernelsu.ui.screen.settings
 import androidx.compose.runtime.Immutable
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
+import me.weishu.kernelsu.data.model.FolkMountMode
+import me.weishu.kernelsu.data.model.FolkMountStatus
 
 @Immutable
 data class SettingsUiState(
@@ -35,6 +37,12 @@ data class SettingsUiState(
     val sulogStatus: String = "",
     val isSulogEnabled: Boolean = false,
 
+    // Folk Mount
+    val folkMountStatus: FolkMountStatus? = null,
+    val isFolkMountLoading: Boolean = false,
+    val isFolkMountWriting: Boolean = false,
+    val folkMountReadError: Boolean = false,
+
     // Umount Modules
     val isDefaultUmountModules: Boolean = false,
 
@@ -62,6 +70,7 @@ data class SettingsScreenActions(
     val onSetKernelUmountEnabled: (Boolean) -> Unit,
     val onSetSelinuxHideEnabled: (Boolean) -> Unit,
     val onSetSulogEnabled: (Boolean) -> Unit,
+    val onSetFolkMountMode: (FolkMountMode) -> Unit,
     val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
