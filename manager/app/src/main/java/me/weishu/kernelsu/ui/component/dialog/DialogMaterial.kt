@@ -6,7 +6,6 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
@@ -17,6 +16,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import me.weishu.kernelsu.ui.component.markdown.MarkdownContent
 import me.weishu.kernelsu.ui.component.material.ExpressiveDialog
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 
 @Composable
 fun LoadingDialogMaterial(
@@ -68,7 +68,7 @@ fun ConfirmDialogMaterial(
                 }
             },
             confirmButton = {
-                TextButton(
+                FolkTextButton(
                     onClick = {
                         confirm()
                         showDialog.value = false
@@ -78,7 +78,7 @@ fun ConfirmDialogMaterial(
                 }
             },
             dismissButton = {
-                TextButton(
+                FolkTextButton(
                     onClick = {
                         dismiss()
                         showDialog.value = false

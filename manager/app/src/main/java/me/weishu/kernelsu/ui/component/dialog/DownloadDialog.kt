@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +15,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.core.net.toUri
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.material.ExpressiveDialog
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 
 @Composable
 fun DownloadDialog(
@@ -49,7 +49,7 @@ private fun DownloadDialogMaterial(
             )
         },
         confirmButton = {
-            TextButton(
+            FolkTextButton(
                 enabled = isValidUrl(url.trim()),
                 onClick = { onConfirm(url.trim()) }
             ) {
@@ -57,7 +57,7 @@ private fun DownloadDialogMaterial(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FolkTextButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
         }

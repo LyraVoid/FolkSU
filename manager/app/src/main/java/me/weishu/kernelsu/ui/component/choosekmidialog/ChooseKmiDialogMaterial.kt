@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedRadioItem
 import me.weishu.kernelsu.ui.util.getCurrentKmi
@@ -44,7 +44,7 @@ fun ChooseKmiDialogMaterial(
             selectedKmi.value = currentKmi
         },
         confirmButton = {
-            TextButton(
+            FolkTextButton(
                 onClick = {
                     onSelected(selectedKmi.value)
                     onDismissRequest()
@@ -55,7 +55,7 @@ fun ChooseKmiDialogMaterial(
             }
         },
         dismissButton = {
-            TextButton(onClick = {
+            FolkTextButton(onClick = {
                 onDismissRequest()
                 selectedKmi.value = currentKmi
             }) {

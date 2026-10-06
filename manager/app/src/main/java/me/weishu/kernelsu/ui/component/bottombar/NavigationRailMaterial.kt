@@ -21,7 +21,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRail
@@ -41,6 +40,7 @@ import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.LocalMainPagerState
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
 
 @Composable
 fun NavigationRailMaterial(
@@ -86,7 +86,7 @@ fun NavigationRailMaterial(
         ),
         contentPadding = PaddingValues(vertical = 20.dp),
         header = {
-            IconButton(
+            FolkIconButton(
                 modifier = Modifier.padding(start = 24.dp),
                 onClick = {
                     scope.launch {

@@ -4,7 +4,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -61,10 +60,10 @@ fun ExpressiveConfirmDialog(
         title = { Text(title) },
         text = message?.let { { Text(it) } },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(confirmText) }
+            FolkTextButton(onClick = onConfirm) { Text(confirmText) }
         },
         dismissButton = dismissText?.let {
-            { TextButton(onClick = onDismiss) { Text(it) } }
+            { FolkTextButton(onClick = onDismiss) { Text(it) } }
         },
     )
 }

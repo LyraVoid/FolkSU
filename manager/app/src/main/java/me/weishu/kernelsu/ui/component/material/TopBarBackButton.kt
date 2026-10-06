@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -17,7 +16,7 @@ fun TopBarBackButton(
     modifier: Modifier = Modifier,
     contentDescription: String? = null,
 ) {
-    IconButton(
+    FolkIconButton(
         modifier = modifier.padding(horizontal = 10.dp),
         onClick = onClick,
         colors = IconButtonDefaults.iconButtonColors(

@@ -5,7 +5,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReadMore
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.component.profile.dialogs.SingleSelectDialog
@@ -89,7 +89,7 @@ fun TemplateConfigMaterial(
                     supportingContent = { Text(selectedTemplateName) },
                     trailingContent = {
                         if (noTemplates) {
-                            IconButton(onClick = onManageTemplate) {
+                            FolkIconButton(onClick = onManageTemplate) {
                                 Icon(Icons.Filled.Create, contentDescription = null)
                             }
                         }

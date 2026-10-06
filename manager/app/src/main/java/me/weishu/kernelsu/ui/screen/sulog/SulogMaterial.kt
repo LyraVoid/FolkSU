@@ -30,19 +30,16 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -67,6 +64,9 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.ScrollToTopOnChange
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
+import me.weishu.kernelsu.ui.component.material.FolkButton
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 import me.weishu.kernelsu.ui.component.material.SearchAppBar
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedDropdownItem
@@ -124,13 +124,13 @@ fun SulogScreenMaterial(
                     TopBarBackButton(onClick = actions.onBack)
                 },
                 actions = {
-                    IconButton(onClick = actions.onCleanFile) {
+                    FolkIconButton(onClick = actions.onCleanFile) {
                         Icon(
                             imageVector = Icons.Filled.DeleteSweep,
                             contentDescription = stringResource(R.string.sulog_clean_title),
                         )
                     }
-                    IconButton(onClick = { showFilterMenu = true }) {
+                    FolkIconButton(onClick = { showFilterMenu = true }) {
                         Icon(
                             imageVector = Icons.Filled.FilterList,
                             contentDescription = stringResource(R.string.sulog_filter_title),
@@ -350,7 +350,7 @@ private fun SulogStatusSection(
             WarningCard(
                 text = stringResource(R.string.sulog_disabled_title),
                 action = {
-                    Button(
+                    FolkButton(
                         onClick = actions.onEnableSulog,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colorScheme.error,
@@ -439,7 +439,7 @@ private fun SulogDetailDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            FolkTextButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.ok))
             }
         },

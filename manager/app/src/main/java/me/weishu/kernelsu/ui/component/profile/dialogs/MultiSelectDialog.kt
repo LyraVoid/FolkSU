@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -28,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SegmentedCheckboxItem
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 
@@ -83,7 +83,7 @@ fun <T> MultiSelectDialog(
                         )
                     }
                 }
-                IconButton(onClick = onDismiss) {
+                FolkIconButton(onClick = onDismiss) {
                     Icon(Icons.Filled.Close, contentDescription = null)
                 }
             }
@@ -95,7 +95,7 @@ fun <T> MultiSelectDialog(
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
+                        FolkIconButton(onClick = { searchQuery = "" }) {
                             Icon(Icons.Filled.Close, contentDescription = null)
                         }
                     }

@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExpandedFullScreenContainedSearchBar
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -157,7 +156,7 @@ fun SearchAppBar(
                 },
                 leadingIcon = {
                     if (isSearchExpanded) {
-                        IconButton(
+                        FolkIconButton(
                             modifier = Modifier.padding(end = 8.dp),
                             onClick = { collapseAndClear() },
                             colors = IconButtonDefaults.iconButtonColors(
@@ -173,7 +172,7 @@ fun SearchAppBar(
                 },
                 trailingIcon = {
                     if (isSearchExpanded && currentQuery.isNotEmpty()) {
-                        IconButton(
+                        FolkIconButton(
                             onClick = { clearSearchText() },
                             content = { Icon(Icons.Filled.Close, null) }
                         )

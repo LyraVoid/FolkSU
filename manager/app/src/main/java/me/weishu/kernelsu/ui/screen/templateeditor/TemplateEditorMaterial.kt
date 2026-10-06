@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedTextField
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
@@ -191,13 +191,13 @@ private fun TopBar(
         },
         actions = {
             if (readOnly) return@LargeFlexibleTopAppBar
-            IconButton(onClick = onDelete) {
+            FolkIconButton(onClick = onDelete) {
                 Icon(
                     Icons.Filled.DeleteForever,
                     contentDescription = stringResource(id = R.string.app_profile_template_delete)
                 )
             }
-            IconButton(onClick = onSave) {
+            FolkIconButton(onClick = onSave) {
                 Icon(
                     imageVector = Icons.Filled.Save,
                     contentDescription = stringResource(id = R.string.app_profile_template_save)

@@ -65,24 +65,19 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -136,6 +131,12 @@ import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.dialog.rememberLoadingDialog
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.ExpressiveSwitch
+import me.weishu.kernelsu.ui.component.material.FolkButton
+import me.weishu.kernelsu.ui.component.material.FolkFilledTonalButton
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
+import me.weishu.kernelsu.ui.component.material.FolkOutlinedButton
+import me.weishu.kernelsu.ui.component.material.FolkSmallExtendedFloatingActionButton
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 import me.weishu.kernelsu.ui.component.material.SearchAppBar
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
 import me.weishu.kernelsu.ui.component.material.TonalCard
@@ -278,7 +279,7 @@ fun ModulePagerMaterial(
                 onClearClick = actions.onClearSearch,
                 snackbarHostState = snackBarHost,
                 navigationIcon = {
-                    IconButton(
+                    FolkIconButton(
                         onClick = { actions.onOpenRepo() }
                     ) {
                         Icon(
@@ -289,7 +290,7 @@ fun ModulePagerMaterial(
                 },
                 actions = {
                     var showDropdown by remember { mutableStateOf(false) }
-                    IconButton(
+                    FolkIconButton(
                         onClick = { showDropdown = true }
                     ) {
                         Icon(
@@ -381,7 +382,7 @@ fun ModulePagerMaterial(
                     actions.onOpenFlash(uris)
                 }
 
-                SmallExtendedFloatingActionButton(
+                FolkSmallExtendedFloatingActionButton(
                     modifier = Modifier.padding(bottom = bottomInnerPadding),
                     expanded = fabExpanded,
                     onClick = {
@@ -607,7 +608,7 @@ private fun ModuleShortcutSheet(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
+                FolkTextButton(
                     onClick = onPickShortcutIcon,
                     colors = ButtonDefaults.textButtonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -623,7 +624,7 @@ private fun ModuleShortcutSheet(
                     enter = expandHorizontally() + slideInHorizontally(initialOffsetX = { it }),
                     exit = shrinkHorizontally() + slideOutHorizontally(targetOffsetX = { it }),
                 ) {
-                    IconButton(
+                    FolkIconButton(
                         onClick = shortcutState::resetIconToDefault,
                         modifier = Modifier.padding(start = 12.dp)
                     ) {
@@ -644,7 +645,7 @@ private fun ModuleShortcutSheet(
                     .padding(bottom = 3.dp)
             )
             if (shortcutState.hasExistingShortcut) {
-                TextButton(
+                FolkTextButton(
                     onClick = onDeleteShortcut,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.textButtonColors(
@@ -655,7 +656,7 @@ private fun ModuleShortcutSheet(
                     Text(stringResource(id = R.string.module_shortcut_delete))
                 }
             }
-            TextButton(
+            FolkTextButton(
                 onClick = ::copyShortcutUrl,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.textButtonColors(
@@ -668,13 +669,13 @@ private fun ModuleShortcutSheet(
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedButton(
+                FolkOutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(stringResource(id = android.R.string.cancel))
                 }
-                Button(
+                FolkButton(
                     onClick = onConfirmShortcut,
                     modifier = Modifier.weight(1f),
                 ) {
@@ -908,7 +909,7 @@ private fun ModuleItem(
                     exit = fadeOut()
                 ) {
                     Row {
-                        Button(
+                        FolkButton(
                             modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                             enabled = !module.remove,
                             onClick = onUpdate,
@@ -934,7 +935,7 @@ private fun ModuleItem(
                     }
                 }
 
-                FilledTonalButton(
+                FolkFilledTonalButton(
                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                     onClick = onUninstallClicked,
                     contentPadding = ButtonDefaults.TextButtonContentPadding

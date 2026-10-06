@@ -19,9 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -39,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
+import me.weishu.kernelsu.ui.component.material.FolkButton
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SegmentedCheckboxItem
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedDropdownItem
@@ -143,7 +143,7 @@ internal fun InstallScreenMaterial(
                             },
                             trailingContent = {
                                 if (uiState.lkmSelection is LkmSelection.LkmUri) {
-                                    IconButton(onClick = actions.onClearLkm) {
+                                    FolkIconButton(onClick = actions.onClearLkm) {
                                         Icon(
                                             Icons.Filled.Close,
                                             contentDescription = stringResource(android.R.string.cancel)
@@ -196,7 +196,7 @@ internal fun InstallScreenMaterial(
                     )
                 }
             }
-            Button(
+            FolkButton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),

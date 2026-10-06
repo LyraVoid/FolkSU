@@ -24,17 +24,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -60,6 +57,9 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.model.TemplateInfo
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
+import me.weishu.kernelsu.ui.component.material.FolkButton
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
+import me.weishu.kernelsu.ui.component.material.FolkSmallExtendedFloatingActionButton
 import me.weishu.kernelsu.ui.component.material.SegmentedItem
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
@@ -126,7 +126,7 @@ fun AppProfileTemplateScreenMaterial(
         },
         snackbarHost = { SnackBarHost(hostState = snackBarHost) },
         floatingActionButton = {
-            SmallExtendedFloatingActionButton(
+            FolkSmallExtendedFloatingActionButton(
                 expanded = fabExpanded,
                 onClick = actions.onCreateTemplate,
                 icon = { Icon(Icons.Filled.Add, null) },
@@ -168,7 +168,7 @@ fun AppProfileTemplateScreenMaterial(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(text = stringResource(R.string.network_offline), color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(12.dp))
-                            Button(
+                            FolkButton(
                                 onClick = { actions.onRefresh(false) },
                             ) {
                                 Text(stringResource(R.string.network_retry))
@@ -277,7 +277,7 @@ private fun TopBar(
         },
         actions = {
             var showDropdown by remember { mutableStateOf(false) }
-            IconButton(
+            FolkIconButton(
                 onClick = { showDropdown = true }
             ) {
                 Icon(

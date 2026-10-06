@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -29,9 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -66,7 +63,6 @@ fun SendLogBottomSheet(
     val logSaved = stringResource(R.string.log_saved)
     val sendLog = stringResource(R.string.send_log)
     val loadingDialog = rememberLoadingDialog()
-    val haptic = LocalHapticFeedback.current
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     val scope = rememberCoroutineScope()
     val dismiss = {
@@ -110,10 +106,9 @@ fun SendLogBottomSheet(
                     .align(Alignment.CenterHorizontally)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    FilledTonalIconButton(
+                    FolkFilledTonalIconButton(
                         modifier = Modifier.size(64.dp),
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH_mm")
                             val current = LocalDateTime.now().format(formatter)
                             exportBugreportLauncher.launch("KernelSU_bugreport_${current}.tar.gz")
@@ -135,10 +130,9 @@ fun SendLogBottomSheet(
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    FilledTonalIconButton(
+                    FolkFilledTonalIconButton(
                         modifier = Modifier.size(64.dp),
                         onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             scope.launch {
                                 val bugreport = loadingDialog.withLoading {
                                     withContext(Dispatchers.IO) {

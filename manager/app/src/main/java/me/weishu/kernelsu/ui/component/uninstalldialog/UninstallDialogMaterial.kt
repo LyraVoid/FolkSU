@@ -3,7 +3,6 @@ package me.weishu.kernelsu.ui.component.uninstalldialog
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -11,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
@@ -70,7 +70,7 @@ fun UninstallDialogMaterial(
                 )
             },
             confirmButton = {
-                TextButton(onClick = onDismissRequest) {
+                FolkTextButton(onClick = onDismissRequest) {
                     Text(stringResource(android.R.string.cancel))
                 }
             }

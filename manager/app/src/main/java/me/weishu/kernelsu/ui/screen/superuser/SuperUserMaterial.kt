@@ -30,7 +30,6 @@ import androidx.compose.material3.CheckableDropdownMenuItem
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -66,6 +65,7 @@ import me.weishu.kernelsu.data.model.AppInfo
 import me.weishu.kernelsu.ui.component.AppIconImage
 import me.weishu.kernelsu.ui.component.ScrollToTopOnChange
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SearchAppBar
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedItem
@@ -109,7 +109,7 @@ fun SuperUserPagerMaterial(
                     actions.onClearSearch()
                 },
                 navigationIcon = {
-                    IconButton(onClick = actions.onOpenSulog) {
+                    FolkIconButton(onClick = actions.onOpenSulog) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.Article,
                             contentDescription = stringResource(R.string.settings_sulog)
@@ -119,7 +119,7 @@ fun SuperUserPagerMaterial(
                 actions = {
                     var showSortMenu by remember { mutableStateOf(false) }
 
-                    IconButton(onClick = { showSortMenu = true }) {
+                    FolkIconButton(onClick = { showSortMenu = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Sort,
                             contentDescription = stringResource(R.string.menu_sort)
@@ -191,7 +191,7 @@ fun SuperUserPagerMaterial(
 
                     var showDropdown by remember { mutableStateOf(false) }
 
-                    IconButton(onClick = { showDropdown = true }) {
+                    FolkIconButton(onClick = { showDropdown = true }) {
                         Icon(
                             imageVector = Icons.Filled.MoreVert,
                             contentDescription = stringResource(id = R.string.settings)

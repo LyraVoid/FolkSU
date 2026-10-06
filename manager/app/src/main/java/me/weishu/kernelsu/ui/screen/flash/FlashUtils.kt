@@ -13,7 +13,6 @@ import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 import me.weishu.kernelsu.ui.util.FlashResult
 import me.weishu.kernelsu.ui.util.LkmSelection
 import me.weishu.kernelsu.ui.util.downloadBoot
@@ -250,7 +250,7 @@ fun JailbreakFlashWarningDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            FolkTextButton(
                 onClick = onConfirm,
                 enabled = countdown == 0
             ) {
@@ -263,7 +263,7 @@ fun JailbreakFlashWarningDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FolkTextButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
         }

@@ -45,16 +45,13 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.InstallMobile
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenuGroup
 import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.DropdownMenuPopup
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -100,6 +97,9 @@ import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.markdown.GithubMarkdown
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.ExpressiveTabRow
+import me.weishu.kernelsu.ui.component.material.FolkButton
+import me.weishu.kernelsu.ui.component.material.FolkFilledTonalButton
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SearchAppBar
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedItemContainer
@@ -143,7 +143,7 @@ fun ModuleRepoScreenMaterial(
                 actions = {
                     var showSortMenu by remember { mutableStateOf(false) }
 
-                    IconButton(
+                    FolkIconButton(
                         onClick = { showSortMenu = true }
                     ) {
                         Icon(
@@ -222,7 +222,7 @@ fun ModuleRepoScreenMaterial(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = stringResource(R.string.network_offline), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(12.dp))
-                        Button(
+                        FolkButton(
                             onClick = actions.onRefresh,
                         ) {
                             Text(stringResource(R.string.network_retry))
@@ -408,7 +408,7 @@ fun ModuleRepoDetailScreenMaterial(
                 },
                 actions = {
                     if (state.webUrl.isNotEmpty()) {
-                        IconButton(onClick = actions.onOpenWebUrl) {
+                        FolkIconButton(onClick = actions.onOpenWebUrl) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.ChromeReaderMode,
                                 contentDescription = null,
@@ -720,9 +720,9 @@ private fun ReleaseAssetSegmentedItem(
         supportingContent = { Text(text = sizeAndDownloads) },
         trailingContent = {
             if (isDownloaded) {
-                FilledTonalButton(
+                FolkFilledTonalButton(
                     onClick = {
-                        val uri = downloadedUri ?: return@FilledTonalButton
+                        val uri = downloadedUri ?: return@FolkFilledTonalButton
                         scope.launch {
                             if (isDownloadAvailable(uri)) {
                                 onInstallModule(uri)
@@ -745,7 +745,7 @@ private fun ReleaseAssetSegmentedItem(
                     )
                 }
             } else {
-                FilledTonalButton(
+                FolkFilledTonalButton(
                     onClick = onClickDownload,
                     enabled = !isDownloading,
                     contentPadding = ButtonDefaults.TextButtonContentPadding
@@ -812,7 +812,7 @@ fun InfoPage(
                                     )
                                 },
                                 trailingContent = {
-                                    FilledTonalButton(
+                                    FolkFilledTonalButton(
                                         modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                         onClick = { uriHandler.openUri(author.link) },
                                         contentPadding = ButtonDefaults.TextButtonContentPadding
@@ -847,7 +847,7 @@ fun InfoPage(
                                     )
                                 },
                                 trailingContent = {
-                                    FilledTonalButton(
+                                    FolkFilledTonalButton(
                                         modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                         onClick = { uriHandler.openUri(sourceUrl) },
                                         contentPadding = ButtonDefaults.TextButtonContentPadding

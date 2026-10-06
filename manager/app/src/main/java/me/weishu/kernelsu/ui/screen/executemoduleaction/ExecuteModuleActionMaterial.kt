@@ -25,9 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -47,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.KeyEventBlocker
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
+import me.weishu.kernelsu.ui.component.material.FolkSmallExtendedFloatingActionButton
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
@@ -99,7 +99,7 @@ fun ExecuteModuleActionScreenMaterial(
                     TopBarBackButton(onClick = actions.onBack)
                 },
                 actions = {
-                    IconButton(onClick = actions.onSaveLog) {
+                    FolkIconButton(onClick = actions.onSaveLog) {
                         Icon(
                             imageVector = Icons.Filled.Save,
                             contentDescription = stringResource(R.string.save_log)
@@ -110,7 +110,7 @@ fun ExecuteModuleActionScreenMaterial(
         },
         floatingActionButton = {
             if (state.isComplete) {
-                SmallExtendedFloatingActionButton(
+                FolkSmallExtendedFloatingActionButton(
                     onClick = actions.onClose,
                     expanded = fabExpanded,
                     icon = { Icon(Icons.Filled.Close, null) },

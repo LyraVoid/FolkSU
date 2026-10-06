@@ -23,9 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SmallExtendedFloatingActionButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -41,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.KeyEventBlocker
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
+import me.weishu.kernelsu.ui.component.material.FolkSmallExtendedFloatingActionButton
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
@@ -83,7 +83,7 @@ fun FlashScreenMaterial(
                     TopBarBackButton(onClick = actions.onBack)
                 },
                 actions = {
-                    IconButton(onClick = actions.onSaveLog) {
+                    FolkIconButton(onClick = actions.onSaveLog) {
                         Icon(Icons.Filled.Save, stringResource(R.string.save_log))
                     }
                 }
@@ -91,7 +91,7 @@ fun FlashScreenMaterial(
         },
         floatingActionButton = {
             if (state.showRebootAction) {
-                SmallExtendedFloatingActionButton(
+                FolkSmallExtendedFloatingActionButton(
                     onClick = actions.onReboot,
                     icon = { Icon(Icons.Filled.Refresh, null) },
                     text = { Text(stringResource(state.rebootLabelRes)) },

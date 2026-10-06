@@ -10,7 +10,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +26,7 @@ import me.weishu.kernelsu.profile.Capabilities
 import me.weishu.kernelsu.profile.Groups
 import me.weishu.kernelsu.toRawFlags
 import me.weishu.kernelsu.toRootProfileFlags
+import me.weishu.kernelsu.ui.component.material.FolkTextButton
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.component.material.SegmentedTextField
@@ -453,7 +453,7 @@ private fun SELinuxDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            FolkTextButton(
                 onClick = { onConfirm(currentDomain, currentRules) },
                 enabled = isDomainValid && isRulesValid
             ) {
@@ -461,7 +461,7 @@ private fun SELinuxDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FolkTextButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
         }
