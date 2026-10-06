@@ -36,6 +36,17 @@ object FolkType {
     /** [Summary] with tabular figures, so a changing number does not push its neighbours around. */
     val Numeral: TextStyle
         @Composable get() = Summary.copy(fontFeatureSettings = "tnum")
+
+    /**
+     * [Caption] for machine strings - version numbers, build ids, fingerprints. These are read as
+     * whole tokens, so hyphenation is off and the line breaker balances and breaks between phrases
+     * instead of filling the first line and stranding a character on the second.
+     */
+    val Machine: TextStyle
+        @Composable get() = Caption.copy(
+            hyphens = Hyphens.None,
+            lineBreak = LineBreak.Heading,
+        )
 }
 
 /**

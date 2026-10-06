@@ -582,7 +582,7 @@ private fun InfoRow(
             Text(text = label, style = FolkType.Summary)
             Text(
                 text = value,
-                style = FolkType.Caption,
+                style = FolkType.Machine,
                 color = MaterialTheme.colorScheme.outline
             )
         }
