@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
 
 @Composable
 fun SearchAppBar(
@@ -183,7 +185,12 @@ fun SearchAppBar(
         }
     }
 
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+    // The scaffold's chrome zone already draws the reading platform, so in wallpaper mode this
+    // container must stay transparent instead of painting an opaque band over the wallpaper.
+    val wallpaperTokens = LocalFolkWallpaperTokens.current
+    Surface(
+        color = if (wallpaperTokens != null) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -205,7 +212,10 @@ fun SearchAppBar(
 
                 state = searchBarState,
                 inputField = inputField,
-                colors = SearchBarDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+                colors = SearchBarDefaults.colors(
+                    containerColor = wallpaperTokens?.raised?.fill
+                        ?: MaterialTheme.colorScheme.surfaceContainerHighest
+                ),
             )
         }
     }

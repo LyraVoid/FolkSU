@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -38,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -84,6 +86,7 @@ import me.weishu.kernelsu.ui.screen.sulog.SulogScreen
 import me.weishu.kernelsu.ui.screen.superuser.SuperUserPager
 import me.weishu.kernelsu.ui.screen.template.AppProfileTemplateScreen
 import me.weishu.kernelsu.ui.screen.templateeditor.TemplateEditorScreen
+import me.weishu.kernelsu.ui.screen.wallpaper.WallpaperScreen
 import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.LocalColorMode
 import me.weishu.kernelsu.ui.theme.LocalEnableNavigationBadge
@@ -96,6 +99,9 @@ import me.weishu.kernelsu.ui.viewmodel.MainActivityViewModel
 import me.weishu.kernelsu.ui.viewmodel.MainPagerConfig
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
+import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
+import me.weishu.kernelsu.wallpaper.WallpaperBackgroundLayer
+import me.weishu.kernelsu.wallpaper.WallpaperConfig
 
 class MainActivity : ComponentActivity() {
 
@@ -118,6 +124,8 @@ class MainActivity : ComponentActivity() {
         if (isManager && Natives.kernelUAPIVersion == Natives.managerUAPIVersion) install()
 
         if (savedInstanceState == null) intent?.let { intentChannel.trySend(it) }
+
+        WallpaperConfig.load(this)
 
         setContent {
             val viewModel = viewModel<MainActivityViewModel>()
@@ -202,13 +210,21 @@ class MainActivity : ComponentActivity() {
                                 entry<Route.SuperUser> { mainScreenEntry() }
                                 entry<Route.Module> { mainScreenEntry() }
                                 entry<Route.Settings> { mainScreenEntry() }
+                                entry<Route.Wallpaper> { WallpaperScreen() }
                             },
                         )
                     }
 
-                    androidx.compose.material3.Scaffold(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    ) { navDisplay() }
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        WallpaperBackgroundLayer()
+                        androidx.compose.material3.Scaffold(
+                            containerColor = if (LocalFolkWallpaperTokens.current != null) {
+                                Color.Transparent
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainer
+                            }
+                        ) { navDisplay() }
+                    }
                     SideEffect { contentReady = true }
                 }
             }
@@ -339,13 +355,18 @@ fun MainScreen(
             }
         }
 
+        val wallpaperActive = LocalFolkWallpaperTokens.current != null
         if (useNavigationRail) {
             val startInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
                 .only(WindowInsetsSides.Start)
             val navBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
 
             androidx.compose.material3.Scaffold(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                containerColor = if (wallpaperActive) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                }
             ) {
                 Row {
                     SideRail(navigationBadge)
@@ -365,7 +386,11 @@ fun MainScreen(
 
             androidx.compose.material3.Scaffold(
                 bottomBar = bottomBar,
-                containerColor = MaterialTheme.colorScheme.surfaceContainer
+                containerColor = if (wallpaperActive) {
+                    Color.Transparent
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                }
             ) { innerPadding ->
                 pagerContent(innerPadding.calculateBottomPadding())
             }

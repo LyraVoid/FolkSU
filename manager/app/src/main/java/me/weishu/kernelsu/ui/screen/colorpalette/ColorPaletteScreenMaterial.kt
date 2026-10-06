@@ -483,6 +483,7 @@ private fun ThemePreviewCard(
                     ) {
                         TonalCard(
                             containerColor = colorScheme.secondaryContainer,
+                            wallpaperRole = null,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(40.dp),
@@ -492,6 +493,7 @@ private fun ThemePreviewCard(
                         if (showInfoCard) {
                             TonalCard(
                                 containerColor = colorScheme.surfaceBright,
+                                wallpaperRole = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),

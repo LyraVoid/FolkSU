@@ -23,12 +23,16 @@ import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.LocalMainPagerState
+import me.weishu.kernelsu.ui.component.material.ChromeEdge
+import me.weishu.kernelsu.ui.component.material.WallpaperChromeZone
+import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
 
 @Composable
 fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
@@ -44,36 +48,43 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
         Triple(R.string.settings, Icons.Filled.Settings, Icons.Outlined.Settings)
     )
 
-    ShortNavigationBar(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
-            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
-        )
-    ) {
-        items.forEachIndexed { index, (label, selectedIcon, unselectedIcon) ->
-            val selected = mainPagerState.selectedPage == index
-            ShortNavigationBarItem(
-                selected = selected,
-                onClick = {
-                    if (!selected) {
-                        mainPagerState.animateToPage(index)
-                    }
-                },
-                icon = {
-                    NavigationIconWithBadge(
-                        icon = if (selected) selectedIcon else unselectedIcon,
-                        contentDescription = stringResource(label),
-                        badge = badgeFor(index, navigationBadge),
-                    )
-                },
-                label = {
-                    Text(
-                        stringResource(label),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+    val wallpaperActive = LocalFolkWallpaperTokens.current != null
+    WallpaperChromeZone(edge = ChromeEdge.Bottom) {
+        ShortNavigationBar(
+            containerColor = if (wallpaperActive) {
+                Color.Transparent
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            },
+            windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
+                WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
             )
+        ) {
+            items.forEachIndexed { index, (label, selectedIcon, unselectedIcon) ->
+                val selected = mainPagerState.selectedPage == index
+                ShortNavigationBarItem(
+                    selected = selected,
+                    onClick = {
+                        if (!selected) {
+                            mainPagerState.animateToPage(index)
+                        }
+                    },
+                    icon = {
+                        NavigationIconWithBadge(
+                            icon = if (selected) selectedIcon else unselectedIcon,
+                            contentDescription = stringResource(label),
+                            badge = badgeFor(index, navigationBadge),
+                        )
+                    },
+                    label = {
+                        Text(
+                            stringResource(label),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                )
+            }
         }
     }
 }
