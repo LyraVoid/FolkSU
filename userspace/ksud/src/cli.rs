@@ -153,6 +153,12 @@ enum Commands {
         #[command(subcommand)]
         command: Initrc,
     },
+
+    /// Manage built-in module mounting (Folk Mount)
+    Mount {
+        #[command(subcommand)]
+        command: Mount,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -489,6 +495,22 @@ enum Initrc {
     Refresh,
 }
 
+#[derive(clap::Subcommand, Debug)]
+enum Mount {
+    /// Print current provider, mode, and metamodule presence
+    Status {
+        /// Emit a single JSON object instead of key=value lines
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Set mount mode: auto | builtin | metamodule
+    SetMode {
+        /// one of: auto, builtin, metamodule
+        mode: String,
+    },
+}
+
 pub fn run() -> Result<()> {
     android_logger::init_once(
         Config::default()
@@ -810,6 +832,10 @@ pub fn run() -> Result<()> {
         },
         Commands::Initrc { command } => match command {
             Initrc::Refresh => regenerate_preinit_rc(),
+        },
+        Commands::Mount { command } => match command {
+            Mount::Status { json } => crate::magic_mount::print_status(json),
+            Mount::SetMode { mode } => crate::magic_mount::set_mode(&mode),
         },
     };
 

@@ -41,6 +41,7 @@ mod android {
     pub const DISABLE_FILE_NAME: &str = "disable";
     pub const UPDATE_FILE_NAME: &str = "update";
     pub const REMOVE_FILE_NAME: &str = "remove";
+    pub const SKIP_MOUNT_FILE_NAME: &str = "skip_mount";
     pub const MODULE_INIT_RC_DIR: &str = "initrc";
 
     // Module config system
@@ -52,6 +53,14 @@ mod android {
     pub const METAMODULE_MOUNT_SCRIPT: &str = "metamount.sh";
     pub const METAMODULE_METAINSTALL_SCRIPT: &str = "metainstall.sh";
     pub const METAMODULE_METAUNINSTALL_SCRIPT: &str = "metauninstall.sh";
+
+    // Folk Mount (built-in module mounting)
+    pub const FOLK_MOUNT_CONFIG: &str = concatcp!(WORKING_DIR, "mount_mode");
+    // Consumed by the Phase 2 tmpfs executor.
+    #[allow(dead_code)]
+    pub const FOLK_MOUNT_WORK_DIR: &str = concatcp!(WORKING_DIR, "workdir/");
+    #[allow(dead_code)]
+    pub const FOLK_MOUNT_FS_NAME: &str = "FolkMount";
 
     pub const KSU_BACKUP_DIR: &str = WORKING_DIR;
     pub const KSU_BACKUP_FILE_PREFIX: &str = "ksu_backup_";
