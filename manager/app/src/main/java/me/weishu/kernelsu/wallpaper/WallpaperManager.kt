@@ -110,6 +110,21 @@ object WallpaperManager {
         return if (file.exists() && file.length() > 0L) file else null
     }
 
+    /** Copies [source] into app storage (replacing any existing work-card background). */
+    fun replaceWorkCardFile(context: Context, source: File, extension: String): File {
+        clearOldWorkCardFiles(context)
+        val target = File(context.filesDir, "$WORK_CARD_FILENAME_BASE$extension")
+        source.copyTo(target, overwrite = true)
+        return target
+    }
+
+    /** The currently stored work-card background file, if any. */
+    fun currentWorkCardFile(context: Context): File? {
+        val path = WallpaperConfig.workCardBackgroundUri?.let { Uri.parse(it).path } ?: return null
+        val file = File(path)
+        return if (file.exists() && file.length() > 0L) file else null
+    }
+
     fun getFileExtension(mime: String?): String = when {
         mime == null -> ".jpg"
         mime.contains("png", ignoreCase = true) -> ".png"

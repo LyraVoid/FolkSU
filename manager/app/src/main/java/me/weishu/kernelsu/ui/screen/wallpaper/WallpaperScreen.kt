@@ -521,49 +521,6 @@ fun WallpaperScreenMaterial(
                     }
                 }
 
-                FolkWallpaperSurface(
-                    role = WallpaperSurfaceRole.Group,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
-                    shape = MaterialTheme.shapes.large,
-                    fallbackColor = MaterialTheme.colorScheme.surfaceBright,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.wallpaper_work_card_section),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        WorkCardBackgroundSettings(
-                            enabled = state.workCardBackgroundEnabled,
-                            hasImage = state.workCardHasImage,
-                            opacity = state.workCardOpacity,
-                            dim = state.workCardDim,
-                            dualOpacityEnabled = state.workCardDualOpacityEnabled,
-                            dayOpacity = state.workCardDayOpacity,
-                            nightOpacity = state.workCardNightOpacity,
-                            checkHidden = state.workCardCheckHidden,
-                            textHidden = state.workCardTextHidden,
-                            modeHidden = state.workCardModeHidden,
-                            onEnabledChange = actions.onToggleWorkCardBackground,
-                            onPickImage = actions.onPickWorkCardImage,
-                            onClearImage = actions.onClearWorkCardImage,
-                            onOpacityChange = actions.onSetWorkCardOpacity,
-                            onDimChange = actions.onSetWorkCardDim,
-                            onDualOpacityChange = actions.onToggleWorkCardDualOpacity,
-                            onDayOpacityChange = actions.onSetWorkCardDayOpacity,
-                            onNightOpacityChange = actions.onSetWorkCardNightOpacity,
-                            onCheckHiddenChange = actions.onToggleWorkCardCheckHidden,
-                            onTextHiddenChange = actions.onToggleWorkCardTextHidden,
-                            onModeHiddenChange = actions.onToggleWorkCardModeHidden,
-                        )
-                    }
-                }
-
                 SegmentedColumn(
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
                     content = buildList {
@@ -587,6 +544,49 @@ fun WallpaperScreenMaterial(
                         }
                     },
                 )
+            }
+
+            FolkWallpaperSurface(
+                role = WallpaperSurfaceRole.Group,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
+                shape = MaterialTheme.shapes.large,
+                fallbackColor = MaterialTheme.colorScheme.surfaceBright,
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.wallpaper_work_card_section),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    WorkCardBackgroundSettings(
+                        enabled = state.workCardBackgroundEnabled,
+                        hasImage = state.workCardHasImage,
+                        opacity = state.workCardOpacity,
+                        dim = state.workCardDim,
+                        dualOpacityEnabled = state.workCardDualOpacityEnabled,
+                        dayOpacity = state.workCardDayOpacity,
+                        nightOpacity = state.workCardNightOpacity,
+                        checkHidden = state.workCardCheckHidden,
+                        textHidden = state.workCardTextHidden,
+                        modeHidden = state.workCardModeHidden,
+                        onEnabledChange = actions.onToggleWorkCardBackground,
+                        onPickImage = actions.onPickWorkCardImage,
+                        onClearImage = actions.onClearWorkCardImage,
+                        onOpacityChange = actions.onSetWorkCardOpacity,
+                        onDimChange = actions.onSetWorkCardDim,
+                        onDualOpacityChange = actions.onToggleWorkCardDualOpacity,
+                        onDayOpacityChange = actions.onSetWorkCardDayOpacity,
+                        onNightOpacityChange = actions.onSetWorkCardNightOpacity,
+                        onCheckHiddenChange = actions.onToggleWorkCardCheckHidden,
+                        onTextHiddenChange = actions.onToggleWorkCardTextHidden,
+                        onModeHiddenChange = actions.onToggleWorkCardModeHidden,
+                    )
+                }
             }
 
             SegmentedColumn(
