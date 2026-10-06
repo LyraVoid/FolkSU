@@ -26,7 +26,7 @@ object WallpaperManager {
     /** Copies the picked image into app storage, extracts its color/luminance and enables it. */
     suspend fun save(context: Context, source: Uri): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            val ext = getFileExtension(context.contentResolver.getType(source))
+            val ext = resolveExtension(context, source)
             clearOldFiles(context)
             val target = File(context.filesDir, "$FILENAME_BASE$ext")
             if (!copyToFile(context, source, target)) return@runCatching false
@@ -58,7 +58,7 @@ object WallpaperManager {
     /** Copies the picked image into app storage and points the grid work card at it. */
     suspend fun saveWorkCardBackground(context: Context, source: Uri): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            val ext = getFileExtension(context.contentResolver.getType(source))
+            val ext = resolveExtension(context, source)
             clearOldWorkCardFiles(context)
             val target = File(context.filesDir, "$WORK_CARD_FILENAME_BASE$ext")
             if (!copyToFile(context, source, target)) return@runCatching false
@@ -125,12 +125,73 @@ object WallpaperManager {
         return if (file.exists() && file.length() > 0L) file else null
     }
 
+    /**
+     * Best-effort extension (with leading dot) for [source], so a GIF stays a GIF.
+     *
+     * The content itself is checked first, because a picked or imported file may carry a wrong or
+     * missing name: `contentResolver.getType` is null for `file://` URIs (the path a theme import
+     * comes through), and some theme packages store a PNG/GIF under a `.jpg` entry name. Only when
+     * the bytes are not a recognized image does it fall back to the MIME type, then the URI name.
+     */
+    fun resolveExtension(context: Context, source: Uri): String =
+        sniffExtension(context, source)
+            .ifEmpty { getFileExtension(context.contentResolver.getType(source)) }
+            .ifEmpty { nameExtension(source) }
+            .ifEmpty { ".jpg" }
+
+    /** Extension for a MIME type, or "" when the type is unknown. */
     fun getFileExtension(mime: String?): String = when {
-        mime == null -> ".jpg"
+        mime == null -> ""
         mime.contains("png", ignoreCase = true) -> ".png"
         mime.contains("webp", ignoreCase = true) -> ".webp"
         mime.contains("gif", ignoreCase = true) -> ".gif"
-        else -> ".jpg"
+        mime.contains("jpeg", ignoreCase = true) || mime.contains("jpg", ignoreCase = true) -> ".jpg"
+        else -> ""
+    }
+
+    /**
+     * Extension (with leading dot) matching [file]'s actual bytes, falling back to its name.
+     *
+     * Used on export so an asset that was stored under a wrong name (a GIF kept as `.jpg`) is still
+     * written into the container under the right extension.
+     */
+    fun resolveFileExtension(file: File): String {
+        val sniffed = try {
+            file.inputStream().use { input ->
+                val head = ByteArray(12)
+                classifyHead(head, input.read(head))
+            }
+        } catch (_: Throwable) {
+            ""
+        }
+        if (sniffed.isNotEmpty()) return sniffed
+        val byName = "." + file.extension.lowercase()
+        return if (byName in KNOWN_EXTENSIONS) byName else ".jpg"
+    }
+
+    private fun nameExtension(source: Uri): String {
+        val name = source.path?.substringAfterLast('/') ?: return ""
+        val ext = "." + name.substringAfterLast('.', "").lowercase()
+        return if (ext in KNOWN_EXTENSIONS) ext else ""
+    }
+
+    private fun sniffExtension(context: Context, source: Uri): String = try {
+        context.contentResolver.openInputStream(source)?.use { input ->
+            val head = ByteArray(12)
+            classifyHead(head, input.read(head))
+        } ?: ""
+    } catch (_: Throwable) {
+        ""
+    }
+
+    /** Identifies an image format from its leading bytes, or "" when unrecognized. */
+    private fun classifyHead(head: ByteArray, read: Int): String = when {
+        read < 12 -> ""
+        head[0] == 'G'.code.toByte() && head[1] == 'I'.code.toByte() && head[2] == 'F'.code.toByte() -> ".gif"
+        head[0] == 0x89.toByte() && head[1] == 'P'.code.toByte() -> ".png"
+        head[0] == 0xFF.toByte() && head[1] == 0xD8.toByte() -> ".jpg"
+        head[0] == 'R'.code.toByte() && head[8] == 'W'.code.toByte() -> ".webp"
+        else -> ""
     }
 
     /** Decodes [file] with power-of-two downsampling so neither side exceeds [maxDimension]. */

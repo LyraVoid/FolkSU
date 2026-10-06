@@ -97,7 +97,9 @@ import me.weishu.kernelsu.ui.component.rebootlistpopup.RebootListPopup
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkShape
 import me.weishu.kernelsu.ui.theme.FolkType
+import me.weishu.kernelsu.wallpaper.AnimatedFileImage
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
+import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
 import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 import java.io.File
@@ -390,20 +392,31 @@ private fun GridStatusCard(
 private fun WorkCardBackgroundImage(uri: String) {
     val isDark = isSystemInDarkTheme()
     val path = remember(uri) { Uri.parse(uri).path }
-    val image by produceState<ImageBitmap?>(initialValue = null, path) {
-        value = withContext(Dispatchers.IO) {
-            path?.let { WallpaperManager.decodeSampled(File(it), 1600)?.asImageBitmap() }
-        }
-    }
-    image?.let { bitmap ->
-        Image(
-            bitmap = bitmap,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+    val file = remember(path) { path?.let { File(it) } }
+    if (file != null && isAnimatedImageFile(file)) {
+        // Animated images (GIF) play natively; everything else keeps the downsampled bitmap path.
+        AnimatedFileImage(
+            file = file,
             modifier = Modifier
                 .fillMaxSize()
                 .alpha(WallpaperConfig.effectiveWorkCardOpacity(isDark)),
         )
+    } else {
+        val image by produceState<ImageBitmap?>(initialValue = null, path) {
+            value = withContext(Dispatchers.IO) {
+                path?.let { WallpaperManager.decodeSampled(File(it), 1600)?.asImageBitmap() }
+            }
+        }
+        image?.let { bitmap ->
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(WallpaperConfig.effectiveWorkCardOpacity(isDark)),
+            )
+        }
     }
     Box(
         modifier = Modifier

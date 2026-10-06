@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,23 +35,40 @@ fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
     val scrim = (LocalWallpaperDim.current ?: WallpaperConfig.effectiveDim(isInDarkTheme()))
         .coerceIn(0f, 1f)
     val path = remember(uri) { Uri.parse(uri).path }
+    val file = remember(path) { path?.let { File(it) } }
+    val animated = file?.let { isAnimatedImageFile(it) } == true
 
-    val image by produceState<ImageBitmap?>(initialValue = null, path) {
-        value = withContext(Dispatchers.IO) {
-            path?.let { WallpaperManager.decodeSampled(File(it), 2560)?.asImageBitmap() }
+    val image by produceState<ImageBitmap?>(initialValue = null, path, animated) {
+        value = if (animated) {
+            null
+        } else {
+            withContext(Dispatchers.IO) {
+                path?.let { WallpaperManager.decodeSampled(File(it), 2560)?.asImageBitmap() }
+            }
         }
     }
 
     Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
-        image?.let { bitmap ->
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(blurRadius.dp),
+        if (animated && file != null) {
+            // Animated wallpapers cannot go through the downsampled bitmap path, so they are handed
+            // to the drawable view; the blur is applied as a render effect there.
+            val blurPx = with(LocalDensity.current) { blurRadius.dp.toPx() }
+            AnimatedFileImage(
+                file = file,
+                modifier = Modifier.fillMaxSize(),
+                blurRadiusPx = blurPx,
             )
+        } else {
+            image?.let { bitmap ->
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(blurRadius.dp),
+                )
+            }
         }
         if (scrim > 0f) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim)))

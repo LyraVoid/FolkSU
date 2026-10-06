@@ -18,143 +18,102 @@ import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Portable container for the wallpaper feature, so a background can be moved between devices and
- * between the sibling projects that share the same format. The container is
- * `[16-byte IV][AES/CBC/PKCS5Padding(zip)]`, the zip holds `theme.json` plus one image per enabled
- * background.
+ * One themed asset that the `.fpt` container can carry.
  *
- * The main background and the work-card background are independent features: each carries its own
- * enable flag and its own image, and either one alone is a valid package.
+ * The container is a flat list of [ThemedAsset]s: adding a new themed asset means writing one
+ * implementation and registering it in [FolkThemeIO.assets] — no changes to the container code.
+ * Each entry owns three things:
+ *  - [base]: the file-name stem inside the zip (`<base>.<ext>`), which also identifies the asset
+ *    when importing;
+ *  - [writeConfig]: the `theme.json` keys this asset contributes on export;
+ *  - [apply]: reading those keys back and applying [file] (or clearing the asset when it is null).
  */
-object FolkThemeIO {
+internal interface ThemedAsset {
+    val base: String
 
-    private const val CONTAINER_KEY = "FolkPatchThemeSecretKey2025"
-    private const val ENTRY_CONFIG = "theme.json"
-    private const val IV_SIZE = 16
-    private const val IMPORT_DIR = "wallpaper_import"
+    fun currentFile(context: Context): File?
 
-    /** Zip entry base name of the main background image. */
-    private const val MAIN_ASSET_BASE = "background"
+    fun writeConfig(json: JSONObject)
 
-    /**
-     * Zip entry base name of the work-card background image. Kept identical to the shared format so
-     * packages round-trip with the sibling projects.
-     */
-    private const val WORK_CARD_ASSET_BASE = "grid_working_card_background"
+    suspend fun apply(context: Context, json: JSONObject, file: File?)
+}
 
-    const val FILE_NAME = "wallpaper.fpt"
+/**
+ * The user's main background wallpaper and its opacity/blur/scrim settings.
+ */
+private object MainWallpaperAsset : ThemedAsset {
+    override val base = "background"
 
-    suspend fun exportBackground(context: Context, target: Uri, name: String): Boolean =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val mainFile = WallpaperManager.currentFile(context)
-                val workCardFile = WallpaperManager.currentWorkCardFile(context)
-                if (mainFile == null && workCardFile == null) return@runCatching false
-                val config = JSONObject().apply {
-                    put("isBackgroundEnabled", WallpaperConfig.enabled)
-                    put("backgroundOpacity", WallpaperConfig.opacity.toDouble())
-                    put("backgroundBlur", WallpaperConfig.blur.toDouble())
-                    put("backgroundDim", WallpaperConfig.dim.toDouble())
-                    put("isDualBackgroundDimEnabled", WallpaperConfig.dualDimEnabled)
-                    put("backgroundDayDim", WallpaperConfig.dayDim.toDouble())
-                    put("backgroundNightDim", WallpaperConfig.nightDim.toDouble())
-                    // Work card is its own feature, so it is written (and later read) even when the
-                    // main background is disabled.
-                    put("isGridWorkingCardBackgroundEnabled", WallpaperConfig.workCardBackgroundEnabled)
-                    put("gridWorkingCardBackgroundOpacity", WallpaperConfig.workCardOpacity.toDouble())
-                    put("gridWorkingCardBackgroundDim", WallpaperConfig.workCardDim.toDouble())
-                    put("isGridDualOpacityEnabled", WallpaperConfig.workCardDualOpacityEnabled)
-                    put("gridWorkingCardBackgroundDayOpacity", WallpaperConfig.workCardDayOpacity.toDouble())
-                    put("gridWorkingCardBackgroundNightOpacity", WallpaperConfig.workCardNightOpacity.toDouble())
-                    put("isGridWorkingCardCheckHidden", WallpaperConfig.workCardCheckHidden)
-                    put("isGridWorkingCardTextHidden", WallpaperConfig.workCardTextHidden)
-                    put("isGridWorkingCardModeHidden", WallpaperConfig.workCardModeHidden)
-                    put("meta_name", name)
-                    put("meta_type", "background")
-                    put("meta_version", 1)
-                }
-                val zipped = zip(config.toString().toByteArray(Charsets.UTF_8), mainFile, workCardFile)
-                val encrypted = encrypt(zipped)
-                context.contentResolver.openOutputStream(target)?.use { it.write(encrypted) }
-                    ?: return@runCatching false
-                true
-            }.getOrDefault(false)
-        }
+    override fun currentFile(context: Context): File? = WallpaperManager.currentFile(context)
 
-    suspend fun importBackground(context: Context, source: Uri): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            val bytes = context.contentResolver.openInputStream(source)?.use { it.readBytes() }
-                ?: return@runCatching false
-            if (bytes.size <= IV_SIZE) return@runCatching false
-            val decrypted = decrypt(bytes)
-            val dest = File(context.cacheDir, IMPORT_DIR).apply {
-                if (exists()) deleteRecursively()
-                mkdirs()
-            }
-            var config: JSONObject? = null
-            var backgroundFile: File? = null
-            var workCardFile: File? = null
-            try {
-                ZipInputStream(ByteArrayInputStream(decrypted)).use { zip ->
-                    var entry = zip.nextEntry
-                    while (entry != null) {
-                        val outFile = File(dest, entry.name)
-                        if (entry.isDirectory) {
-                            outFile.mkdirs()
-                        } else if (isSafeChild(dest, outFile)) {
-                            outFile.parentFile?.mkdirs()
-                            outFile.outputStream().use { zip.copyTo(it) }
-                            if (entry.name == ENTRY_CONFIG) {
-                                config = JSONObject(outFile.readText())
-                            } else {
-                                when (entry.name.substringBefore('.').substringAfterLast('/')) {
-                                    MAIN_ASSET_BASE -> backgroundFile = outFile
-                                    WORK_CARD_ASSET_BASE -> workCardFile = outFile
-                                }
-                            }
-                        }
-                        zip.closeEntry()
-                        entry = zip.nextEntry
-                    }
-                }
-                val json = config ?: return@runCatching false
-                applyImported(context, json, backgroundFile, workCardFile)
-                true
-            } finally {
-                dest.deleteRecursively()
-            }
-        }.getOrDefault(false)
+    override fun writeConfig(json: JSONObject) {
+        json.put("isBackgroundEnabled", WallpaperConfig.enabled)
+        json.put("backgroundOpacity", WallpaperConfig.opacity.toDouble())
+        json.put("backgroundBlur", WallpaperConfig.blur.toDouble())
+        json.put("backgroundDim", WallpaperConfig.dim.toDouble())
+        json.put("isDualBackgroundDimEnabled", WallpaperConfig.dualDimEnabled)
+        json.put("backgroundDayDim", WallpaperConfig.dayDim.toDouble())
+        json.put("backgroundNightDim", WallpaperConfig.nightDim.toDouble())
     }
 
-    private suspend fun applyImported(
-        context: Context,
-        json: JSONObject,
-        backgroundFile: File?,
-        workCardFile: File?,
-    ) {
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
         val enabled = json.optBoolean("isBackgroundEnabled", false)
-        if (enabled && backgroundFile != null) {
-            val ext = "." + backgroundFile.name.substringAfterLast('.', "jpg")
-            val target = WallpaperManager.replaceFile(context, backgroundFile, ext)
+        if (enabled && file != null) {
+            val extension = WallpaperManager.resolveExtension(context, Uri.fromFile(file))
+            val target = WallpaperManager.replaceFile(context, file, extension)
             WallpaperManager.applyFile(context, target)
         } else {
             WallpaperManager.clear(context)
         }
-        WallpaperConfig.updateOpacity(json.optDouble("backgroundOpacity", WallpaperConfig.opacity.toDouble()).toFloat())
-        WallpaperConfig.updateBlur(json.optDouble("backgroundBlur", WallpaperConfig.blur.toDouble()).toFloat())
-        WallpaperConfig.updateDim(json.optDouble("backgroundDim", WallpaperConfig.dim.toDouble()).toFloat())
+        WallpaperConfig.updateOpacity(
+            json.optDouble("backgroundOpacity", WallpaperConfig.opacity.toDouble()).toFloat()
+        )
+        WallpaperConfig.updateBlur(
+            json.optDouble("backgroundBlur", WallpaperConfig.blur.toDouble()).toFloat()
+        )
+        WallpaperConfig.updateDim(
+            json.optDouble("backgroundDim", WallpaperConfig.dim.toDouble()).toFloat()
+        )
         WallpaperConfig.updateDualDimEnabled(
             json.optBoolean("isDualBackgroundDimEnabled", WallpaperConfig.dualDimEnabled)
         )
-        WallpaperConfig.updateDayDim(json.optDouble("backgroundDayDim", WallpaperConfig.dayDim.toDouble()).toFloat())
+        WallpaperConfig.updateDayDim(
+            json.optDouble("backgroundDayDim", WallpaperConfig.dayDim.toDouble()).toFloat()
+        )
         WallpaperConfig.updateNightDim(
             json.optDouble("backgroundNightDim", WallpaperConfig.nightDim.toDouble()).toFloat()
         )
+    }
+}
 
-        // Work card: independent of the main background above.
-        val workCardEnabled = json.optBoolean("isGridWorkingCardBackgroundEnabled", false)
-        if (workCardEnabled && workCardFile != null) {
-            WallpaperManager.saveWorkCardBackground(context, Uri.fromFile(workCardFile))
+/**
+ * The home work card's own background image. It is an independent feature: it round-trips even when
+ * the main wallpaper is off.
+ *
+ * The key names and the asset base are shared with the wider theme ecosystem, so a theme exported
+ * elsewhere can be imported here (and vice versa).
+ */
+private object WorkCardBackgroundAsset : ThemedAsset {
+    override val base = "grid_working_card_background"
+
+    override fun currentFile(context: Context): File? = WallpaperManager.currentWorkCardFile(context)
+
+    override fun writeConfig(json: JSONObject) {
+        json.put("isGridWorkingCardBackgroundEnabled", WallpaperConfig.workCardBackgroundEnabled)
+        json.put("gridWorkingCardBackgroundOpacity", WallpaperConfig.workCardOpacity.toDouble())
+        json.put("gridWorkingCardBackgroundDim", WallpaperConfig.workCardDim.toDouble())
+        json.put("isGridDualOpacityEnabled", WallpaperConfig.workCardDualOpacityEnabled)
+        json.put("gridWorkingCardBackgroundDayOpacity", WallpaperConfig.workCardDayOpacity.toDouble())
+        json.put("gridWorkingCardBackgroundNightOpacity", WallpaperConfig.workCardNightOpacity.toDouble())
+        json.put("isGridWorkingCardCheckHidden", WallpaperConfig.workCardCheckHidden)
+        json.put("isGridWorkingCardTextHidden", WallpaperConfig.workCardTextHidden)
+        json.put("isGridWorkingCardModeHidden", WallpaperConfig.workCardModeHidden)
+    }
+
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        val enabled = json.optBoolean("isGridWorkingCardBackgroundEnabled", false)
+        if (enabled && file != null) {
+            WallpaperManager.saveWorkCardBackground(context, Uri.fromFile(file))
         } else {
             WallpaperManager.clearWorkCardBackground(context)
         }
@@ -182,27 +141,106 @@ object FolkThemeIO {
         WallpaperConfig.updateWorkCardModeHidden(
             json.optBoolean("isGridWorkingCardModeHidden", WallpaperConfig.workCardModeHidden)
         )
+    }
+}
 
-        WallpaperConfig.save(context)
+/**
+ * Reads and writes the `.fpt` background theme container.
+ *
+ * The container is `[16-byte IV][AES/CBC/PKCS5Padding(ZIP)]`; the zip holds `theme.json` plus one
+ * `<base>.<ext>` entry per themed asset. See [ThemedAsset] for how to add one.
+ */
+object FolkThemeIO {
+    private const val CONTAINER_KEY = "FolkPatchThemeSecretKey2025"
+    private const val ENTRY_CONFIG = "theme.json"
+    private const val IV_SIZE = 16
+    private const val IMPORT_DIR = "wallpaper_import"
+
+    const val FILE_NAME = "wallpaper.fpt"
+
+    /** The registered themed assets, in export order. Add a themed asset by adding one entry here. */
+    private val assets: List<ThemedAsset> = listOf(
+        MainWallpaperAsset,
+        WorkCardBackgroundAsset,
+    )
+
+    suspend fun exportBackground(context: Context, target: Uri, name: String): Boolean =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val files = assets.map { it to it.currentFile(context) }
+                // Nothing to export only when every asset is absent; a lone work card is enough.
+                if (files.all { it.second == null }) return@runCatching false
+
+                val config = JSONObject().apply {
+                    assets.forEach { it.writeConfig(this) }
+                    put("meta_name", name)
+                    put("meta_type", "background")
+                    put("meta_version", 1)
+                }
+                val zipped = zip(config.toString().toByteArray(Charsets.UTF_8), files)
+                val encrypted = encrypt(zipped)
+                context.contentResolver.openOutputStream(target)?.use { it.write(encrypted) }
+                    ?: return@runCatching false
+                true
+            }.getOrDefault(false)
+        }
+
+    suspend fun importBackground(context: Context, source: Uri): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val bytes = context.contentResolver.openInputStream(source)?.use { it.readBytes() }
+                ?: return@runCatching false
+            if (bytes.size <= IV_SIZE) return@runCatching false
+            val decrypted = decrypt(bytes)
+            val dest = File(context.cacheDir, IMPORT_DIR).apply {
+                if (exists()) deleteRecursively()
+                mkdirs()
+            }
+            var config: JSONObject? = null
+            val imported = mutableMapOf<String, File>()
+            try {
+                ZipInputStream(ByteArrayInputStream(decrypted)).use { zip ->
+                    var entry = zip.nextEntry
+                    while (entry != null) {
+                        val outFile = File(dest, entry.name)
+                        if (entry.isDirectory) {
+                            outFile.mkdirs()
+                        } else if (isSafeChild(dest, outFile)) {
+                            outFile.parentFile?.mkdirs()
+                            outFile.outputStream().use { zip.copyTo(it) }
+                            if (entry.name == ENTRY_CONFIG) {
+                                config = JSONObject(outFile.readText())
+                            } else {
+                                val stem = entry.name.substringBefore('.').substringAfterLast('/')
+                                assets.firstOrNull { it.base == stem }?.let { imported[it.base] = outFile }
+                            }
+                        }
+                        zip.closeEntry()
+                        entry = zip.nextEntry
+                    }
+                }
+                val json = config ?: return@runCatching false
+                assets.forEach { it.apply(context, json, imported[it.base]) }
+                WallpaperConfig.save(context)
+                true
+            } finally {
+                dest.deleteRecursively()
+            }
+        }.getOrDefault(false)
     }
 
-    private fun zip(config: ByteArray, mainImage: File?, workCardImage: File?): ByteArray {
+    private fun zip(config: ByteArray, files: List<Pair<ThemedAsset, File?>>): ByteArray {
         val bytes = ByteArrayOutputStream()
         ZipOutputStream(bytes).use { zip ->
             zip.putNextEntry(ZipEntry(ENTRY_CONFIG))
             zip.write(config)
             zip.closeEntry()
-            mainImage?.let { image ->
-                val ext = image.extension.ifEmpty { "jpg" }
-                zip.putNextEntry(ZipEntry("$MAIN_ASSET_BASE.$ext"))
-                image.inputStream().use { it.copyTo(zip) }
-                zip.closeEntry()
-            }
-            workCardImage?.let { image ->
-                val ext = image.extension.ifEmpty { "jpg" }
-                zip.putNextEntry(ZipEntry("$WORK_CARD_ASSET_BASE.$ext"))
-                image.inputStream().use { it.copyTo(zip) }
-                zip.closeEntry()
+            files.forEach { (asset, file) ->
+                if (file != null) {
+                    val extension = WallpaperManager.resolveFileExtension(file).removePrefix(".")
+                    zip.putNextEntry(ZipEntry("${asset.base}.$extension"))
+                    file.inputStream().use { it.copyTo(zip) }
+                    zip.closeEntry()
+                }
             }
         }
         return bytes.toByteArray()
@@ -225,7 +263,7 @@ object FolkThemeIO {
 
     private fun secretKey(): SecretKeySpec = SecretKeySpec(
         MessageDigest.getInstance("SHA-256").digest(CONTAINER_KEY.toByteArray(Charsets.UTF_8)),
-        "AES",
+        "AES"
     )
 
     private fun isSafeChild(root: File, child: File): Boolean {
