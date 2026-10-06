@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
+import me.weishu.kernelsu.wallpaper.WallpaperMaterial
 
 /** Which screen edge a chrome zone hugs. */
 enum class ChromeEdge { Top, Bottom }
@@ -29,6 +30,7 @@ fun WallpaperChromeZone(
     modifier: Modifier = Modifier,
     progress: () -> Float = { 0f },
     tailHeight: Dp = 48.dp,
+    material: WallpaperMaterial? = null,
     content: @Composable () -> Unit,
 ) {
     val tokens = LocalFolkWallpaperTokens.current
@@ -36,7 +38,7 @@ fun WallpaperChromeZone(
         content()
         return
     }
-    val chrome = tokens.chrome
+    val chrome = material ?: tokens.chrome
     val tailPx = with(LocalDensity.current) { tailHeight.toPx() }
     Box(
         modifier = modifier.drawBehind {

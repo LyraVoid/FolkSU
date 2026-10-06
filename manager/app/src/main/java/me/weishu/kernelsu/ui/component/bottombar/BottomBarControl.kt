@@ -1,0 +1,92 @@
+package me.weishu.kernelsu.ui.component.bottombar
+
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.Color
+import me.weishu.kernelsu.wallpaper.FolkWallpaperTokens
+import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
+import me.weishu.kernelsu.wallpaper.WallpaperMaterial
+import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+
+/**
+ * Which bottom-navigation form the app is rendering. Adding a form means adding a case here and a
+ * branch in [BottomBarControl], instead of patching the bar composable in place.
+ */
+enum class BottomBarLayout {
+    /** Today's full-width bar pinned to the bottom edge. */
+    Docked,
+
+    /** Reserved for the upcoming floating bar (悬浮底栏). */
+    Floating,
+}
+
+/**
+ * The resolved bottom-bar surface.
+ *
+ * [containerColor] is the fill behind the bar itself; `Color.Transparent` means the wallpaper shows
+ * through. [scrim] is the soft gradient painted above the bar so scrolling content fades out
+ * instead of hard-cutting at the bar edge; it is `null` when no scrim is wanted.
+ *
+ * [indicatorColor] is the selected item's selection pill. `null` keeps the Material default; in
+ * wallpaper mode the bar sets it transparent, because the selected item already switches to the
+ * filled icon and a second background block would only re-introduce a floating layer over the photo.
+ */
+@Immutable
+data class BottomBarStyle(
+    val containerColor: Color,
+    val scrim: WallpaperMaterial?,
+    val indicatorColor: Color?,
+)
+
+/**
+ * The single place where the bottom bar's surface is decided, so the docked bar, the future floating
+ * bar and the wide navigation rail can each keep their own responsibility while sharing one rule.
+ * Same shape as the home work-card control.
+ */
+object BottomBarControl {
+    @Composable
+    fun style(layout: BottomBarLayout): BottomBarStyle {
+        val tokens = LocalFolkWallpaperTokens.current
+        return when (layout) {
+            BottomBarLayout.Docked -> dockedStyle(tokens)
+            BottomBarLayout.Floating -> floatingStyle(tokens)
+        }
+    }
+
+    /**
+     * Outside wallpaper mode the bar keeps its original opaque container. In wallpaper mode it turns
+     * fully transparent so it shares the app-wide surface transparency, and only a panel-level scrim
+     * (the same [WallpaperSurfaceRole.Group] alpha the content panels use) softens the edge. Using the
+     * near-opaque chrome platform here was what made the bar look disjointed from the rest.
+     */
+    @Composable
+    private fun dockedStyle(tokens: FolkWallpaperTokens?): BottomBarStyle = if (tokens == null) {
+        BottomBarStyle(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            scrim = null,
+            indicatorColor = null,
+        )
+    } else {
+        BottomBarStyle(
+            containerColor = Color.Transparent,
+            scrim = tokens.material(WallpaperSurfaceRole.Group),
+            indicatorColor = Color.Transparent,
+        )
+    }
+
+    /**
+     * Not built yet. When the floating bar lands it will carry its own pill surface, so this branch
+     * is where that shape's container material will be resolved.
+     */
+    @Composable
+    private fun floatingStyle(tokens: FolkWallpaperTokens?): BottomBarStyle = BottomBarStyle(
+        containerColor = if (tokens == null) {
+            MaterialTheme.colorScheme.surfaceContainer
+        } else {
+            tokens.material(WallpaperSurfaceRole.Raised).fill
+        },
+        scrim = null,
+        indicatorColor = null,
+    )
+}

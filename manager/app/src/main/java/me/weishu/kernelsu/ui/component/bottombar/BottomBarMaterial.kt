@@ -21,9 +21,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,7 +32,6 @@ import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.LocalMainPagerState
 import me.weishu.kernelsu.ui.component.material.ChromeEdge
 import me.weishu.kernelsu.ui.component.material.WallpaperChromeZone
-import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
 
 @Composable
 fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
@@ -48,14 +47,10 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
         Triple(R.string.settings, Icons.Filled.Settings, Icons.Outlined.Settings)
     )
 
-    val wallpaperActive = LocalFolkWallpaperTokens.current != null
-    WallpaperChromeZone(edge = ChromeEdge.Bottom) {
+    val barStyle = BottomBarControl.style(BottomBarLayout.Docked)
+    WallpaperChromeZone(edge = ChromeEdge.Bottom, material = barStyle.scrim) {
         ShortNavigationBar(
-            containerColor = if (wallpaperActive) {
-                Color.Transparent
-            } else {
-                MaterialTheme.colorScheme.surfaceContainer
-            },
+            containerColor = barStyle.containerColor,
             windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
                 WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
             )
@@ -82,7 +77,10 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                    }
+                    },
+                    colors = barStyle.indicatorColor?.let {
+                        ShortNavigationBarItemDefaults.colors(selectedIndicatorColor = it)
+                    } ?: ShortNavigationBarItemDefaults.colors(),
                 )
             }
         }
