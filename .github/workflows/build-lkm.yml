@@ -12,6 +12,11 @@ on:
         required: false
         default: ''
         type: string
+      second_signature_release:
+        description: 'Set to 1 when the second signature slot holds a release key instead of a PR key'
+        required: false
+        default: ''
+        type: string
   workflow_dispatch:
 jobs:
   build-lkm:
@@ -31,3 +36,4 @@ jobs:
       kmi: ${{ matrix.kmi }}
       expected_size2: ${{ inputs.expected_size2 || '' }}
       expected_hash2: ${{ inputs.expected_hash2 || '' }}
+      second_signature_release: ${{ inputs.second_signature_release || '' }}
