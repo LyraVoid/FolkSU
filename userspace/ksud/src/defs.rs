@@ -56,11 +56,11 @@ mod android {
 
     // Folk Mount (built-in module mounting)
     pub const FOLK_MOUNT_CONFIG: &str = concatcp!(WORKING_DIR, "mount_mode");
-    // Consumed by the Phase 2 tmpfs executor.
-    #[allow(dead_code)]
     pub const FOLK_MOUNT_WORK_DIR: &str = concatcp!(WORKING_DIR, "workdir/");
-    #[allow(dead_code)]
     pub const FOLK_MOUNT_FS_NAME: &str = "FolkMount";
+    // Per-boot runtime record and the concurrency lock for the built-in executor.
+    pub const FOLK_MOUNT_RUNTIME: &str = concatcp!(WORKING_DIR, "mount_runtime");
+    pub const FOLK_MOUNT_LOCK: &str = concatcp!(WORKING_DIR, "mount.lock");
 
     pub const KSU_BACKUP_DIR: &str = WORKING_DIR;
     pub const KSU_BACKUP_FILE_PREFIX: &str = "ksu_backup_";

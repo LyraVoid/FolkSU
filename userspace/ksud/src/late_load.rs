@@ -4,7 +4,7 @@ use rustix::cstr;
 use std::{process::Command, time::Instant};
 
 use crate::module::{ScriptWait, handle_updated_modules, prune_modules};
-use crate::{assets, defs, init_event, metamodule, restorecon, utils};
+use crate::{assets, defs, init_event, magic_mount, restorecon, utils};
 
 fn dump_process_info(label: &str) {
     use rustix::process::{getgid, getgroups, getpid, getuid};
@@ -117,9 +117,9 @@ pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Res
         warn!("load system.prop failed: {e}");
     }
 
-    // 10. Execute metamodule mount script (OverlayFS)
-    if let Err(e) = metamodule::exec_mount_script(defs::MODULE_DIR) {
-        warn!("execute metamodule mount failed: {e}");
+    // 10. Run the selected provider (metamodule script or built-in executor).
+    if let Err(e) = magic_mount::mount_selected_provider() {
+        warn!("module mount failed: {e:#}");
     }
 
     // 11. Execute post-mount stage scripts using the same deadline

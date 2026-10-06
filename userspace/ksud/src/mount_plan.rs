@@ -9,12 +9,10 @@
 //! The Android executor in `magic_mount` supplies a real [`PlanFs`] and turns
 //! the resulting [`Node`] tree into mounts in Phase 2.
 
-#![allow(dead_code)] // consumed by the Phase 2 executor
-
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use log::{error, warn};
 
 /// Marker file names understood by module filtering.
@@ -100,7 +98,8 @@ pub struct RealEntry {
 }
 
 impl RealEntry {
-    /// A path that does not exist in either view.
+    /// A path that does not exist in either view. Test helper.
+    #[cfg(test)]
     #[must_use]
     pub const fn missing() -> Self {
         Self {
@@ -109,7 +108,8 @@ impl RealEntry {
         }
     }
 
-    /// A real regular file.
+    /// A real regular file. Test helper.
+    #[cfg(test)]
     #[must_use]
     pub const fn file() -> Self {
         Self {
@@ -224,6 +224,10 @@ impl Node {
 
     /// Walk the tree, yielding every node with the absolute path it would
     /// occupy under `base`. The synthetic root (empty name) maps to `base`.
+    ///
+    /// Used by the plan tests and kept as a public helper for status/debug
+    /// output; the executor walks children directly to preserve rollback order.
+    #[allow(dead_code)]
     pub fn visit_targets(&self, base: &Path, f: &mut impl FnMut(&Self, &Path)) {
         let target = base.join(&self.name);
         f(self, &target);
@@ -317,6 +321,15 @@ where
     fn read_opaque(&self, path: &Path) -> Result<bool> {
         (self.opaque)(path)
     }
+}
+
+/// Build [`EntryMeta`] from `std::fs` metadata using `lstat` semantics.
+///
+/// Shared by the planner's [`StdFs`] and the Android executor so both agree on
+/// how character devices (whiteouts) and other entry kinds are classified.
+#[must_use]
+pub fn entry_meta(meta: &std::fs::Metadata) -> EntryMeta {
+    EntryMeta::new(entry_kind(meta), device_number(meta))
 }
 
 fn entry_kind(meta: &std::fs::Metadata) -> EntryKind {
@@ -560,359 +573,574 @@ pub fn should_create_tmpfs(
     false
 }
 
-#[cfg(test)]
-mod tests {
-    use std::fs;
-    use std::os::unix::fs::symlink;
+// ---------------------------------------------------------------------------
+// Phase 2 executor
+//
+// The algorithm below is host-testable: it only uses [`MountOps`], an
+// abstract interface that the Android-only `magic_mount` module implements
+// with rustix/extattr/ksucalls. Host tests substitute an instrumented fake and
+// exercise whiteout/opaque/type-conflict handling and failure rollback without
+// needing root or a private mount namespace.
+// ---------------------------------------------------------------------------
 
-    use tempfile::tempdir;
+/// Ownership and permission bits copied onto a tmpfs mirror.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FileMeta {
+    pub mode: u32,
+    pub uid: u32,
+    pub gid: u32,
+}
 
-    use super::*;
+/// One entry of a real directory, reported with `lstat` semantics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RealDirEntry {
+    pub name: String,
+    pub file_type: NodeFileType,
+}
 
-    fn plain_fs() -> StdFs<fn(&Path) -> Result<bool>> {
-        fn no_opaque(_: &Path) -> Result<bool> {
-            Ok(false)
+/// Filesystem, metadata and mount primitives required by [`run_mount`].
+///
+/// The Android implementation lives in `magic_mount`; the host tests provide an
+/// instrumented implementation so the executor can be exercised end to end.
+pub trait MountOps {
+    /// List one real directory without following symlinks.
+    ///
+    /// # Errors
+    /// Returns an error when the directory cannot be read.
+    fn read_dir(&self, path: &Path) -> Result<Vec<RealDirEntry>>;
+
+    /// `lstat`-style metadata.
+    ///
+    /// # Errors
+    /// Returns an error when the path cannot be inspected.
+    fn symlink_metadata(&self, path: &Path) -> Result<EntryMeta>;
+
+    /// `stat`-style metadata (follows symlinks), reduced to mode/uid/gid.
+    ///
+    /// # Errors
+    /// Returns an error when the path cannot be inspected.
+    fn metadata(&self, path: &Path) -> Result<FileMeta>;
+
+    /// Read a symlink target.
+    ///
+    /// # Errors
+    /// Returns an error when the link cannot be read.
+    fn read_link(&self, path: &Path) -> Result<PathBuf>;
+
+    /// True when `path` exists (follows symlinks).
+    fn exists(&self, path: &Path) -> bool;
+
+    /// True when `path` is a directory (follows symlinks).
+    fn is_dir(&self, path: &Path) -> bool;
+
+    /// Create a directory and its missing parents.
+    ///
+    /// # Errors
+    /// Returns an error when the directory cannot be created.
+    fn create_dir_all(&self, path: &Path) -> Result<()>;
+
+    /// Create (or truncate) an empty regular file.
+    ///
+    /// # Errors
+    /// Returns an error when the file cannot be created.
+    fn create_file(&self, path: &Path) -> Result<()>;
+
+    /// Create a symlink at `link` pointing to `target`.
+    ///
+    /// # Errors
+    /// Returns an error when the link cannot be created.
+    fn symlink(&self, target: &Path, link: &Path) -> Result<()>;
+
+    /// Change the permission bits of `path`.
+    ///
+    /// # Errors
+    /// Returns an error when the mode cannot be changed.
+    fn chmod(&self, path: &Path, mode: u32) -> Result<()>;
+
+    /// Change the owner/group of `path`.
+    ///
+    /// # Errors
+    /// Returns an error when the ownership cannot be changed.
+    fn chown(&self, path: &Path, uid: u32, gid: u32) -> Result<()>;
+
+    /// Read the SELinux label of `path` without following symlinks.
+    ///
+    /// # Errors
+    /// Returns an error when the label cannot be read.
+    fn lgetfilecon(&self, path: &Path) -> Result<String>;
+
+    /// Set the SELinux label of `path` without following symlinks.
+    ///
+    /// # Errors
+    /// Returns an error when the label cannot be set.
+    fn lsetfilecon(&self, path: &Path, con: &str) -> Result<()>;
+
+    /// Mount a tmpfs named `name` on `target`.
+    ///
+    /// # Errors
+    /// Returns an error when the mount fails.
+    fn mount_tmpfs(&self, name: &str, target: &Path) -> Result<()>;
+
+    /// Bind-mount `source` onto `target`.
+    ///
+    /// # Errors
+    /// Returns an error when the mount fails.
+    fn mount_bind(&self, source: &Path, target: &Path) -> Result<()>;
+
+    /// Move the mount at `source` to `target`.
+    ///
+    /// # Errors
+    /// Returns an error when the move fails.
+    fn mount_move(&self, source: &Path, target: &Path) -> Result<()>;
+
+    /// Make the mount at `path` private (no propagation to peers).
+    ///
+    /// # Errors
+    /// Returns an error when the propagation change fails.
+    fn make_private(&self, path: &Path) -> Result<()>;
+
+    /// Detach the mount at `path`.
+    ///
+    /// # Errors
+    /// Returns an error when the unmount fails.
+    fn unmount_detach(&self, path: &Path) -> Result<()>;
+
+    /// Register a final target for kernel-side per-app unmounting.
+    ///
+    /// # Errors
+    /// Returns an error when the kernel rejects the registration (for example
+    /// `EEXIST` for a path registered by someone else).
+    fn register_umount(&self, path: &Path) -> Result<()>;
+
+    /// Remove one of our own kernel unmount registrations.
+    ///
+    /// # Errors
+    /// Returns an error when the registration cannot be removed.
+    fn unregister_umount(&self, path: &Path) -> Result<()>;
+
+    /// Notify the kernel that modules are mounted.
+    ///
+    /// # Errors
+    /// Returns an error when the notification cannot be sent.
+    fn report_mounted(&self) -> Result<()>;
+}
+
+/// Final result of one executor round.
+#[derive(Debug, Default, Clone)]
+pub struct ExecutionOutcome {
+    /// Number of final, published targets still mounted after the round.
+    pub target_count: usize,
+    /// Nodes the planner marked as unoverlayable and the executor skipped.
+    pub skipped_count: usize,
+    /// True when a rollback or cleanup could not undo every mount.
+    pub partial: bool,
+    /// Paths that could not be undone (mounts that remain).
+    pub residue: Vec<PathBuf>,
+}
+
+/// Outcome plus the error that aborted the round, if any.
+#[derive(Debug)]
+pub struct ExecutionReport {
+    pub outcome: ExecutionOutcome,
+    pub error: Option<anyhow::Error>,
+}
+
+/// Bookkeeping for one round: published mounts and kernel registrations are
+/// recorded as they are created so a failure can be undone in reverse order.
+struct MountTransaction<'a, O: MountOps> {
+    ops: &'a O,
+    /// Final targets published onto the real filesystem, in creation order.
+    mounts: Vec<PathBuf>,
+    /// Kernel unmount registrations added by this round, in insertion order.
+    registrations: Vec<PathBuf>,
+    skipped: usize,
+}
+
+struct RollbackOutcome {
+    remaining_mounts: usize,
+    residue: Vec<PathBuf>,
+}
+
+impl<'a, O: MountOps> MountTransaction<'a, O> {
+    const fn new(ops: &'a O) -> Self {
+        Self {
+            ops,
+            mounts: Vec::new(),
+            registrations: Vec::new(),
+            skipped: 0,
         }
-        StdFs::new(no_opaque as fn(&Path) -> Result<bool>)
     }
 
-    fn plan_for(
-        modules: &Path,
-        root: &Path,
-        opaque: impl Fn(&Path) -> Result<bool>,
-    ) -> Option<Node> {
-        let system = root.join("system");
-        let cfg = PlanConfig::new(modules, root, &system);
-        collect_module_files(&StdFs::new(opaque), &cfg, |_| false).unwrap()
-    }
-
-    fn targets(node: &Node, base: &Path) -> Vec<PathBuf> {
-        let mut out = Vec::new();
-        node.visit_targets(base, &mut |_, path| out.push(path.to_path_buf()));
-        out
-    }
-
-    #[test]
-    fn filtering_skips_markers_metamodule_symlinks_and_missing_system() {
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-        fs::create_dir(&modules).unwrap();
-
-        for name in ["good", "disabled", "removed", "skip", "meta"] {
-            let dir = modules.join(name).join("system/etc");
-            fs::create_dir_all(&dir).unwrap();
-            fs::write(dir.join("hosts"), name).unwrap();
+    /// Record one published real-path mount. Publication happens as soon as the
+    /// mount succeeds, before PRIVATE, so a later failure can still undo it.
+    fn publish(&mut self, target: &Path) {
+        if !self.mounts.iter().any(|path| path == target) {
+            self.mounts.push(target.to_path_buf());
         }
-        fs::write(modules.join("disabled/disable"), "").unwrap();
-        fs::write(modules.join("removed/remove"), "").unwrap();
-        fs::write(modules.join("skip/skip_mount"), "").unwrap();
-        fs::create_dir(modules.join("nosys")).unwrap();
-        fs::create_dir(modules.join("linky")).unwrap();
-        symlink(modules.join("good/system"), modules.join("linky/system")).unwrap();
-        fs::write(modules.join("stray"), "").unwrap();
-
-        let fs_ = plain_fs();
-        let is_meta = |path: &Path| path.file_name().is_some_and(|name| name == "meta");
-        let found = enumerate_modules(&fs_, &modules, is_meta).unwrap();
-        let ids: Vec<&str> = found.iter().map(|m| m.id.as_str()).collect();
-        assert_eq!(
-            ids,
-            [
-                "disabled", "good", "linky", "meta", "nosys", "removed", "skip"
-            ]
-        );
-
-        let mountable: Vec<&str> = found
-            .iter()
-            .filter(|m| m.is_mountable())
-            .map(|m| m.id.as_str())
-            .collect();
-        assert_eq!(mountable, ["good"]);
-
-        let system = tmp.path().join("system");
-        let cfg = PlanConfig::new(&modules, tmp.path(), &system);
-        let plan = collect_module_files(&fs_, &cfg, is_meta).unwrap().unwrap();
-        let etc = &plan.children["system"].children["etc"];
-        assert_eq!(etc.children.len(), 1);
-        assert_eq!(
-            etc.children["hosts"].module_path.as_deref(),
-            Some(modules.join("good/system/etc/hosts").as_path())
-        );
     }
 
-    #[test]
-    fn merge_is_deterministic_first_module_wins_regardless_of_order() {
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-
-        for name in ["z-mod", "a-mod", "b-mod"] {
-            let dir = modules.join(name).join("system/etc");
-            fs::create_dir_all(&dir).unwrap();
-            fs::write(dir.join("shared"), name).unwrap();
+    fn mount_node(
+        &mut self,
+        parent: &Path,
+        work_parent: &Path,
+        mut current: Node,
+        has_tmpfs: bool,
+    ) -> Result<()> {
+        let ops = self.ops;
+        let path = parent.join(&current.name);
+        let work = work_parent.join(&current.name);
+        if current.skip {
+            self.skipped += 1;
+            return Ok(());
         }
-        fs::write(modules.join("b-mod/system/etc/only_b"), "new").unwrap();
-
-        let plan = plan_for(&modules, tmp.path(), |_| Ok(false)).unwrap();
-        let etc = &plan.children["system"].children["etc"];
-        assert_eq!(
-            etc.children["shared"].module_path.as_deref(),
-            Some(modules.join("a-mod/system/etc/shared").as_path())
-        );
-        assert_eq!(
-            etc.children["only_b"].module_path.as_deref(),
-            Some(modules.join("b-mod/system/etc/only_b").as_path())
-        );
-    }
-
-    #[test]
-    fn directory_directories_merge_recursively() {
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-        fs::create_dir_all(modules.join("a/system/etc")).unwrap();
-        fs::write(modules.join("a/system/etc/a"), "a").unwrap();
-        fs::create_dir_all(modules.join("b/system/etc/sub")).unwrap();
-        fs::write(modules.join("b/system/etc/sub/b"), "b").unwrap();
-
-        let plan = plan_for(&modules, tmp.path(), |_| Ok(false)).unwrap();
-        let etc = &plan.children["system"].children["etc"];
-        assert!(etc.children.contains_key("a"));
-        assert!(etc.children["sub"].children.contains_key("b"));
-    }
-
-    #[test]
-    fn type_conflict_stops_merge_and_keeps_first() {
-        // "0file" sorts before "a-dir", so the file wins and the directory is
-        // not merged into it.
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-        fs::create_dir_all(modules.join("0file/system")).unwrap();
-        fs::write(modules.join("0file/system/etc"), "file").unwrap();
-        fs::create_dir_all(modules.join("a-dir/system/etc")).unwrap();
-        fs::write(modules.join("a-dir/system/etc/a"), "a").unwrap();
-
-        let plan = plan_for(&modules, tmp.path(), |_| Ok(false)).unwrap();
-        let etc = &plan.children["system"].children["etc"];
-        assert_eq!(etc.file_type, NodeFileType::RegularFile);
-        assert!(etc.children.is_empty());
-    }
-
-    #[test]
-    fn opaque_winning_directory_stops_later_merge() {
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-        fs::create_dir_all(modules.join("a-mod/system/etc")).unwrap();
-        fs::write(modules.join("a-mod/system/etc/a"), "a").unwrap();
-        fs::create_dir_all(modules.join("b-mod/system/etc")).unwrap();
-        fs::write(modules.join("b-mod/system/etc/b"), "b").unwrap();
-
-        let opaque_dir = modules.join("a-mod/system/etc");
-        let plan = plan_for(&modules, tmp.path(), move |path| Ok(path == opaque_dir)).unwrap();
-        let etc = &plan.children["system"].children["etc"];
-        assert!(etc.replace);
-        assert!(etc.children.contains_key("a"));
-        assert!(!etc.children.contains_key("b"));
-    }
-
-    #[test]
-    fn broken_symlink_is_collected_as_leaf_without_following() {
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-        fs::create_dir_all(modules.join("mod/system")).unwrap();
-        symlink("does-not-exist", modules.join("mod/system/link")).unwrap();
-
-        let plan = plan_for(&modules, tmp.path(), |_| Ok(false)).unwrap();
-        let link = &plan.children["system"].children["link"];
-        assert_eq!(link.file_type, NodeFileType::Symlink);
-        assert_eq!(
-            link.module_path.as_deref(),
-            Some(modules.join("mod/system/link").as_path())
-        );
-    }
-
-    #[test]
-    fn partition_remapping_follows_require_symlink_rule() {
-        let tmp = tempdir().unwrap();
-        let root = tmp.path().join("root");
-        let system = root.join("system");
-        let modules = tmp.path().join("modules");
-
-        fs::create_dir_all(&system).unwrap();
-        fs::create_dir_all(root.join("vendor")).unwrap();
-        fs::create_dir_all(root.join("odm")).unwrap();
-        fs::create_dir_all(root.join("product")).unwrap();
-        // /system/vendor is a symlink -> remap; /system/product is a real dir
-        // -> do not remap even though /product exists.
-        symlink(root.join("vendor"), system.join("vendor")).unwrap();
-        fs::create_dir(system.join("product")).unwrap();
-
-        let dir = modules.join("mod/system");
-        fs::create_dir_all(dir.join("vendor")).unwrap();
-        fs::create_dir_all(dir.join("odm")).unwrap();
-        fs::create_dir_all(dir.join("product")).unwrap();
-        fs::create_dir_all(dir.join("system_ext")).unwrap();
-        fs::create_dir_all(dir.join("etc")).unwrap();
-        for (sub, file) in [
-            ("vendor", "v"),
-            ("odm", "o"),
-            ("product", "p"),
-            ("system_ext", "s"),
-            ("etc", "h"),
-        ] {
-            fs::write(dir.join(sub).join(file), "x").unwrap();
-        }
-
-        let cfg = PlanConfig::new(&modules, &root, &system);
-        let plan = collect_module_files(&plain_fs(), &cfg, |_| false)
-            .unwrap()
-            .unwrap();
-
-        assert!(plan.children.contains_key("vendor"));
-        assert!(plan.children.contains_key("odm"));
-        assert!(!plan.children.contains_key("product"));
-        assert!(!plan.children.contains_key("system_ext"));
-        assert!(plan.children["system"].children.contains_key("product"));
-        assert!(plan.children["system"].children.contains_key("system_ext"));
-
-        let all = targets(&plan, &root);
-        assert!(all.contains(&root.join("vendor/v")));
-        assert!(all.contains(&root.join("odm/o")));
-        assert!(all.contains(&root.join("system/product/p")));
-        assert!(all.contains(&root.join("system/system_ext/s")));
-    }
-
-    #[test]
-    fn missing_partition_never_resolves_to_root() {
-        let tmp = tempdir().unwrap();
-        let root = tmp.path().join("root");
-        let system = root.join("system");
-        let modules = tmp.path().join("modules");
-        fs::create_dir_all(&system).unwrap();
-        // No /vendor on this device, but the module ships system/vendor/foo.
-        fs::create_dir_all(modules.join("mod/system/vendor")).unwrap();
-        fs::write(modules.join("mod/system/vendor/foo"), "x").unwrap();
-
-        let cfg = PlanConfig::new(&modules, &root, &system);
-        let plan = collect_module_files(&plain_fs(), &cfg, |_| false)
-            .unwrap()
-            .unwrap();
-
-        assert!(!plan.children.contains_key("vendor"));
-        assert!(plan.children["system"].children.contains_key("vendor"));
-
-        let all = targets(&plan, &root);
-        assert!(all.contains(&root.join("system/vendor/foo")));
-        // A missing partition must stay under /system and must never be
-        // remapped to /vendor (or, worse, to the root itself).
-        assert!(all.contains(&root.join("system/vendor")));
-        assert!(!all.contains(&root.join("vendor")));
-        assert!(!all.contains(&root.join("vendor/foo")));
-    }
-
-    #[test]
-    fn whiteout_detection_requires_zero_rdev_char_device() {
-        let whiteout = EntryMeta::new(EntryKind::CharDevice, 0);
-        assert_eq!(
-            NodeFileType::from_entry_meta(whiteout),
-            Some(NodeFileType::Whiteout)
-        );
-        let device = EntryMeta::new(EntryKind::CharDevice, 1);
-        assert_eq!(NodeFileType::from_entry_meta(device), None);
-        assert_eq!(
-            NodeFileType::from_entry_meta(EntryMeta::new(EntryKind::File, 0)),
-            Some(NodeFileType::RegularFile)
-        );
-        assert_eq!(
-            NodeFileType::from_entry_meta(EntryMeta::new(EntryKind::Symlink, 0)),
-            Some(NodeFileType::Symlink)
-        );
-        assert_eq!(
-            NodeFileType::from_entry_meta(EntryMeta::new(EntryKind::Other, 0)),
-            None
-        );
-    }
-
-    #[test]
-    fn needs_tmpfs_vs_real_matches_reference_matrix() {
-        let file = RealEntry::file();
-        assert!(!NodeFileType::RegularFile.needs_tmpfs_vs_real(file));
-        assert!(NodeFileType::Directory.needs_tmpfs_vs_real(file));
-        assert!(NodeFileType::RegularFile.needs_tmpfs_vs_real(RealEntry::missing()));
-        assert!(NodeFileType::Symlink.needs_tmpfs_vs_real(file));
-        assert!(NodeFileType::Whiteout.needs_tmpfs_vs_real(file));
-        assert!(!NodeFileType::Whiteout.needs_tmpfs_vs_real(RealEntry::missing()));
-        let symlink = RealEntry {
-            kind: Some(NodeFileType::Symlink),
-            exists: true,
-        };
-        assert!(NodeFileType::RegularFile.needs_tmpfs_vs_real(symlink));
-    }
-
-    #[test]
-    fn opaque_directory_is_flagged_and_requests_tmpfs() {
-        let tmp = tempdir().unwrap();
-        let module = tmp.path().join("system/etc");
-
-        let mut node = Node::new_root("etc");
-        node.module_path = Some(module);
-        node.replace = true;
-        assert!(should_create_tmpfs(
-            Path::new("/"),
-            &mut node,
-            false,
-            |_| RealEntry::missing()
-        ));
-        assert!(!should_create_tmpfs(
-            Path::new("/"),
-            &mut node,
-            true,
-            |_| RealEntry::missing()
-        ));
-    }
-
-    #[test]
-    fn unoverlayable_root_child_is_skipped() {
-        let tmp = tempdir().unwrap();
-        let mut root = Node::new_root("");
-        root.children
-            .insert("missing".to_string(), Node::new_root("missing"));
-
-        let created = should_create_tmpfs(tmp.path(), &mut root, false, |_| RealEntry::missing());
-        assert!(!created);
-        assert!(root.children["missing"].skip);
-    }
-
-    #[test]
-    fn opaque_read_error_excludes_module_without_partial_content() {
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-        let bad = modules.join("bad-mod/system/etc");
-        fs::create_dir_all(&bad).unwrap();
-        fs::write(bad.join("secret"), "bad").unwrap();
-        let good = modules.join("good-mod/system/etc");
-        fs::create_dir_all(&good).unwrap();
-        fs::write(good.join("hosts"), "good").unwrap();
-
-        let failing = modules.join("bad-mod/system/etc");
-        let plan = plan_for(&modules, tmp.path(), move |path| {
-            if path == failing {
-                anyhow::bail!("opaque read denied");
+        match current.file_type {
+            NodeFileType::RegularFile => {
+                let target = if has_tmpfs {
+                    ops.create_file(&work)?;
+                    work.clone()
+                } else {
+                    path.clone()
+                };
+                let Some(module_path) = current.module_path.clone() else {
+                    bail!("cannot mount root file {}", path.display());
+                };
+                ops.mount_bind(&module_path, &target)?;
+                if !has_tmpfs {
+                    self.publish(&target);
+                    ops.make_private(&target)?;
+                }
             }
-            Ok(false)
-        })
-        .unwrap();
-
-        let etc = &plan.children["system"].children["etc"];
-        assert!(etc.children.contains_key("hosts"));
-        assert!(!etc.children.contains_key("secret"));
+            NodeFileType::Symlink => {
+                let Some(module_path) = current.module_path.clone() else {
+                    bail!("cannot mount root symlink {}", path.display());
+                };
+                self.clone_symlink(&module_path, &work)?;
+            }
+            NodeFileType::Directory => {
+                let create = should_create_tmpfs(&path, &mut current, has_tmpfs, |probe| {
+                    real_entry(ops, probe)
+                });
+                let has_tmpfs = has_tmpfs || create;
+                if has_tmpfs {
+                    self.prepare_tmpfs_skeleton(&path, &work, current.module_path.as_deref())?;
+                }
+                if create {
+                    ops.mount_bind(&work, &work)?;
+                }
+                if current.replace && current.module_path.is_none() {
+                    bail!(
+                        "dir {} is marked opaque but has no module source",
+                        path.display()
+                    );
+                }
+                // Only recurse into a real directory. When the module replaces
+                // a real file with a directory the skeleton comes from the
+                // module and the real entry must not be listed.
+                if ops.is_dir(&path) && !current.replace {
+                    self.process_existing_entries(&path, &work, &mut current.children, has_tmpfs)?;
+                }
+                self.process_remaining_children(&path, &work, current.children, has_tmpfs)?;
+                if create {
+                    self.move_tmpfs_to_target(&work, &path)?;
+                }
+            }
+            NodeFileType::Whiteout => {
+                log::debug!("folk mount: {} is whited out", path.display());
+            }
+        }
+        Ok(())
     }
 
-    #[test]
-    fn empty_module_tree_does_not_request_a_mount() {
-        let tmp = tempdir().unwrap();
-        let modules = tmp.path().join("modules");
-        fs::create_dir_all(modules.join("empty/system/etc")).unwrap();
-        fs::create_dir_all(modules.join("nested/system/a/b")).unwrap();
+    /// Mirror one unmapped real entry into the work-dir tmpfs.
+    fn mount_mirror(&self, parent: &Path, work_parent: &Path, entry: &RealDirEntry) -> Result<()> {
+        let path = parent.join(&entry.name);
+        let work = work_parent.join(&entry.name);
+        match entry.file_type {
+            NodeFileType::RegularFile => {
+                self.ops.create_file(&work)?;
+                self.ops.mount_bind(&path, &work)?;
+            }
+            NodeFileType::Directory => {
+                self.ops.create_dir_all(&work)?;
+                let meta = self.ops.metadata(&path)?;
+                // chown before chmod: chown clears setuid/setgid bits.
+                self.ops.chown(&work, meta.uid, meta.gid)?;
+                self.ops.chmod(&work, meta.mode)?;
+                self.ops.lsetfilecon(&work, &self.ops.lgetfilecon(&path)?)?;
+                let mut entries = self.ops.read_dir(&path)?;
+                entries.sort_by(|a, b| a.name.cmp(&b.name));
+                for child in entries {
+                    self.mount_mirror(&path, &work, &child)?;
+                }
+            }
+            NodeFileType::Symlink => self.clone_symlink(&path, &work)?,
+            NodeFileType::Whiteout => {}
+        }
+        Ok(())
+    }
 
-        assert!(plan_for(&modules, tmp.path(), |_| Ok(false)).is_none());
+    fn clone_symlink(&self, source: &Path, link: &Path) -> Result<()> {
+        let target = self.ops.read_link(source)?;
+        self.ops.symlink(&target, link)?;
+        self.ops.lsetfilecon(link, &self.ops.lgetfilecon(source)?)?;
+        Ok(())
+    }
+
+    fn prepare_tmpfs_skeleton(
+        &self,
+        path: &Path,
+        work: &Path,
+        module_path: Option<&Path>,
+    ) -> Result<()> {
+        self.ops.create_dir_all(work)?;
+        let source = if self.ops.is_dir(path) {
+            path
+        } else if let Some(module_path) = module_path {
+            module_path
+        } else {
+            bail!(
+                "cannot prepare mount skeleton for {} without a module source",
+                path.display()
+            );
+        };
+        let meta = self.ops.metadata(source)?;
+        // chown before chmod: chown clears setuid/setgid bits.
+        self.ops.chown(work, meta.uid, meta.gid)?;
+        self.ops.chmod(work, meta.mode)?;
+        self.ops.lsetfilecon(work, &self.ops.lgetfilecon(source)?)?;
+        Ok(())
+    }
+
+    fn process_existing_entries(
+        &mut self,
+        path: &Path,
+        work: &Path,
+        children: &mut BTreeMap<String, Node>,
+        has_tmpfs: bool,
+    ) -> Result<()> {
+        // Sort for deterministic first-wins behaviour and testability; the
+        // reference implementation relies on readdir order here.
+        let mut entries = self.ops.read_dir(path)?;
+        entries.sort_by(|a, b| a.name.cmp(&b.name));
+        for entry in entries {
+            if let Some(node) = children.remove(&entry.name) {
+                if node.skip {
+                    self.skipped += 1;
+                    continue;
+                }
+                self.mount_node(path, work, node, has_tmpfs)
+                    .with_context(|| format!("folk mount {}/{}", path.display(), entry.name))?;
+            } else if has_tmpfs {
+                self.mount_mirror(path, work, &entry)
+                    .with_context(|| format!("folk mirror {}/{}", path.display(), entry.name))?;
+            }
+        }
+        Ok(())
+    }
+
+    fn process_remaining_children(
+        &mut self,
+        path: &Path,
+        work: &Path,
+        children: BTreeMap<String, Node>,
+        has_tmpfs: bool,
+    ) -> Result<()> {
+        for (name, node) in children {
+            if node.skip {
+                self.skipped += 1;
+                continue;
+            }
+            self.mount_node(path, work, node, has_tmpfs)
+                .with_context(|| format!("folk mount {}/{}", path.display(), name))?;
+        }
+        Ok(())
+    }
+
+    fn move_tmpfs_to_target(&mut self, work: &Path, target: &Path) -> Result<()> {
+        self.ops.mount_move(work, target)?;
+        // Publish before PRIVATE so a PRIVATE failure can still undo the move.
+        self.publish(target);
+        self.ops.make_private(target)?;
+        Ok(())
+    }
+
+    /// Register the final targets with the kernel, parents before children so
+    /// the kernel unmounts children first (its list is LIFO).
+    fn register_targets(&mut self) -> Result<()> {
+        let mut targets = self.mounts.clone();
+        targets.sort_by(|a, b| {
+            component_count(a)
+                .cmp(&component_count(b))
+                .then_with(|| a.cmp(b))
+        });
+        targets.dedup();
+        for target in targets {
+            self.ops
+                .register_umount(&target)
+                .with_context(|| format!("register umount target {}", target.display()))?;
+            self.registrations.push(target);
+        }
+        Ok(())
+    }
+
+    /// Undo this round in reverse order: our registrations, then the published
+    /// mounts, then the staging tmpfs. Earlier/external rounds are untouched.
+    fn rollback(&mut self, work_dir: &Path) -> RollbackOutcome {
+        let mut residue = Vec::new();
+        let mut remaining_mounts = 0;
+        for path in std::mem::take(&mut self.registrations).into_iter().rev() {
+            if self.ops.unregister_umount(&path).is_err() {
+                residue.push(path);
+            }
+        }
+        for path in std::mem::take(&mut self.mounts).into_iter().rev() {
+            if self.ops.unmount_detach(&path).is_err() {
+                residue.push(path);
+                remaining_mounts += 1;
+            }
+        }
+        if self.ops.unmount_detach(work_dir).is_err() {
+            residue.push(work_dir.to_path_buf());
+        }
+        RollbackOutcome {
+            remaining_mounts,
+            residue,
+        }
+    }
+
+    /// Detach the staging tmpfs after a successful publish. A failure here is
+    /// reported as residue but does not undo the committed targets.
+    fn cleanup_staging(&self, work_dir: &Path) -> Vec<PathBuf> {
+        if self.ops.unmount_detach(work_dir).is_err() {
+            vec![work_dir.to_path_buf()]
+        } else {
+            Vec::new()
+        }
     }
 }
+
+fn real_entry<O: MountOps>(ops: &O, path: &Path) -> RealEntry {
+    let kind = ops
+        .symlink_metadata(path)
+        .ok()
+        .and_then(NodeFileType::from_entry_meta);
+    RealEntry {
+        kind,
+        exists: ops.exists(path),
+    }
+}
+
+fn component_count(path: &Path) -> usize {
+    path.components().count()
+}
+
+/// Execute a mount plan, publishing final targets and registering them with the
+/// kernel.
+///
+/// `plan` of `None` means there is nothing to mount and no work-dir mount is
+/// created. On failure the round is rolled back in reverse; any mount that
+/// could not be undone is reported in [`ExecutionOutcome::residue`] with
+/// `partial` set.
+pub fn run_mount<O: MountOps>(
+    plan: Option<Node>,
+    target_root: &Path,
+    work_dir: &Path,
+    fs_name: &str,
+    ops: &O,
+) -> ExecutionReport {
+    let Some(root) = plan else {
+        return ExecutionReport {
+            outcome: ExecutionOutcome::default(),
+            error: None,
+        };
+    };
+
+    if let Err(e) = ops
+        .create_dir_all(work_dir)
+        .with_context(|| format!("create mount work dir {}", work_dir.display()))
+    {
+        return ExecutionReport {
+            outcome: ExecutionOutcome::default(),
+            error: Some(e),
+        };
+    }
+    if let Err(e) = ops
+        .mount_tmpfs(fs_name, work_dir)
+        .with_context(|| format!("mount tmpfs on {}", work_dir.display()))
+    {
+        // The tmpfs never appeared; there is nothing to undo.
+        return ExecutionReport {
+            outcome: ExecutionOutcome::default(),
+            error: Some(e),
+        };
+    }
+    if let Err(e) = ops
+        .make_private(work_dir)
+        .with_context(|| format!("make {} private", work_dir.display()))
+    {
+        // The tmpfs is mounted but everything else was skipped; detach it.
+        let residue = if ops.unmount_detach(work_dir).is_err() {
+            vec![work_dir.to_path_buf()]
+        } else {
+            Vec::new()
+        };
+        return ExecutionReport {
+            outcome: ExecutionOutcome {
+                partial: !residue.is_empty(),
+                residue,
+                ..ExecutionOutcome::default()
+            },
+            error: Some(e),
+        };
+    }
+
+    let mut tx = MountTransaction::new(ops);
+    if let Err(e) = tx.mount_node(target_root, work_dir, root, false) {
+        let rollback = tx.rollback(work_dir);
+        return ExecutionReport {
+            outcome: ExecutionOutcome {
+                target_count: rollback.remaining_mounts,
+                skipped_count: tx.skipped,
+                partial: !rollback.residue.is_empty(),
+                residue: rollback.residue,
+            },
+            error: Some(e),
+        };
+    }
+
+    if let Err(e) = tx.register_targets() {
+        let rollback = tx.rollback(work_dir);
+        return ExecutionReport {
+            outcome: ExecutionOutcome {
+                target_count: rollback.remaining_mounts,
+                skipped_count: tx.skipped,
+                partial: !rollback.residue.is_empty(),
+                residue: rollback.residue,
+            },
+            error: Some(e),
+        };
+    }
+
+    let target_count = tx.mounts.len();
+    let skipped_count = tx.skipped;
+    let residue = tx.cleanup_staging(work_dir);
+    let partial = !residue.is_empty();
+    if target_count > 0
+        && let Err(e) = ops.report_mounted()
+    {
+        warn!("folk mount: failed to notify module mount: {e:#}");
+    }
+    ExecutionReport {
+        outcome: ExecutionOutcome {
+            target_count,
+            skipped_count,
+            partial,
+            residue,
+        },
+        error: None,
+    }
+}
+
+#[cfg(test)]
+#[path = "magic_mount_tests.rs"]
+mod tests;
