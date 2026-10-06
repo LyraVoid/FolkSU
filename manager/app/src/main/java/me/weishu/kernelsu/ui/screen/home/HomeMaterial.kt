@@ -81,6 +81,7 @@ import me.weishu.kernelsu.ui.component.rebootlistpopup.RebootListPopup
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkShape
 import me.weishu.kernelsu.ui.theme.FolkType
+import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 
 @Composable
 fun HomePagerMaterial(
@@ -387,6 +388,8 @@ internal fun HomeCard(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
     contentColor: Color = contentColorFor(containerColor),
+    wallpaperRole: WallpaperSurfaceRole? =
+        if (containerColor == MaterialTheme.colorScheme.surfaceBright) WallpaperSurfaceRole.Group else null,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
@@ -394,6 +397,7 @@ internal fun HomeCard(
         modifier = modifier,
         containerColor = containerColor,
         contentColor = contentColor,
+        wallpaperRole = wallpaperRole,
         shape = FolkShape.Corner20,
         onClick = onClick,
         content = content,
@@ -408,11 +412,10 @@ private fun StatusCard(
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
 
-    val containerColor = if (ksuActive) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.errorContainer
-    }
+    val workCardStyle = HomeWorkCardControl.style(
+        layout = HomeWorkCardLayout.Circle,
+        working = ksuActive,
+    )
 
     val statusIcon = when {
         ksuActive -> Icons.Rounded.CheckCircle
@@ -461,7 +464,9 @@ private fun StatusCard(
 
     HomeCard(
         modifier = Modifier.fillMaxWidth(),
-        containerColor = containerColor,
+        containerColor = workCardStyle.containerColor,
+        contentColor = workCardStyle.contentColor ?: contentColorFor(workCardStyle.containerColor),
+        wallpaperRole = workCardStyle.wallpaperRole,
         onClick = {
             if (!state.isLateLoadMode) {
                 actions.onInstallClick()
