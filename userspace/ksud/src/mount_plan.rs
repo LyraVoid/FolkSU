@@ -333,7 +333,6 @@ pub fn entry_meta(meta: &std::fs::Metadata) -> EntryMeta {
 }
 
 fn entry_kind(meta: &std::fs::Metadata) -> EntryKind {
-    use std::os::unix::fs::FileTypeExt;
     let file_type = meta.file_type();
     if file_type.is_file() {
         EntryKind::File
@@ -341,16 +340,34 @@ fn entry_kind(meta: &std::fs::Metadata) -> EntryKind {
         EntryKind::Directory
     } else if file_type.is_symlink() {
         EntryKind::Symlink
-    } else if file_type.is_char_device() {
+    } else if is_char_device(meta) {
         EntryKind::CharDevice
     } else {
         EntryKind::Other
     }
 }
 
+#[cfg(unix)]
+fn is_char_device(meta: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::FileTypeExt;
+    meta.file_type().is_char_device()
+}
+
+/// Platforms without character devices cannot carry a whiteout, so nothing is one.
+#[cfg(not(unix))]
+fn is_char_device(_meta: &std::fs::Metadata) -> bool {
+    false
+}
+
+#[cfg(unix)]
 fn device_number(meta: &std::fs::Metadata) -> u64 {
     use std::os::unix::fs::MetadataExt;
     meta.rdev()
+}
+
+#[cfg(not(unix))]
+fn device_number(_meta: &std::fs::Metadata) -> u64 {
+    0
 }
 
 /// A built-in partition and whether its `/system/<name>` entry must be a
