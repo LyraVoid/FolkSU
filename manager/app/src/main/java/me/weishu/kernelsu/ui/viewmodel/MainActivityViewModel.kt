@@ -47,6 +47,7 @@ class MainActivityViewModel(
             pageScale = settingRepo.pageScale,
             enableNavigationBadge = settingRepo.enableNavigationBadge,
             moduleDescriptionMaxLines = settingRepo.moduleDescriptionMaxLines,
+            homeLayoutStyle = settingRepo.homeLayoutStyle,
         )
     }
 
@@ -59,6 +60,7 @@ class MainActivityViewModel(
             "page_scale",
             "module_description_max_lines",
             "enable_navigation_badge",
+            "home_layout_style",
         )
     }
 }

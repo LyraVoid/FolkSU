@@ -5,6 +5,7 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
 import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.model.FolkMountStatus
+import me.weishu.kernelsu.data.model.HomeLayoutStyle
 
 @Immutable
 data class SettingsUiState(
@@ -19,6 +20,7 @@ data class SettingsUiState(
     val pageScale: Float = 1.0f,
     val moduleDescriptionMaxLines: Int = 4,
     val enableWebDebugging: Boolean = false,
+    val homeLayoutStyle: String = HomeLayoutStyle.DEFAULT,
 
     // Su Compat
     val suCompatStatus: String = "",
@@ -74,6 +76,7 @@ data class SettingsScreenActions(
     val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
+    val onSetHomeLayoutStyle: (String) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,
     val onSetUseSoftReboot: (Boolean) -> Unit,
     val onOpenAbout: () -> Unit,

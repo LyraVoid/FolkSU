@@ -18,6 +18,7 @@ interface SettingsRepository {
     var pageScale: Float
     var moduleDescriptionMaxLines: Int
     var enableWebDebugging: Boolean
+    var homeLayoutStyle: String
     var moduleSortGroups: Set<ModuleSortGroup>
     var moduleSortEnabledFirst: Boolean
     var moduleSortCustomOrder: List<String>

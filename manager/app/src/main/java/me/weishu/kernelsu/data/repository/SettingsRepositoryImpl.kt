@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.model.FolkMountStatus
+import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.data.model.ModuleCustomOrderStore
 import me.weishu.kernelsu.data.model.ModuleSortGroup
 import me.weishu.kernelsu.data.model.ModuleSortPriorityStore
@@ -92,6 +93,12 @@ class SettingsRepositoryImpl : SettingsRepository {
     override var enableWebDebugging: Boolean
         get() = prefs.getBoolean("enable_web_debugging", false)
         set(value) = prefs.edit { putBoolean("enable_web_debugging", value) }
+
+    override var homeLayoutStyle: String
+        get() = HomeLayoutStyle.fromValue(
+            prefs.getString("home_layout_style", HomeLayoutStyle.DEFAULT)
+        )
+        set(value) = prefs.edit { putString("home_layout_style", HomeLayoutStyle.fromValue(value)) }
 
     override var moduleSortGroups: Set<ModuleSortGroup>
         get() = ModuleSortPriorityStore.decode(prefs.getString(ModuleSortPriorityStore.Key, null))

@@ -262,6 +262,10 @@
     <string name="group_contains_apps">Contains %d apps</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_theme_summary">Choose the app theme mode.</string>
+    <string name="settings_home_layout">Home layout</string>
+    <string name="settings_home_layout_summary">Choose how the home screen is arranged.</string>
+    <string name="settings_home_layout_circle">CircleUI</string>
+    <string name="settings_home_layout_grid">GridUI</string>
     <string name="settings_theme_mode_system">Follow system</string>
     <string name="settings_theme_mode_light">Light</string>
     <string name="settings_theme_mode_dark">Dark</string>

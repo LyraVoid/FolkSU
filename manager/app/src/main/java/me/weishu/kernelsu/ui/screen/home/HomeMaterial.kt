@@ -8,12 +8,17 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
@@ -64,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.ui.component.WarningLevel
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
@@ -95,67 +101,21 @@ fun HomePagerMaterial(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (state.checkUpdateEnabled) {
-                UpdateCard(state = state, actions = actions)
-            }
-            if (state.showManagerPrBuildWarning) {
-                WarningCard(stringResource(id = R.string.home_pr_build_warning), level = WarningLevel.Notice)
-            } else if (state.showKernelPrBuildWarning) {
-                WarningCard(stringResource(id = R.string.home_pr_kernel_warning), level = WarningLevel.Notice)
-            }
-            if (state.showGkiWarning) {
-                WarningCard(stringResource(id = R.string.home_gki_warning), level = WarningLevel.Notice)
-            }
-            if (state.requiresNewKernel) {
-                WarningCard(
-                    stringResource(
-                        id = if (state.canInstallKernelUpdate) R.string.require_kernel_version else R.string.require_kernel_version_gki
-                    ),
-                    onClick = if (state.canInstallKernelUpdate) actions.onInstallClick else null
+            HomeWarnings(state = state, actions = actions)
+            when (LocalHomeLayoutStyle.current) {
+                HomeLayoutStyle.GRID -> GridHomeContent(
+                    state = state,
+                    actions = actions,
+                    superuserCount = superuserCount,
+                    moduleEnabledCount = moduleEnabledCount,
                 )
-            }
-            if (state.requiresNewManager) {
-                WarningCard(
-                    stringResource(
-                        id = R.string.require_manager_version
-                    )
+
+                else -> CircleHomeContent(
+                    state = state,
+                    actions = actions,
+                    superuserCount = superuserCount,
+                    moduleEnabledCount = moduleEnabledCount,
                 )
-            }
-            if (state.showLkmUpdate) {
-                WarningCard(
-                    message = stringResource(R.string.home_lkm_update_available),
-                    level = WarningLevel.Notice,
-                    onClick = actions.onInstallClick,
-                )
-            }
-            if (state.showRootWarning) {
-                WarningCard(stringResource(id = R.string.grant_root_failed))
-            }
-            StatusCard(
-                state = state,
-                actions = actions,
-            )
-            // The counts only exist on a device where the kernel module is present.
-            if (Natives.isFullFeatured()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CountCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Outlined.Person,
-                        label = stringResource(R.string.superuser),
-                        count = superuserCount,
-                        onClick = actions.onOpenSuperUser,
-                    )
-                    CountCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Outlined.Extension,
-                        label = stringResource(R.string.module),
-                        count = moduleEnabledCount,
-                        onClick = actions.onOpenModule,
-                    )
-                }
             }
             InfoCard(systemInfo = state.systemInfo)
             SupportLinks(onOpenUrl = actions.onOpenUrl)
@@ -164,6 +124,212 @@ fun HomePagerMaterial(
                     bottomInnerPadding + if (!Natives.isFullFeatured())
                         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else 0.dp
                 )
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeWarnings(
+    state: HomeUiState,
+    actions: HomeActions,
+) {
+    if (state.checkUpdateEnabled) {
+        UpdateCard(state = state, actions = actions)
+    }
+    if (state.showManagerPrBuildWarning) {
+        WarningCard(stringResource(id = R.string.home_pr_build_warning), level = WarningLevel.Notice)
+    } else if (state.showKernelPrBuildWarning) {
+        WarningCard(stringResource(id = R.string.home_pr_kernel_warning), level = WarningLevel.Notice)
+    }
+    if (state.showGkiWarning) {
+        WarningCard(stringResource(id = R.string.home_gki_warning), level = WarningLevel.Notice)
+    }
+    if (state.requiresNewKernel) {
+        WarningCard(
+            stringResource(
+                id = if (state.canInstallKernelUpdate) R.string.require_kernel_version else R.string.require_kernel_version_gki
+            ),
+            onClick = if (state.canInstallKernelUpdate) actions.onInstallClick else null
+        )
+    }
+    if (state.requiresNewManager) {
+        WarningCard(
+            stringResource(
+                id = R.string.require_manager_version
+            )
+        )
+    }
+    if (state.showLkmUpdate) {
+        WarningCard(
+            message = stringResource(R.string.home_lkm_update_available),
+            level = WarningLevel.Notice,
+            onClick = actions.onInstallClick,
+        )
+    }
+    if (state.showRootWarning) {
+        WarningCard(stringResource(id = R.string.grant_root_failed))
+    }
+}
+
+@Composable
+private fun CircleHomeContent(
+    state: HomeUiState,
+    actions: HomeActions,
+    superuserCount: Int,
+    moduleEnabledCount: Int,
+) {
+    StatusCard(
+        state = state,
+        actions = actions,
+    )
+    // The counts only exist on a device where the kernel module is present.
+    if (Natives.isFullFeatured()) {
+        CountCardPair(
+            superuserCount = superuserCount,
+            moduleEnabledCount = moduleEnabledCount,
+            onOpenSuperUser = actions.onOpenSuperUser,
+            onOpenModule = actions.onOpenModule,
+            layout = CountCardLayout.Horizontal,
+        )
+    }
+}
+
+/** The gap between the tiles of the two-column grid. */
+private val GridTileSpacing = 12.dp
+
+/**
+ * The two-column grid: a hero status card on the left with the two count cards stacked on the
+ * right. On a device without the kernel module there are no counts, so the hero takes the full
+ * width.
+ */
+@Composable
+private fun GridHomeContent(
+    state: HomeUiState,
+    actions: HomeActions,
+    superuserCount: Int,
+    moduleEnabledCount: Int,
+) {
+    if (Natives.isFullFeatured()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(GridTileSpacing)
+        ) {
+            GridStatusCard(
+                state = state,
+                actions = actions,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+            )
+            CountCardPair(
+                superuserCount = superuserCount,
+                moduleEnabledCount = moduleEnabledCount,
+                onOpenSuperUser = actions.onOpenSuperUser,
+                onOpenModule = actions.onOpenModule,
+                layout = CountCardLayout.Vertical,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                pairSpacing = GridTileSpacing,
+                contentPadding = PaddingValues(16.dp),
+                emphasis = CountCardEmphasis.Value,
+            )
+        }
+    } else {
+        GridStatusCard(
+            state = state,
+            actions = actions,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/**
+ * The grid hero card. The status icon sits in the top corner while the state title and its mode
+ * tag sit against the bottom edge, so the card reads as a tile rather than a list row.
+ */
+@Composable
+private fun GridStatusCard(
+    state: HomeUiState,
+    actions: HomeActions,
+    modifier: Modifier = Modifier,
+) {
+    val ksuActive = state.ksuVersion != null
+    val notInstalled = !ksuActive && state.kernelVersion.isGKI()
+
+    val containerColor = if (ksuActive) {
+        MaterialTheme.colorScheme.secondaryContainer
+    } else {
+        MaterialTheme.colorScheme.errorContainer
+    }
+    val contentColor = contentColorFor(containerColor)
+
+    val statusIcon = when {
+        ksuActive -> Icons.Rounded.CheckCircle
+        notInstalled -> Icons.Rounded.Warning
+        else -> Icons.Rounded.Block
+    }
+    val statusTitle = when {
+        ksuActive -> stringResource(R.string.home_working)
+        notInstalled -> stringResource(R.string.home_not_installed)
+        else -> stringResource(R.string.home_unsupported)
+    }
+    val workingMode = if (ksuActive) {
+        when (state.lkmMode) {
+            null -> ""
+            true -> "LKM"
+            else -> "GKI"
+        }
+    } else ""
+
+    HomeCard(
+        modifier = modifier,
+        containerColor = containerColor,
+        onClick = {
+            if (!state.isLateLoadMode) {
+                actions.onInstallClick()
+            }
+        }
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = statusTitle,
+                    style = FolkType.Title
+                )
+                if (ksuActive && workingMode.isNotEmpty()) {
+                    StatusTag(
+                        label = workingMode,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        backgroundColor = MaterialTheme.colorScheme.primary
+                    )
+                } else if (notInstalled && state.isSELinuxPermissive) {
+                    FolkButton(
+                        onClick = actions.onJailbreakClick,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) {
+                        Text(stringResource(R.string.home_jailbreak))
+                    }
+                }
+            }
+            Icon(
+                imageVector = statusIcon,
+                contentDescription = statusTitle,
+                tint = contentColor,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(48.dp)
             )
         }
     }
@@ -214,7 +380,7 @@ private fun TopBar() {
 
 /** A full-width tonal surface, the one shape every card on the home screen shares. */
 @Composable
-private fun HomeCard(
+internal fun HomeCard(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
     contentColor: Color = contentColorFor(containerColor),
@@ -229,46 +395,6 @@ private fun HomeCard(
         onClick = onClick,
         content = content,
     )
-}
-
-@Composable
-private fun CountCard(
-    icon: ImageVector,
-    label: String,
-    count: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    HomeCard(modifier = modifier, onClick = onClick) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = label,
-                    style = FolkType.Summary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = count.toString(),
-                    style = FolkType.Numeral,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-        }
-    }
 }
 
 @Composable

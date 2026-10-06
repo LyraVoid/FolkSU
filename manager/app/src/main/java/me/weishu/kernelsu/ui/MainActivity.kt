@@ -74,6 +74,7 @@ import me.weishu.kernelsu.ui.screen.colorpalette.ColorPaletteScreen
 import me.weishu.kernelsu.ui.screen.executemoduleaction.ExecuteModuleActionScreen
 import me.weishu.kernelsu.ui.screen.flash.FlashScreen
 import me.weishu.kernelsu.ui.screen.home.HomePager
+import me.weishu.kernelsu.ui.screen.home.LocalHomeLayoutStyle
 import me.weishu.kernelsu.ui.screen.install.InstallScreen
 import me.weishu.kernelsu.ui.screen.module.ModulePager
 import me.weishu.kernelsu.ui.screen.modulerepo.ModuleRepoDetailScreen
@@ -152,6 +153,7 @@ class MainActivity : ComponentActivity() {
                 LocalColorMode provides appSettings.colorMode.value,
                 LocalEnableNavigationBadge provides uiState.enableNavigationBadge,
                 LocalModuleDescriptionMaxLines provides uiState.moduleDescriptionMaxLines,
+                LocalHomeLayoutStyle provides uiState.homeLayoutStyle,
             ) {
                 KernelSUTheme(appSettings = appSettings) {
                     IntentDispatcher(intentChannel = intentChannel)

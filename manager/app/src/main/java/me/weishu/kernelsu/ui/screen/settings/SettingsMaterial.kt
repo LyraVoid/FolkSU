@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LayersClear
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.model.FolkMountProvider
+import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.ui.component.KsuIsValid
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
@@ -133,6 +135,28 @@ fun SettingPagerMaterial(
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                     null
+                                )
+                            }
+                        )
+                    }
+                    add {
+                        val homeLayoutItems = listOf(
+                            stringResource(id = R.string.settings_home_layout_circle),
+                            stringResource(id = R.string.settings_home_layout_grid),
+                        )
+                        val selectedHomeLayout = when (uiState.homeLayoutStyle) {
+                            HomeLayoutStyle.GRID -> 1
+                            else -> 0
+                        }
+                        SegmentedDropdownItem(
+                            icon = Icons.Filled.GridView,
+                            title = stringResource(id = R.string.settings_home_layout),
+                            summary = stringResource(id = R.string.settings_home_layout_summary),
+                            items = homeLayoutItems,
+                            selectedIndex = selectedHomeLayout,
+                            onItemSelected = { index ->
+                                actions.onSetHomeLayoutStyle(
+                                    if (index == 1) HomeLayoutStyle.GRID else HomeLayoutStyle.CIRCLE
                                 )
                             }
                         )

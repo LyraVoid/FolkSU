@@ -14,6 +14,7 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.model.FolkMountMode
+import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ksuApp
@@ -43,6 +44,7 @@ class SettingsViewModel(
             val pageScale = repo.pageScale
             val moduleDescriptionMaxLines = repo.moduleDescriptionMaxLines
             val enableWebDebugging = repo.enableWebDebugging
+            val homeLayoutStyle = repo.homeLayoutStyle
             val colorStyle = repo.colorStyle
             val colorSpec = repo.colorSpec
             val isLkmMode = repo.isLkmMode()
@@ -80,6 +82,7 @@ class SettingsViewModel(
                     pageScale = pageScale,
                     moduleDescriptionMaxLines = moduleDescriptionMaxLines,
                     enableWebDebugging = enableWebDebugging,
+                    homeLayoutStyle = homeLayoutStyle,
                     colorStyle = colorStyle,
                     colorSpec = colorSpec,
                     suCompatStatus = suCompatStatus,
@@ -164,6 +167,12 @@ class SettingsViewModel(
     fun setEnableWebDebugging(enabled: Boolean) {
         repo.enableWebDebugging = enabled
         _uiState.update { it.copy(enableWebDebugging = enabled) }
+    }
+
+    fun setHomeLayoutStyle(style: String) {
+        val normalized = HomeLayoutStyle.fromValue(style)
+        repo.homeLayoutStyle = normalized
+        _uiState.update { it.copy(homeLayoutStyle = normalized) }
     }
 
     fun setSuCompatMode(mode: Int) {

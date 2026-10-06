@@ -223,6 +223,10 @@
     <string name="group_contains_apps">包含 %d 个应用</string>
     <string name="settings_theme">主题设置</string>
     <string name="settings_theme_summary">自定义更多主题选项</string>
+    <string name="settings_home_layout">首页布局</string>
+    <string name="settings_home_layout_summary">选择首页的排布方式。</string>
+    <string name="settings_home_layout_circle">CircleUI</string>
+    <string name="settings_home_layout_grid">GridUI</string>
     <string name="settings_theme_mode_system">跟随系统</string>
     <string name="settings_theme_mode_light">浅色</string>
     <string name="settings_theme_mode_dark">深色</string>
