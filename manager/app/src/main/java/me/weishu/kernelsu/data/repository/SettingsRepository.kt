@@ -2,6 +2,7 @@ package me.weishu.kernelsu.data.repository
 
 import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.model.FolkMountStatus
+import me.weishu.kernelsu.data.model.ModuleSortGroup
 import me.weishu.kernelsu.data.modulestore.StoreSourceKind
 
 interface SettingsRepository {
@@ -17,8 +18,8 @@ interface SettingsRepository {
     var pageScale: Float
     var moduleDescriptionMaxLines: Int
     var enableWebDebugging: Boolean
-    var moduleSortEnabledFirst: Boolean
-    var moduleSortActionFirst: Boolean
+    var moduleSortGroups: Set<ModuleSortGroup>
+    var moduleSortCustomOrder: List<String>
     var superuserShowSystemApps: Boolean
     var superuserShowOnlyPrimaryUserApps: Boolean
     var superuserSortOption: Int

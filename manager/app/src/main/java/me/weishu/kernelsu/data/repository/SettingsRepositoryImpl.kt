@@ -13,6 +13,9 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.data.model.FolkMountMode
 import me.weishu.kernelsu.data.model.FolkMountStatus
+import me.weishu.kernelsu.data.model.ModuleCustomOrderStore
+import me.weishu.kernelsu.data.model.ModuleSortGroup
+import me.weishu.kernelsu.data.model.ModuleSortPriorityStore
 import me.weishu.kernelsu.data.modulestore.StoreSourceKind
 import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.magica.BootCompletedReceiver
@@ -90,13 +93,16 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getBoolean("enable_web_debugging", false)
         set(value) = prefs.edit { putBoolean("enable_web_debugging", value) }
 
-    override var moduleSortEnabledFirst: Boolean
-        get() = prefs.getBoolean("module_sort_enabled_first", false)
-        set(value) = prefs.edit { putBoolean("module_sort_enabled_first", value) }
+    override var moduleSortGroups: Set<ModuleSortGroup>
+        get() = ModuleSortPriorityStore.decode(prefs.getString(ModuleSortPriorityStore.Key, null))
+        set(value) = prefs.edit { putString(ModuleSortPriorityStore.Key, ModuleSortPriorityStore.encode(value)) }
 
-    override var moduleSortActionFirst: Boolean
-        get() = prefs.getBoolean("module_sort_action_first", false)
-        set(value) = prefs.edit { putBoolean("module_sort_action_first", value) }
+    override var moduleSortCustomOrder: List<String>
+        get() = ModuleCustomOrderStore.decode(prefs.getString(ModuleCustomOrderStore.Key, null))
+        set(value) = prefs.edit {
+            if (value.isEmpty()) remove(ModuleCustomOrderStore.Key)
+            else putString(ModuleCustomOrderStore.Key, ModuleCustomOrderStore.encode(value))
+        }
 
     override var superuserShowSystemApps: Boolean
         get() = prefs.getBoolean("show_system_apps", false)

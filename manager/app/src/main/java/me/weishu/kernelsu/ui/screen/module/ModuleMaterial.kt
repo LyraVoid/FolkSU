@@ -50,9 +50,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Delete
@@ -62,13 +61,9 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CheckableDropdownMenuItem
-import androidx.compose.material3.DropdownMenuGroup
-import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProvideTextStyle
@@ -202,6 +197,7 @@ fun ModulePagerMaterial(
 
     val shortcutState = rememberModuleShortcutState(context)
     val showShortcutDialog = remember { mutableStateOf(false) }
+    var showSortSheet by remember { mutableStateOf(false) }
     val confirmDialog = rememberConfirmDialog(
         onConfirm = {
             when (val request = confirmDialogState?.request) {
@@ -289,53 +285,13 @@ fun ModulePagerMaterial(
                     }
                 },
                 actions = {
-                    var showDropdown by remember { mutableStateOf(false) }
                     FolkIconButton(
-                        onClick = { showDropdown = true }
+                        onClick = { showSortSheet = true }
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(id = R.string.settings)
+                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            contentDescription = stringResource(id = R.string.module_sort)
                         )
-                        DropdownMenuPopup(
-                            expanded = showDropdown,
-                            onDismissRequest = { showDropdown = false }
-                        ) {
-                            DropdownMenuGroup(shapes = MenuDefaults.groupShapes()) {
-                                CheckableDropdownMenuItem(
-                                    text = { Text(stringResource(R.string.module_sort_action_first)) },
-                                    checked = uiState.sortActionFirst,
-                                    checkedLeadingIcon = {
-                                        Icon(
-                                            Icons.Filled.Check,
-                                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onCheckedChange = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                                        actions.onToggleSortActionFirst()
-                                    },
-                                    shapes = MenuDefaults.itemShape(index = 0, count = 2),
-                                )
-                                CheckableDropdownMenuItem(
-                                    text = { Text(stringResource(R.string.module_sort_enabled_first)) },
-                                    checked = uiState.sortEnabledFirst,
-                                    checkedLeadingIcon = {
-                                        Icon(
-                                            Icons.Filled.Check,
-                                            modifier = Modifier.size(MenuDefaults.LeadingIconSize),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    onCheckedChange = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
-                                        actions.onToggleSortEnabledFirst()
-                                    },
-                                    shapes = MenuDefaults.itemShape(index = 1, count = 2),
-                                )
-                            }
-                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -445,8 +401,8 @@ fun ModulePagerMaterial(
             val latestRefreshing = rememberUpdatedState(uiState.isRefreshing)
             ScrollToTopOnChange(
                 listState,
-                uiState.sortEnabledFirst,
-                uiState.sortActionFirst,
+                uiState.sortGroups,
+                uiState.customOrder,
                 refreshTick.intValue,
                 isBusy = { latestRefreshing.value },
             ) { latestModuleList.value }
@@ -461,6 +417,17 @@ fun ModulePagerMaterial(
             )
         }
     }
+
+    ModuleSortSheet(
+        show = showSortSheet,
+        groups = uiState.sortGroups,
+        customOrder = uiState.customOrder,
+        displayModules = uiState.moduleList,
+        onDismiss = { showSortSheet = false },
+        onGroupChange = actions.onSetSortGroup,
+        onCustomOrderChange = actions.onSetCustomOrder,
+        onResetCustomOrder = actions.onResetCustomOrder,
+    )
 
     ModuleShortcutSheet(
         show = showShortcutDialog.value,

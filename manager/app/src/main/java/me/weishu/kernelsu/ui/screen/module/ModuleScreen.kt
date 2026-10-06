@@ -136,11 +136,14 @@ fun ModulePager(
             viewModel.dismissConfirmRequest()
         },
         onOpenRepo = { navigator.push(Route.ModuleRepo) },
-        onToggleSortActionFirst = {
-            viewModel.toggleSortActionFirst()
+        onSetSortGroup = { group, selected ->
+            viewModel.setSortGroup(group, selected)
         },
-        onToggleSortEnabledFirst = {
-            viewModel.toggleSortEnabledFirst()
+        onSetCustomOrder = { ids ->
+            viewModel.setCustomOrder(ids)
+        },
+        onResetCustomOrder = {
+            viewModel.resetCustomOrder()
         },
         onOpenWebUi = { module ->
             webUILauncher.launch(

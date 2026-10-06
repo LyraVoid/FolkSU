@@ -24,7 +24,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.model.Module
+import me.weishu.kernelsu.data.model.ModuleSortFacts
+import me.weishu.kernelsu.data.model.ModuleSortGroup
 import me.weishu.kernelsu.data.model.ModuleUpdateInfo
+import me.weishu.kernelsu.data.model.customOrderComparator
+import me.weishu.kernelsu.data.model.moduleSortComparator
+import me.weishu.kernelsu.data.model.reconcileCustomOrder
 import me.weishu.kernelsu.data.repository.ModuleRepository
 import me.weishu.kernelsu.data.repository.ModuleRepositoryImpl
 import me.weishu.kernelsu.data.repository.SettingsRepository
@@ -79,6 +84,8 @@ class ModuleViewModel(
     private val updateInfoInFlight = mutableSetOf<String>()
     private val searchQuery = MutableStateFlow("")
 
+    private val collator = Collator.getInstance(Locale.getDefault())
+
     private var fetchJob: Job? = null
 
     var isNeedRefresh = false
@@ -96,24 +103,41 @@ class ModuleViewModel(
         _uiState.update {
             it.copy(
                 checkModuleUpdate = settingsRepo.checkModuleUpdate,
-                sortEnabledFirst = settingsRepo.moduleSortEnabledFirst,
-                sortActionFirst = settingsRepo.moduleSortActionFirst,
+                sortGroups = settingsRepo.moduleSortGroups,
+                customOrder = settingsRepo.moduleSortCustomOrder,
             )
         }
         updateModuleList()
     }
 
-    fun toggleSortActionFirst() {
-        val newValue = !_uiState.value.sortActionFirst
-        settingsRepo.moduleSortActionFirst = newValue
-        _uiState.update { it.copy(sortActionFirst = newValue) }
+    fun setSortGroup(group: ModuleSortGroup, selected: Boolean) {
+        val newValue = if (selected) {
+            _uiState.value.sortGroups + group
+        } else {
+            _uiState.value.sortGroups - group
+        }
+        settingsRepo.moduleSortGroups = newValue
+        _uiState.update { it.copy(sortGroups = newValue) }
         updateModuleList()
     }
 
-    fun toggleSortEnabledFirst() {
-        val newValue = !_uiState.value.sortEnabledFirst
-        settingsRepo.moduleSortEnabledFirst = newValue
-        _uiState.update { it.copy(sortEnabledFirst = newValue) }
+    /**
+     * Stores a manual order. Ids for modules that are not installed are dropped and modules missing
+     * from [ids] are appended in their current order, so the stored order always covers the list.
+     */
+    fun setCustomOrder(ids: List<String>) {
+        val modules = _uiState.value.modules
+        val installed = modules.mapTo(HashSet()) { it.id }
+        val wanted = ids.filter { it in installed }
+        val newValue = reconcileCustomOrder(wanted, modules.map { it.id })
+        settingsRepo.moduleSortCustomOrder = newValue
+        _uiState.update { it.copy(customOrder = newValue) }
+        updateModuleList()
+    }
+
+    fun resetCustomOrder() {
+        settingsRepo.moduleSortCustomOrder = emptyList()
+        _uiState.update { it.copy(customOrder = emptyList()) }
         updateModuleList()
     }
 
@@ -207,27 +231,23 @@ class ModuleViewModel(
         }
     }
 
-    private fun moduleComparator(state: ModuleUiState): Comparator<Module> {
-        return compareBy<Module>(
-            {
-                val executable = it.hasWebUi || it.hasActionScript
-                when {
-                    it.metamodule && it.enabled -> 0
-                    state.sortEnabledFirst && state.sortActionFirst -> when {
-                        it.enabled && executable -> 1
-                        it.enabled -> 2
-                        executable -> 3
-                        else -> 4
-                    }
+    private fun Module.toSortFacts() = ModuleSortFacts(
+        id = id,
+        name = name,
+        metaModule = metamodule,
+        hasWebUi = hasWebUi,
+        hasActionScript = hasActionScript,
+    )
 
-                    state.sortEnabledFirst && !state.sortActionFirst -> if (it.enabled) 1 else 2
-                    !state.sortEnabledFirst && state.sortActionFirst -> if (executable) 1 else 2
-                    else -> 1
-                }
-            },
-            { if (state.sortEnabledFirst) !it.enabled else 0 },
-            { if (state.sortActionFirst) !(it.hasWebUi || it.hasActionScript) else 0 },
-        ).thenBy(Collator.getInstance(Locale.getDefault()), Module::id)
+    private fun moduleComparator(state: ModuleUiState): Comparator<Module> {
+        if (state.customOrder.isNotEmpty()) {
+            return compareBy<Module, ModuleSortFacts>(
+                customOrderComparator(collator, state.customOrder),
+            ) { it.toSortFacts() }
+        }
+        return compareBy<Module, ModuleSortFacts>(
+            moduleSortComparator(collator, state.sortGroups),
+        ) { it.toSortFacts() }
     }
 
     suspend fun loadModuleList(resort: Boolean = true) {
@@ -244,9 +264,21 @@ class ModuleViewModel(
                     modules = parsedModules,
                 )
             }
+            // Keep a stored manual order in step with what is installed before re-sorting.
+            reconcileStoredCustomOrder(parsedModules)
             // Trigger recalculation of moduleList
             updateModuleList(resort)
             isNeedRefresh = false
+        }
+    }
+
+    private fun reconcileStoredCustomOrder(modules: List<Module>) {
+        val current = _uiState.value.customOrder
+        if (current.isEmpty()) return
+        val reconciled = reconcileCustomOrder(current, modules.map { it.id })
+        if (reconciled != current) {
+            settingsRepo.moduleSortCustomOrder = reconciled
+            _uiState.update { it.copy(customOrder = reconciled) }
         }
     }
 
