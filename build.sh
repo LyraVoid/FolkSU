@@ -119,7 +119,8 @@ build_lkm() {
         rm -f kernel/kernelsu.ko
         ddk_run "$image" make \
             "KSU_EXPECTED_SIZE2=$CERT_SIZE_HEX" \
-            "KSU_EXPECTED_HASH2=$CERT_HASH"
+            "KSU_EXPECTED_HASH2=$CERT_HASH" \
+            "KSU_SECOND_SIGNATURE_RELEASE=1"
 
         [[ -f kernel/kernelsu.ko ]] || die "kernel/kernelsu.ko was not produced"
 

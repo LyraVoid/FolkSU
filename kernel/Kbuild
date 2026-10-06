@@ -155,6 +155,13 @@ $(error KSU_EXPECTED_HASH2 must be set when KSU_EXPECTED_SIZE2 is set)
 endif
 ccflags-y += -DEXPECTED_SIZE2=$(KSU_EXPECTED_SIZE2)
 ccflags-y += -DEXPECTED_HASH2=\"$(KSU_EXPECTED_HASH2)\"
+# The second slot carries one extra trusted manager signature. Test builds fill it
+# with a throwaway key, which is why defining it also raises the PR-build flag; set
+# KSU_SECOND_SIGNATURE_RELEASE=1 when that slot holds a release key instead.
+ifeq ($(KSU_SECOND_SIGNATURE_RELEASE),1)
+ccflags-y += -DSECOND_SIGNATURE_RELEASE=1
+$(info -- KernelSU Manager second signature is a release key)
+endif
 $(info -- KernelSU Manager signature size2: $(KSU_EXPECTED_SIZE2))
 $(info -- KernelSU Manager signature hash2: $(KSU_EXPECTED_HASH2))
 endif
