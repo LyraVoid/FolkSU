@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.AlertDialog
@@ -85,46 +86,52 @@ fun WorkCardBackgroundSettings(
             checked = enabled,
             onCheckedChange = onEnabledChange,
         )
-        WorkCardActionRow(
-            icon = Icons.Filled.Image,
-            title = stringResource(
-                if (hasImage) R.string.wallpaper_work_card_change else R.string.wallpaper_work_card_pick
-            ),
-            onClick = onPickImage,
-        )
-        if (hasImage) {
+        // The tuning controls and the image rows only matter once the card background is on; the
+        // order matches the reference implementation: appearance first, then the image itself.
+        if (enabled) {
+            WorkCardSwitchRow(
+                title = stringResource(R.string.wallpaper_work_card_dual_opacity),
+                checked = dualOpacityEnabled,
+                onCheckedChange = onDualOpacityChange,
+                icon = Icons.Filled.Contrast,
+            )
+            if (dualOpacityEnabled) {
+                WorkCardSlider(
+                    title = stringResource(R.string.wallpaper_work_card_day_opacity),
+                    value = dayOpacity,
+                    onValueChange = onDayOpacityChange,
+                )
+                WorkCardSlider(
+                    title = stringResource(R.string.wallpaper_work_card_night_opacity),
+                    value = nightOpacity,
+                    onValueChange = onNightOpacityChange,
+                )
+            } else {
+                WorkCardSlider(
+                    title = stringResource(R.string.wallpaper_work_card_opacity),
+                    value = opacity,
+                    onValueChange = onOpacityChange,
+                )
+            }
+            WorkCardSlider(
+                title = stringResource(R.string.wallpaper_work_card_dim),
+                value = dim,
+                onValueChange = onDimChange,
+            )
             WorkCardActionRow(
-                icon = Icons.Filled.Delete,
-                title = stringResource(R.string.wallpaper_work_card_clear),
-                onClick = onClearImage,
+                icon = Icons.Filled.Image,
+                title = stringResource(
+                    if (hasImage) R.string.wallpaper_work_card_change else R.string.wallpaper_work_card_pick
+                ),
+                onClick = onPickImage,
             )
-        }
-        WorkCardSlider(
-            title = stringResource(R.string.wallpaper_work_card_opacity),
-            value = opacity,
-            onValueChange = onOpacityChange,
-        )
-        WorkCardSlider(
-            title = stringResource(R.string.wallpaper_work_card_dim),
-            value = dim,
-            onValueChange = onDimChange,
-        )
-        WorkCardSwitchRow(
-            title = stringResource(R.string.wallpaper_work_card_dual_opacity),
-            checked = dualOpacityEnabled,
-            onCheckedChange = onDualOpacityChange,
-        )
-        if (dualOpacityEnabled) {
-            WorkCardSlider(
-                title = stringResource(R.string.wallpaper_work_card_day_opacity),
-                value = dayOpacity,
-                onValueChange = onDayOpacityChange,
-            )
-            WorkCardSlider(
-                title = stringResource(R.string.wallpaper_work_card_night_opacity),
-                value = nightOpacity,
-                onValueChange = onNightOpacityChange,
-            )
+            if (hasImage) {
+                WorkCardActionRow(
+                    icon = Icons.Filled.Delete,
+                    title = stringResource(R.string.wallpaper_work_card_clear),
+                    onClick = onClearImage,
+                )
+            }
         }
         WorkCardSwitchRow(
             title = stringResource(R.string.wallpaper_work_card_hide_check),
@@ -210,11 +217,21 @@ private fun WorkCardSwitchRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     summary: String? = null,
+    icon: ImageVector? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(16.dp))
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, style = MaterialTheme.typography.bodyLarge)
             if (summary != null) {
