@@ -17,6 +17,12 @@ import me.weishu.kernelsu.wallpaper.WallpaperMaterial
 enum class ChromeEdge { Top, Bottom }
 
 /**
+ * How opaque a collapsing top bar becomes once it is fully collapsed, no matter what transparency
+ * the user picked for the content surfaces.
+ */
+private const val CollapsedChromeFloor = 0.85f
+
+/**
  * Draws the wallpaper reading platform behind a bar and fades it into the wallpaper *past* the
  * bar's edge, so the bar no longer terminates in a hard color band while its own content (which
  * may sit at the bottom of a large top bar) stays on the solid platform.
@@ -43,10 +49,13 @@ fun WallpaperChromeZone(
     Box(
         modifier = modifier.drawBehind {
             val collapsed = progress().coerceIn(0f, 1f)
-            // An expanded top bar has no content behind it and may stay light; once it collapses,
-            // scrolled content passes underneath, so the platform must be near-solid.
-            val boost = if (edge == ChromeEdge.Top) 0.5f + 0.5f * collapsed else 1f
-            val solid = chrome.tint.copy(alpha = (chrome.alpha * boost).coerceAtMost(1f))
+            // The bar honours the user's transparency while it is expanded; once it collapses,
+            // scrolled content passes underneath, so the platform strengthens to at least
+            // [CollapsedChromeFloor] to keep the labels legible. A bottom bar never collapses and
+            // therefore keeps the user's alpha as-is.
+            val floor = if (edge == ChromeEdge.Top) CollapsedChromeFloor else chrome.alpha
+            val alpha = chrome.alpha + (floor - chrome.alpha).coerceAtLeast(0f) * collapsed
+            val solid = chrome.tint.copy(alpha = alpha.coerceAtMost(1f))
             val clear = solid.copy(alpha = 0f)
             val width = size.width
             when (edge) {

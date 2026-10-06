@@ -56,9 +56,10 @@ object BottomBarControl {
 
     /**
      * Outside wallpaper mode the bar keeps its original opaque container. In wallpaper mode it turns
-     * fully transparent so it shares the app-wide surface transparency, and only a panel-level scrim
-     * (the same [WallpaperSurfaceRole.Group] alpha the content panels use) softens the edge. Using the
-     * near-opaque chrome platform here was what made the bar look disjointed from the rest.
+     * transparent so the wallpaper shows through, and only the chrome scrim softens the edge. The
+     * scrim is deliberately the [FolkWallpaperTokens.chrome] material rather than the panel one: the
+     * bar's labels sit over scrolling content, so the chrome keeps a small alpha floor while panels
+     * stay free to fade all the way out.
      */
     @Composable
     private fun dockedStyle(tokens: FolkWallpaperTokens?): BottomBarStyle = if (tokens == null) {
@@ -70,7 +71,7 @@ object BottomBarControl {
     } else {
         BottomBarStyle(
             containerColor = Color.Transparent,
-            scrim = tokens.material(WallpaperSurfaceRole.Group),
+            scrim = tokens.chrome,
             indicatorColor = Color.Transparent,
         )
     }

@@ -485,7 +485,7 @@ fun WallpaperScreenMaterial(
                             title = stringResource(R.string.wallpaper_opacity),
                             summary = stringResource(R.string.wallpaper_opacity_summary),
                             value = state.opacity,
-                            range = 0.1f..1f,
+                            range = 0f..1f,
                             onValueChange = actions.onSetOpacity,
                         )
                         SliderSetting(

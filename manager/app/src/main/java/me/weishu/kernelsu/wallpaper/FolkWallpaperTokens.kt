@@ -54,42 +54,39 @@ data class FolkWallpaperTokens(
 val LocalFolkWallpaperTokens = compositionLocalOf<FolkWallpaperTokens?> { null }
 
 /**
- * Maps the user-facing opacity preference (0..1, "surface carrying strength") onto concrete role
- * alphas. The roles keep a fixed hierarchy gap so they stay distinguishable even though a wallpaper
- * cannot express elevation through the usual surface color steps.
+ * How translucent a bar may become: at opacity 0 the chrome still keeps this much of its tint.
+ *
+ * Panels may fade to nothing, but the top and bottom bars carry labels that sit on top of scrolling
+ * content, so they hold a small platform of their own.
+ */
+private const val CHROME_ALPHA_FLOOR = 0.10f
+
+/**
+ * Maps the user-facing opacity preference (0..1) onto the role alphas.
+ *
+ * The preference *is* the surface alpha: 0 lets the wallpaper show through completely and 1 is
+ * fully opaque, so every role tracks the slider one-to-one instead of living in a narrowed band.
+ * Two exceptions survive on purpose: [overlay] (dialogs and menus) stays near-opaque, because a popup
+ * that lets the content behind it read through is not usable; and [chrome] never drops below
+ * [CHROME_ALPHA_FLOOR], because the bars' labels sit over scrolling content.
  */
 fun resolveFolkWallpaperTokens(colorScheme: ColorScheme, opacity: Float): FolkWallpaperTokens {
-    val strength = opacity.coerceIn(0f, 1f)
-    val groupAlpha = 0.32f + 0.32f * strength
-    val raisedAlpha = (groupAlpha + 0.16f).coerceAtMost(0.94f)
-    // Chrome always has scrolled content passing underneath it, so it needs a near-opaque platform:
-    // even at 0.9 a dark row bleeds through as a ghost and collides with the bar labels. Without a
-    // backdrop blur, integration comes from the gradient tail instead of from a low alpha.
-    val chromeAlpha = (0.96f + 0.03f * strength).coerceAtMost(0.99f)
+    val alpha = opacity.coerceIn(0f, 1f)
+    val panel = WallpaperMaterial(
+        tint = colorScheme.surface,
+        alpha = alpha,
+        contentColor = colorScheme.onSurface,
+        supportingColor = colorScheme.onSurfaceVariant,
+    )
     return FolkWallpaperTokens(
-        group = WallpaperMaterial(
-            tint = colorScheme.surface,
-            alpha = groupAlpha,
-            contentColor = colorScheme.onSurface,
-            supportingColor = colorScheme.onSurfaceVariant,
-        ),
-        raised = WallpaperMaterial(
-            tint = colorScheme.surface,
-            alpha = raisedAlpha,
-            contentColor = colorScheme.onSurface,
-            supportingColor = colorScheme.onSurfaceVariant,
-        ),
+        group = panel,
+        raised = panel.copy(alpha = (alpha + 0.12f).coerceAtMost(1f)),
         overlay = WallpaperMaterial(
             tint = colorScheme.surfaceContainerHigh,
             alpha = 0.96f,
             contentColor = colorScheme.onSurface,
             supportingColor = colorScheme.onSurfaceVariant,
         ),
-        chrome = WallpaperMaterial(
-            tint = colorScheme.surface,
-            alpha = chromeAlpha,
-            contentColor = colorScheme.onSurface,
-            supportingColor = colorScheme.onSurfaceVariant,
-        ),
+        chrome = panel.copy(alpha = CHROME_ALPHA_FLOOR + (1f - CHROME_ALPHA_FLOOR) * alpha),
     )
 }
