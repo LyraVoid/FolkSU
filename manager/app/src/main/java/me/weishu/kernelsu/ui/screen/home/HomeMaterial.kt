@@ -1,12 +1,16 @@
 package me.weishu.kernelsu.ui.screen.home
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,12 +56,21 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
@@ -66,11 +79,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.ui.component.WarningLevel
+import me.weishu.kernelsu.ui.component.WorkCardBackgroundDialog
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.FolkButton
@@ -81,7 +97,10 @@ import me.weishu.kernelsu.ui.component.rebootlistpopup.RebootListPopup
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkShape
 import me.weishu.kernelsu.ui.theme.FolkType
+import me.weishu.kernelsu.wallpaper.WallpaperConfig
+import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+import java.io.File
 
 @Composable
 fun HomePagerMaterial(
@@ -264,12 +283,13 @@ private fun GridStatusCard(
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
 
-    val containerColor = if (ksuActive) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.errorContainer
-    }
-    val contentColor = contentColorFor(containerColor)
+    val workCardStyle = HomeWorkCardControl.style(
+        layout = HomeWorkCardLayout.Grid,
+        working = ksuActive,
+    )
+    val containerColor = workCardStyle.containerColor
+    val contentColor = workCardStyle.contentColor ?: contentColorFor(containerColor)
+    val backgroundUri = workCardStyle.workCardBackgroundUri
 
     val statusIcon = when {
         ksuActive -> Icons.Rounded.CheckCircle
@@ -289,32 +309,49 @@ private fun GridStatusCard(
         }
     } else ""
 
+    var showWorkCardOptions by remember { mutableStateOf(false) }
+    val longPressEnabled = ksuActive && WallpaperConfig.workCardBackgroundEnabled
+
     HomeCard(
         modifier = modifier,
         containerColor = containerColor,
+        contentColor = contentColor,
+        wallpaperRole = workCardStyle.wallpaperRole,
         onClick = {
             if (!state.isLateLoadMode) {
                 actions.onInstallClick()
             }
-        }
+        },
+        onLongClick = if (longPressEnabled) {
+            { showWorkCardOptions = true }
+        } else {
+            null
+        },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            if (backgroundUri != null) {
+                WorkCardBackgroundImage(uri = backgroundUri)
+            }
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = statusTitle,
-                    style = FolkType.Title
-                )
-                if (ksuActive && workingMode.isNotEmpty()) {
-                    StatusTag(
-                        label = workingMode,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        backgroundColor = MaterialTheme.colorScheme.primary
+                if (!WallpaperConfig.workCardTextHidden) {
+                    Text(
+                        text = statusTitle,
+                        style = FolkType.Title
                     )
+                }
+                if (ksuActive && workingMode.isNotEmpty()) {
+                    if (!WallpaperConfig.workCardModeHidden) {
+                        StatusTag(
+                            label = workingMode,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            backgroundColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 } else if (notInstalled && state.isSELinuxPermissive) {
                     FolkButton(
                         onClick = actions.onJailbreakClick,
@@ -327,16 +364,52 @@ private fun GridStatusCard(
                     }
                 }
             }
-            Icon(
-                imageVector = statusIcon,
-                contentDescription = statusTitle,
-                tint = contentColor,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(48.dp)
-            )
+            if (!WallpaperConfig.workCardCheckHidden) {
+                Icon(
+                    imageVector = statusIcon,
+                    contentDescription = statusTitle,
+                    tint = contentColor,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(48.dp)
+                )
+            }
         }
     }
+
+    if (showWorkCardOptions) {
+        WorkCardBackgroundDialog(onDismiss = { showWorkCardOptions = false })
+    }
+}
+
+/**
+ * The photo behind the grid work card, dimmed with a black scrim so the overlaid label stays
+ * readable. Draws nothing until the stored bitmap is decoded.
+ */
+@Composable
+private fun WorkCardBackgroundImage(uri: String) {
+    val isDark = isSystemInDarkTheme()
+    val path = remember(uri) { Uri.parse(uri).path }
+    val image by produceState<ImageBitmap?>(initialValue = null, path) {
+        value = withContext(Dispatchers.IO) {
+            path?.let { WallpaperManager.decodeSampled(File(it), 1600)?.asImageBitmap() }
+        }
+    }
+    image?.let { bitmap ->
+        Image(
+            bitmap = bitmap,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(WallpaperConfig.effectiveWorkCardOpacity(isDark)),
+        )
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = WallpaperConfig.workCardDim)),
+    )
 }
 
 @Composable
@@ -391,6 +464,7 @@ internal fun HomeCard(
     wallpaperRole: WallpaperSurfaceRole? =
         if (containerColor == MaterialTheme.colorScheme.surfaceBright) WallpaperSurfaceRole.Group else null,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     TonalCard(
@@ -400,6 +474,7 @@ internal fun HomeCard(
         wallpaperRole = wallpaperRole,
         shape = FolkShape.Corner20,
         onClick = onClick,
+        onLongClick = onLongClick,
         content = content,
     )
 }

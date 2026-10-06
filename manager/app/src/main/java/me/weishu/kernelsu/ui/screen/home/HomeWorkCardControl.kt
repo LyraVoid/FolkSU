@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
+import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 
 /** Which home layout owns the work (status) card. */
@@ -20,12 +21,16 @@ enum class HomeWorkCardLayout {
  * [me.weishu.kernelsu.ui.component.material.FolkWallpaperSurface] so that it shares the app-wide
  * wallpaper transparency. Outside wallpaper mode it is null and [containerColor] is used as a
  * solid fill, exactly as before.
+ *
+ * [workCardBackgroundUri] is non-null only for the grid layout when the user opted into a photo
+ * background. In that case [containerColor] is transparent and the card paints the image itself.
  */
 @Immutable
 data class HomeWorkCardStyle(
     val containerColor: Color,
     val contentColor: Color?,
     val wallpaperRole: WallpaperSurfaceRole?,
+    val workCardBackgroundUri: String? = null,
 )
 
 /**
@@ -74,11 +79,20 @@ object HomeWorkCardControl {
     }
 
     /**
-     * GridUI. Investigated only for now: the grid home card is not wired to wallpaper transparency
-     * yet, so it keeps its semantic accent pair exactly as before.
+     * GridUI. The card keeps its semantic accent pair by default. When the user enabled a work-card
+     * photo, the surface drops to a transparent container with white content so the bitmap painted
+     * by the card is what shows through.
      */
     @Composable
     private fun gridStyle(working: Boolean): HomeWorkCardStyle {
+        if (WallpaperConfig.hasWorkCardBackground) {
+            return HomeWorkCardStyle(
+                containerColor = Color.Transparent,
+                contentColor = Color.White,
+                wallpaperRole = null,
+                workCardBackgroundUri = WallpaperConfig.workCardBackgroundUri,
+            )
+        }
         val containerColor = if (working) {
             MaterialTheme.colorScheme.secondaryContainer
         } else {

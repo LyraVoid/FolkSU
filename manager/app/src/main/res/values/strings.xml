@@ -394,4 +394,22 @@
     <string name="wallpaper_saved">Wallpaper updated</string>
     <string name="wallpaper_removed">Wallpaper removed</string>
     <string name="wallpaper_save_failed">Failed to load the image</string>
+    <string name="wallpaper_work_card_section">Work card</string>
+    <string name="wallpaper_work_card_options_title">Work card background</string>
+    <string name="wallpaper_work_card_enable">Work card background</string>
+    <string name="wallpaper_work_card_enable_summary">Show an image behind the grid work card</string>
+    <string name="wallpaper_work_card_pick">Choose work card image</string>
+    <string name="wallpaper_work_card_change">Change work card image</string>
+    <string name="wallpaper_work_card_clear">Remove work card image</string>
+    <string name="wallpaper_work_card_opacity">Image opacity</string>
+    <string name="wallpaper_work_card_dim">Image scrim</string>
+    <string name="wallpaper_work_card_dual_opacity">Separate day/night opacity</string>
+    <string name="wallpaper_work_card_day_opacity">Day opacity</string>
+    <string name="wallpaper_work_card_night_opacity">Night opacity</string>
+    <string name="wallpaper_work_card_hide_check">Hide status icon</string>
+    <string name="wallpaper_work_card_hide_text">Hide title</string>
+    <string name="wallpaper_work_card_hide_mode">Hide mode tag</string>
+    <string name="wallpaper_work_card_saved">Work card image updated</string>
+    <string name="wallpaper_work_card_save_failed">Failed to load the image</string>
+    <string name="wallpaper_work_card_removed">Work card image removed</string>
 </resources>

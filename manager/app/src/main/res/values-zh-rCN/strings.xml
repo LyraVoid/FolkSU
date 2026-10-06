@@ -388,4 +388,22 @@
     <string name="wallpaper_saved">壁纸已更新</string>
     <string name="wallpaper_removed">壁纸已移除</string>
     <string name="wallpaper_save_failed">图片加载失败</string>
+    <string name="wallpaper_work_card_section">工作卡片</string>
+    <string name="wallpaper_work_card_options_title">工作卡片背景</string>
+    <string name="wallpaper_work_card_enable">工作卡片背景</string>
+    <string name="wallpaper_work_card_enable_summary">在网格工作卡片后显示图片</string>
+    <string name="wallpaper_work_card_pick">选择工作卡片图片</string>
+    <string name="wallpaper_work_card_change">更换工作卡片图片</string>
+    <string name="wallpaper_work_card_clear">移除工作卡片图片</string>
+    <string name="wallpaper_work_card_opacity">图片不透明度</string>
+    <string name="wallpaper_work_card_dim">图片遮罩</string>
+    <string name="wallpaper_work_card_dual_opacity">日夜不透明度分离</string>
+    <string name="wallpaper_work_card_day_opacity">日间不透明度</string>
+    <string name="wallpaper_work_card_night_opacity">夜间不透明度</string>
+    <string name="wallpaper_work_card_hide_check">隐藏状态图标</string>
+    <string name="wallpaper_work_card_hide_text">隐藏标题</string>
+    <string name="wallpaper_work_card_hide_mode">隐藏模式标签</string>
+    <string name="wallpaper_work_card_saved">工作卡片图片已更新</string>
+    <string name="wallpaper_work_card_save_failed">图片加载失败</string>
+    <string name="wallpaper_work_card_removed">工作卡片图片已移除</string>
 </resources>

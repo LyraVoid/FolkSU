@@ -20,6 +20,7 @@ import java.io.File
 object WallpaperManager {
 
     private const val FILENAME_BASE = "wallpaper"
+    private const val WORK_CARD_FILENAME_BASE = "work_card_background"
     private val KNOWN_EXTENSIONS = listOf(".jpg", ".jpeg", ".png", ".webp", ".gif")
 
     /** Copies the picked image into app storage, extracts its color/luminance and enables it. */
@@ -51,6 +52,29 @@ object WallpaperManager {
         WallpaperConfig.updateDerivedLuminance(computeLuminance(target) ?: -1f)
         WallpaperConfig.updateDerivedSeed(computeSeed(target) ?: 0)
         WallpaperConfig.updateEnabled(true)
+        WallpaperConfig.save(context)
+    }
+
+    /** Copies the picked image into app storage and points the grid work card at it. */
+    suspend fun saveWorkCardBackground(context: Context, source: Uri): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val ext = getFileExtension(context.contentResolver.getType(source))
+            clearOldWorkCardFiles(context)
+            val target = File(context.filesDir, "$WORK_CARD_FILENAME_BASE$ext")
+            if (!copyToFile(context, source, target)) return@runCatching false
+            val stamped = "${Uri.fromFile(target)}?t=${System.currentTimeMillis()}"
+            WallpaperConfig.updateWorkCardBackgroundUri(stamped)
+            WallpaperConfig.updateWorkCardBackgroundEnabled(true)
+            WallpaperConfig.save(context)
+            true
+        }.getOrDefault(false)
+    }
+
+    /** Deletes the stored work-card image and turns the feature off, keeping the user's slider values. */
+    fun clearWorkCardBackground(context: Context) {
+        clearOldWorkCardFiles(context)
+        WallpaperConfig.updateWorkCardBackgroundUri(null)
+        WallpaperConfig.updateWorkCardBackgroundEnabled(false)
         WallpaperConfig.save(context)
     }
 
@@ -162,6 +186,13 @@ object WallpaperManager {
     private fun clearOldFiles(context: Context) {
         KNOWN_EXTENSIONS.forEach { ext ->
             val file = File(context.filesDir, "$FILENAME_BASE$ext")
+            if (file.exists()) file.delete()
+        }
+    }
+
+    private fun clearOldWorkCardFiles(context: Context) {
+        KNOWN_EXTENSIONS.forEach { ext ->
+            val file = File(context.filesDir, "$WORK_CARD_FILENAME_BASE$ext")
             if (file.exists()) file.delete()
         }
     }

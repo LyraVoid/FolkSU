@@ -57,6 +57,7 @@ import me.weishu.kernelsu.ui.component.material.SegmentedSwitchItem
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
+import me.weishu.kernelsu.ui.component.WorkCardBackgroundSettings
 import me.weishu.kernelsu.ui.component.rememberSystemCropLauncher
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.wallpaper.FolkThemeIO
@@ -77,6 +78,16 @@ data class WallpaperUiState(
     val dayDim: Float,
     val nightDim: Float,
     val useWallpaperColor: Boolean,
+    val workCardBackgroundEnabled: Boolean,
+    val workCardHasImage: Boolean,
+    val workCardOpacity: Float,
+    val workCardDim: Float,
+    val workCardDualOpacityEnabled: Boolean,
+    val workCardDayOpacity: Float,
+    val workCardNightOpacity: Float,
+    val workCardCheckHidden: Boolean,
+    val workCardTextHidden: Boolean,
+    val workCardModeHidden: Boolean,
     val isSaving: Boolean,
 )
 
@@ -93,6 +104,17 @@ data class WallpaperScreenActions(
     val onSetDayDim: (Float) -> Unit,
     val onSetNightDim: (Float) -> Unit,
     val onToggleUseWallpaperColor: (Boolean) -> Unit,
+    val onToggleWorkCardBackground: (Boolean) -> Unit,
+    val onPickWorkCardImage: () -> Unit,
+    val onClearWorkCardImage: () -> Unit,
+    val onSetWorkCardOpacity: (Float) -> Unit,
+    val onSetWorkCardDim: (Float) -> Unit,
+    val onToggleWorkCardDualOpacity: (Boolean) -> Unit,
+    val onSetWorkCardDayOpacity: (Float) -> Unit,
+    val onSetWorkCardNightOpacity: (Float) -> Unit,
+    val onToggleWorkCardCheckHidden: (Boolean) -> Unit,
+    val onToggleWorkCardTextHidden: (Boolean) -> Unit,
+    val onToggleWorkCardModeHidden: (Boolean) -> Unit,
     val onExport: () -> Unit,
     val onImport: () -> Unit,
 )
@@ -107,6 +129,8 @@ fun WallpaperScreen() {
     var isSaving by remember { mutableStateOf(false) }
     var pendingCrop by remember { mutableStateOf<Uri?>(null) }
     var showCropDialog by remember { mutableStateOf(false) }
+    var pendingWorkCardCrop by remember { mutableStateOf<Uri?>(null) }
+    var showWorkCardCropDialog by remember { mutableStateOf(false) }
 
     val persist: (Uri) -> Unit = { picked ->
         scope.launch {
@@ -119,14 +143,38 @@ fun WallpaperScreen() {
         }
     }
 
+    val persistWorkCard: (Uri) -> Unit = { picked ->
+        scope.launch {
+            isSaving = true
+            val ok = WallpaperManager.saveWorkCardBackground(context, picked)
+            isSaving = false
+            snackbarHost.showSnackbar(
+                context.getString(
+                    if (ok) R.string.wallpaper_work_card_saved else R.string.wallpaper_work_card_save_failed
+                )
+            )
+        }
+    }
+
     val cropLauncher = rememberSystemCropLauncher(cacheName = "wallpaper_crop_cache") { cropped ->
         persist(cropped)
+    }
+
+    val workCardCropLauncher = rememberSystemCropLauncher(cacheName = "work_card_crop_cache") { cropped ->
+        persistWorkCard(cropped)
     }
 
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             pendingCrop = uri
             showCropDialog = true
+        }
+    }
+
+    val pickWorkCardLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            pendingWorkCardCrop = uri
+            showWorkCardCropDialog = true
         }
     }
 
@@ -198,6 +246,46 @@ fun WallpaperScreen() {
         )
     }
 
+    if (showWorkCardCropDialog) {
+        val target = pendingWorkCardCrop
+        AlertDialog(
+            onDismissRequest = {
+                showWorkCardCropDialog = false
+                pendingWorkCardCrop = null
+            },
+            title = { Text(stringResource(R.string.wallpaper_crop_title)) },
+            text = { Text(stringResource(R.string.wallpaper_crop_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showWorkCardCropDialog = false
+                    pendingWorkCardCrop = null
+                    if (target != null) {
+                        val launched = runCatching { workCardCropLauncher.launch(target) }.isSuccess
+                        if (!launched) {
+                            scope.launch {
+                                snackbarHost.showSnackbar(
+                                    context.getString(R.string.wallpaper_crop_unsupported)
+                                )
+                            }
+                            persistWorkCard(target)
+                        }
+                    }
+                }) {
+                    Text(stringResource(R.string.wallpaper_crop_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showWorkCardCropDialog = false
+                    pendingWorkCardCrop = null
+                    if (target != null) persistWorkCard(target)
+                }) {
+                    Text(stringResource(R.string.wallpaper_crop_direct))
+                }
+            },
+        )
+    }
+
     val state = WallpaperUiState(
         enabled = WallpaperConfig.enabled,
         hasImage = !WallpaperConfig.uri.isNullOrEmpty(),
@@ -209,6 +297,16 @@ fun WallpaperScreen() {
         dayDim = WallpaperConfig.dayDim,
         nightDim = WallpaperConfig.nightDim,
         useWallpaperColor = WallpaperConfig.useWallpaperColor,
+        workCardBackgroundEnabled = WallpaperConfig.workCardBackgroundEnabled,
+        workCardHasImage = !WallpaperConfig.workCardBackgroundUri.isNullOrEmpty(),
+        workCardOpacity = WallpaperConfig.workCardOpacity,
+        workCardDim = WallpaperConfig.workCardDim,
+        workCardDualOpacityEnabled = WallpaperConfig.workCardDualOpacityEnabled,
+        workCardDayOpacity = WallpaperConfig.workCardDayOpacity,
+        workCardNightOpacity = WallpaperConfig.workCardNightOpacity,
+        workCardCheckHidden = WallpaperConfig.workCardCheckHidden,
+        workCardTextHidden = WallpaperConfig.workCardTextHidden,
+        workCardModeHidden = WallpaperConfig.workCardModeHidden,
         isSaving = isSaving,
     )
 
@@ -253,6 +351,47 @@ fun WallpaperScreen() {
             if (enabled) {
                 scope.launch(Dispatchers.IO) { WallpaperManager.refreshDerivedIfMissing(context) }
             }
+        },
+        onToggleWorkCardBackground = { enabled ->
+            WallpaperConfig.updateWorkCardBackgroundEnabled(enabled)
+            WallpaperConfig.save(context)
+        },
+        onPickWorkCardImage = { pickWorkCardLauncher.launch("image/*") },
+        onClearWorkCardImage = {
+            WallpaperManager.clearWorkCardBackground(context)
+            scope.launch { snackbarHost.showSnackbar(context.getString(R.string.wallpaper_work_card_removed)) }
+        },
+        onSetWorkCardOpacity = {
+            WallpaperConfig.updateWorkCardOpacity(it)
+            WallpaperConfig.save(context)
+        },
+        onSetWorkCardDim = {
+            WallpaperConfig.updateWorkCardDim(it)
+            WallpaperConfig.save(context)
+        },
+        onToggleWorkCardDualOpacity = {
+            WallpaperConfig.updateWorkCardDualOpacityEnabled(it)
+            WallpaperConfig.save(context)
+        },
+        onSetWorkCardDayOpacity = {
+            WallpaperConfig.updateWorkCardDayOpacity(it)
+            WallpaperConfig.save(context)
+        },
+        onSetWorkCardNightOpacity = {
+            WallpaperConfig.updateWorkCardNightOpacity(it)
+            WallpaperConfig.save(context)
+        },
+        onToggleWorkCardCheckHidden = {
+            WallpaperConfig.updateWorkCardCheckHidden(it)
+            WallpaperConfig.save(context)
+        },
+        onToggleWorkCardTextHidden = {
+            WallpaperConfig.updateWorkCardTextHidden(it)
+            WallpaperConfig.save(context)
+        },
+        onToggleWorkCardModeHidden = {
+            WallpaperConfig.updateWorkCardModeHidden(it)
+            WallpaperConfig.save(context)
         },
         onExport = { exportLauncher.launch(FolkThemeIO.FILE_NAME) },
         onImport = { importLauncher.launch("*/*") },
@@ -379,6 +518,49 @@ fun WallpaperScreenMaterial(
                                 onValueChange = actions.onSetDim,
                             )
                         }
+                    }
+                }
+
+                FolkWallpaperSurface(
+                    role = WallpaperSurfaceRole.Group,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
+                    shape = MaterialTheme.shapes.large,
+                    fallbackColor = MaterialTheme.colorScheme.surfaceBright,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.wallpaper_work_card_section),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        WorkCardBackgroundSettings(
+                            enabled = state.workCardBackgroundEnabled,
+                            hasImage = state.workCardHasImage,
+                            opacity = state.workCardOpacity,
+                            dim = state.workCardDim,
+                            dualOpacityEnabled = state.workCardDualOpacityEnabled,
+                            dayOpacity = state.workCardDayOpacity,
+                            nightOpacity = state.workCardNightOpacity,
+                            checkHidden = state.workCardCheckHidden,
+                            textHidden = state.workCardTextHidden,
+                            modeHidden = state.workCardModeHidden,
+                            onEnabledChange = actions.onToggleWorkCardBackground,
+                            onPickImage = actions.onPickWorkCardImage,
+                            onClearImage = actions.onClearWorkCardImage,
+                            onOpacityChange = actions.onSetWorkCardOpacity,
+                            onDimChange = actions.onSetWorkCardDim,
+                            onDualOpacityChange = actions.onToggleWorkCardDualOpacity,
+                            onDayOpacityChange = actions.onSetWorkCardDayOpacity,
+                            onNightOpacityChange = actions.onSetWorkCardNightOpacity,
+                            onCheckHiddenChange = actions.onToggleWorkCardCheckHidden,
+                            onTextHiddenChange = actions.onToggleWorkCardTextHidden,
+                            onModeHiddenChange = actions.onToggleWorkCardModeHidden,
+                        )
                     }
                 }
 
