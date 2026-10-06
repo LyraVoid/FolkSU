@@ -101,6 +101,7 @@ import me.weishu.kernelsu.ui.viewmodel.MainPagerConfig
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
 import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
+import me.weishu.kernelsu.wallpaper.LocalWallpaperPage
 import me.weishu.kernelsu.wallpaper.WallpaperBackgroundLayer
 import me.weishu.kernelsu.ui.theme.FontConfig
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
@@ -165,6 +166,7 @@ class MainActivity : ComponentActivity() {
                 LocalEnableNavigationBadge provides uiState.enableNavigationBadge,
                 LocalModuleDescriptionMaxLines provides uiState.moduleDescriptionMaxLines,
                 LocalHomeLayoutStyle provides uiState.homeLayoutStyle,
+                LocalWallpaperPage provides selectedMainPage,
             ) {
                 KernelSUTheme(appSettings = appSettings) {
                     IntentDispatcher(intentChannel = intentChannel)

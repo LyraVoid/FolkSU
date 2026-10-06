@@ -361,6 +361,13 @@
     <string name="wallpaper_title">Wallpaper</string>
     <string name="wallpaper_enable">Enable wallpaper</string>
     <string name="wallpaper_enable_summary">Show a custom image behind the interface</string>
+    <string name="wallpaper_multi_background_mode">Multi-page background</string>
+    <string name="wallpaper_multi_background_mode_summary">Use a different background for each page</string>
+    <string name="wallpaper_select_home_background">Home page background</string>
+    <string name="wallpaper_select_superuser_background">Superuser background</string>
+    <string name="wallpaper_select_module_background">Module background</string>
+    <string name="wallpaper_select_settings_background">Settings background</string>
+    <string name="wallpaper_background_selected">Background selected</string>
     <string name="wallpaper_pick">Choose image</string>
     <string name="wallpaper_change">Change image</string>
     <string name="wallpaper_clear">Remove wallpaper</string>

@@ -21,6 +21,10 @@ object WallpaperManager {
 
     private const val FILENAME_BASE = "wallpaper"
     private const val WORK_CARD_FILENAME_BASE = "work_card_background"
+    private const val PAGE_HOME_FILENAME_BASE = "wallpaper_home"
+    private const val PAGE_SUPERUSER_FILENAME_BASE = "wallpaper_superuser"
+    private const val PAGE_MODULE_FILENAME_BASE = "wallpaper_module"
+    private const val PAGE_SETTINGS_FILENAME_BASE = "wallpaper_settings"
     private val KNOWN_EXTENSIONS = listOf(".jpg", ".jpeg", ".png", ".webp", ".gif")
 
     /** Copies the picked image into app storage, extracts its color/luminance and enables it. */
@@ -76,6 +80,85 @@ object WallpaperManager {
         WallpaperConfig.updateWorkCardBackgroundUri(null)
         WallpaperConfig.updateWorkCardBackgroundEnabled(false)
         WallpaperConfig.save(context)
+    }
+
+    /**
+     * Copies the picked image into app storage as the background for [page] (0..3).
+     *
+     * Extracts the page's luminance and seed, then turns multi mode and the master wallpaper switch
+     * on so the new image is immediately visible. Unknown page indexes are ignored.
+     */
+    suspend fun savePageBackground(context: Context, page: Int, source: Uri): Boolean =
+        withContext(Dispatchers.IO) {
+            val base = pageFilenameBase(page) ?: return@withContext false
+            runCatching {
+                val ext = resolveExtension(context, source)
+                clearPageFiles(context, base)
+                val target = File(context.filesDir, "$base$ext")
+                if (!copyToFile(context, source, target)) return@runCatching false
+                val stamped = "${Uri.fromFile(target)}?t=${System.currentTimeMillis()}"
+                updatePageUri(page, stamped)
+                updatePageLuminance(page, computeLuminance(target) ?: -1f)
+                updatePageSeed(page, computeSeed(target) ?: 0)
+                WallpaperConfig.updateMultiBackgroundEnabled(true)
+                WallpaperConfig.updateEnabled(true)
+                WallpaperConfig.save(context)
+                true
+            }.getOrDefault(false)
+        }
+
+    /** Deletes [page]'s stored image and clears its URI/derived values. Unknown indexes are ignored. */
+    fun clearPageBackground(context: Context, page: Int) {
+        val base = pageFilenameBase(page) ?: return
+        clearPageFiles(context, base)
+        updatePageUri(page, null)
+        updatePageLuminance(page, -1f)
+        updatePageSeed(page, 0)
+        WallpaperConfig.save(context)
+    }
+
+    /** File-name stem for a page background, or null when [page] is out of range. */
+    private fun pageFilenameBase(page: Int): String? = when (page) {
+        WallpaperConfig.PAGE_HOME -> PAGE_HOME_FILENAME_BASE
+        WallpaperConfig.PAGE_SUPERUSER -> PAGE_SUPERUSER_FILENAME_BASE
+        WallpaperConfig.PAGE_MODULE -> PAGE_MODULE_FILENAME_BASE
+        WallpaperConfig.PAGE_SETTINGS -> PAGE_SETTINGS_FILENAME_BASE
+        else -> null
+    }
+
+    private fun updatePageUri(page: Int, value: String?) {
+        when (page) {
+            WallpaperConfig.PAGE_HOME -> WallpaperConfig.updateHomeBackgroundUri(value)
+            WallpaperConfig.PAGE_SUPERUSER -> WallpaperConfig.updateSuperuserBackgroundUri(value)
+            WallpaperConfig.PAGE_MODULE -> WallpaperConfig.updateModuleBackgroundUri(value)
+            WallpaperConfig.PAGE_SETTINGS -> WallpaperConfig.updateSettingsBackgroundUri(value)
+        }
+    }
+
+    private fun updatePageLuminance(page: Int, value: Float) {
+        when (page) {
+            WallpaperConfig.PAGE_HOME -> WallpaperConfig.updateHomeBackgroundLuminance(value)
+            WallpaperConfig.PAGE_SUPERUSER -> WallpaperConfig.updateSuperuserBackgroundLuminance(value)
+            WallpaperConfig.PAGE_MODULE -> WallpaperConfig.updateModuleBackgroundLuminance(value)
+            WallpaperConfig.PAGE_SETTINGS -> WallpaperConfig.updateSettingsBackgroundLuminance(value)
+        }
+    }
+
+    private fun updatePageSeed(page: Int, value: Int) {
+        when (page) {
+            WallpaperConfig.PAGE_HOME -> WallpaperConfig.updateHomeBackgroundSeed(value)
+            WallpaperConfig.PAGE_SUPERUSER -> WallpaperConfig.updateSuperuserBackgroundSeed(value)
+            WallpaperConfig.PAGE_MODULE -> WallpaperConfig.updateModuleBackgroundSeed(value)
+            WallpaperConfig.PAGE_SETTINGS -> WallpaperConfig.updateSettingsBackgroundSeed(value)
+        }
+    }
+
+    /** Deletes every stored file variant for a page background. */
+    private fun clearPageFiles(context: Context, base: String) {
+        KNOWN_EXTENSIONS.forEach { ext ->
+            val file = File(context.filesDir, "$base$ext")
+            if (file.exists()) file.delete()
+        }
     }
 
     /** Backfills color/luminance for a wallpaper that was restored without derived values. */

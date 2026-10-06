@@ -30,7 +30,9 @@ import java.io.File
  */
 @Composable
 fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
-    val uri = WallpaperConfig.activeUri ?: return
+    // The master switch gates every page, so a page without its own image renders nothing.
+    if (!WallpaperConfig.enabled) return
+    val uri = WallpaperConfig.pageUri(LocalWallpaperPage.current) ?: return
     val blurRadius = WallpaperConfig.blur
     val scrim = (LocalWallpaperDim.current ?: WallpaperConfig.effectiveDim(isInDarkTheme()))
         .coerceIn(0f, 1f)

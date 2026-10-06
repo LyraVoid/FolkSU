@@ -56,6 +56,7 @@ private object MainWallpaperAsset : ThemedAsset {
         json.put("isDualBackgroundDimEnabled", WallpaperConfig.dualDimEnabled)
         json.put("backgroundDayDim", WallpaperConfig.dayDim.toDouble())
         json.put("backgroundNightDim", WallpaperConfig.nightDim.toDouble())
+        json.put("isMultiBackgroundEnabled", WallpaperConfig.multiBackgroundEnabled)
     }
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
@@ -67,6 +68,11 @@ private object MainWallpaperAsset : ThemedAsset {
         } else {
             WallpaperManager.clear(context)
         }
+        // Apply before the per-page assets so a multi-mode theme is remembered even when no page
+        // image survives; each page asset still turns multi mode on when it restores an image.
+        WallpaperConfig.updateMultiBackgroundEnabled(
+            json.optBoolean("isMultiBackgroundEnabled", WallpaperConfig.multiBackgroundEnabled)
+        )
         WallpaperConfig.updateOpacity(
             json.optDouble("backgroundOpacity", WallpaperConfig.opacity.toDouble()).toFloat()
         )
@@ -147,6 +153,80 @@ private object WorkCardBackgroundAsset : ThemedAsset {
 }
 
 /**
+ * The stored file for a page background, or null when multi mode is off or the page is unset.
+ *
+ * The page assets below carry only a zip entry each: the shared theme format stores no per-page
+ * numbers, and their base names are shared with the wider theme ecosystem for interop.
+ */
+private fun currentPageFile(uri: String?): File? {
+    if (!WallpaperConfig.multiBackgroundEnabled) return null
+    val path = uri?.let { Uri.parse(it).path } ?: return null
+    val file = File(path)
+    return if (file.exists() && file.length() > 0L) file else null
+}
+
+/** Restores a page background from [file], or clears that page when the theme has none. */
+private suspend fun applyPageBackground(context: Context, page: Int, file: File?) {
+    if (file != null) {
+        WallpaperManager.savePageBackground(context, page, Uri.fromFile(file))
+    } else {
+        WallpaperManager.clearPageBackground(context, page)
+    }
+}
+
+private object HomeBackgroundAsset : ThemedAsset {
+    override val base = "background_home"
+
+    override fun currentFile(context: Context): File? =
+        currentPageFile(WallpaperConfig.homeBackgroundUri)
+
+    override fun writeConfig(json: JSONObject) = Unit
+
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        applyPageBackground(context, WallpaperConfig.PAGE_HOME, file)
+    }
+}
+
+private object SuperuserBackgroundAsset : ThemedAsset {
+    override val base = "background_superuser"
+
+    override fun currentFile(context: Context): File? =
+        currentPageFile(WallpaperConfig.superuserBackgroundUri)
+
+    override fun writeConfig(json: JSONObject) = Unit
+
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        applyPageBackground(context, WallpaperConfig.PAGE_SUPERUSER, file)
+    }
+}
+
+private object ModuleBackgroundAsset : ThemedAsset {
+    override val base = "background_system_module"
+
+    override fun currentFile(context: Context): File? =
+        currentPageFile(WallpaperConfig.moduleBackgroundUri)
+
+    override fun writeConfig(json: JSONObject) = Unit
+
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        applyPageBackground(context, WallpaperConfig.PAGE_MODULE, file)
+    }
+}
+
+private object SettingsBackgroundAsset : ThemedAsset {
+    override val base = "background_settings"
+
+    override fun currentFile(context: Context): File? =
+        currentPageFile(WallpaperConfig.settingsBackgroundUri)
+
+    override fun writeConfig(json: JSONObject) = Unit
+
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        applyPageBackground(context, WallpaperConfig.PAGE_SETTINGS, file)
+    }
+}
+
+/**
  * The app font. Only [FontMode.CUSTOM] owns a file; the other two modes are pure configuration, so
  * they round-trip through `theme.json` alone.
  *
@@ -199,6 +279,10 @@ object FolkThemeIO {
     private val assets: List<ThemedAsset> = listOf(
         MainWallpaperAsset,
         WorkCardBackgroundAsset,
+        HomeBackgroundAsset,
+        SuperuserBackgroundAsset,
+        ModuleBackgroundAsset,
+        SettingsBackgroundAsset,
         FontAsset,
     )
 

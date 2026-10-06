@@ -355,6 +355,13 @@
     <string name="wallpaper_title">壁纸</string>
     <string name="wallpaper_enable">启用壁纸</string>
     <string name="wallpaper_enable_summary">在界面底层显示自定义图片</string>
+    <string name="wallpaper_multi_background_mode">多页面背景</string>
+    <string name="wallpaper_multi_background_mode_summary">为不同页面设置不同的背景图片</string>
+    <string name="wallpaper_select_home_background">主页背景</string>
+    <string name="wallpaper_select_superuser_background">超级用户背景</string>
+    <string name="wallpaper_select_module_background">模块背景</string>
+    <string name="wallpaper_select_settings_background">设置背景</string>
+    <string name="wallpaper_background_selected">已选择背景</string>
     <string name="wallpaper_pick">选择图片</string>
     <string name="wallpaper_change">更换图片</string>
     <string name="wallpaper_clear">移除壁纸</string>

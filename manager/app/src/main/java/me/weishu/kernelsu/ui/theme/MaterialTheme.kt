@@ -19,6 +19,7 @@ import com.materialkolor.PaletteStyle
 import me.weishu.kernelsu.ui.webui.MonetColorsProvider
 import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
 import me.weishu.kernelsu.wallpaper.LocalWallpaperDim
+import me.weishu.kernelsu.wallpaper.LocalWallpaperPage
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.adaptColorScheme
 import me.weishu.kernelsu.wallpaper.guardedDim
@@ -45,11 +46,13 @@ fun MaterialKernelSUTheme(
     val amoledMode = appSettings.colorMode.isAmoled
     val dynamicColor = appSettings.keyColor == 0
 
+    val wallpaperPage = LocalWallpaperPage.current
     val wallpaperActive = WallpaperConfig.isActive
+    val pageSeed = WallpaperConfig.pageSeed(wallpaperPage)
     val wallpaperSeed = if (
-        wallpaperActive && WallpaperConfig.useWallpaperColor && WallpaperConfig.derivedSeed != 0
+        wallpaperActive && WallpaperConfig.useWallpaperColor && pageSeed != 0
     ) {
-        Color(WallpaperConfig.derivedSeed)
+        Color(pageSeed)
     } else {
         Color.Unspecified
     }
@@ -70,7 +73,7 @@ fun MaterialKernelSUTheme(
     // In wallpaper mode the neutral roles follow the wallpaper's effective brightness so text stays
     // legible; a dark theme never flips to light, readability there is left to the night dim.
     val wallpaperDim = WallpaperConfig.effectiveDim(darkTheme)
-    val darkNeutral = useDarkNeutral(darkTheme, WallpaperConfig.derivedLuminance, wallpaperDim)
+    val darkNeutral = useDarkNeutral(darkTheme, WallpaperConfig.pageLuminance(wallpaperPage), wallpaperDim)
     val neutralScheme = rememberKernelSUColorScheme(
         seedColor = baseSeed,
         isDark = darkNeutral,

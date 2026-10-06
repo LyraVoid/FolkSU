@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
@@ -66,6 +67,9 @@ import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 import kotlin.math.roundToInt
 
+/** Sentinel for "no per-page background is being picked". */
+private const val NO_PAGE = -1
+
 @Immutable
 data class WallpaperUiState(
     val enabled: Boolean,
@@ -78,6 +82,11 @@ data class WallpaperUiState(
     val dayDim: Float,
     val nightDim: Float,
     val useWallpaperColor: Boolean,
+    val multiBackgroundEnabled: Boolean,
+    val homeBackgroundSelected: Boolean,
+    val superuserBackgroundSelected: Boolean,
+    val moduleBackgroundSelected: Boolean,
+    val settingsBackgroundSelected: Boolean,
     val workCardBackgroundEnabled: Boolean,
     val workCardHasImage: Boolean,
     val workCardOpacity: Float,
@@ -104,6 +113,11 @@ data class WallpaperScreenActions(
     val onSetDayDim: (Float) -> Unit,
     val onSetNightDim: (Float) -> Unit,
     val onToggleUseWallpaperColor: (Boolean) -> Unit,
+    val onToggleMultiBackground: (Boolean) -> Unit,
+    val onPickHomeBackground: () -> Unit,
+    val onPickSuperuserBackground: () -> Unit,
+    val onPickModuleBackground: () -> Unit,
+    val onPickSettingsBackground: () -> Unit,
     val onToggleWorkCardBackground: (Boolean) -> Unit,
     val onPickWorkCardImage: () -> Unit,
     val onClearWorkCardImage: () -> Unit,
@@ -131,6 +145,9 @@ fun WallpaperScreen() {
     var showCropDialog by remember { mutableStateOf(false) }
     var pendingWorkCardCrop by remember { mutableStateOf<Uri?>(null) }
     var showWorkCardCropDialog by remember { mutableStateOf(false) }
+    var pendingPage by remember { mutableStateOf(NO_PAGE) }
+    var pendingPageCrop by remember { mutableStateOf<Uri?>(null) }
+    var showPageCropDialog by remember { mutableStateOf(false) }
 
     val persist: (Uri) -> Unit = { picked ->
         scope.launch {
@@ -156,8 +173,23 @@ fun WallpaperScreen() {
         }
     }
 
+    val persistPage: (Int, Uri) -> Unit = { page, picked ->
+        scope.launch {
+            isSaving = true
+            val ok = WallpaperManager.savePageBackground(context, page, picked)
+            isSaving = false
+            snackbarHost.showSnackbar(
+                context.getString(if (ok) R.string.wallpaper_saved else R.string.wallpaper_save_failed)
+            )
+        }
+    }
+
     val cropLauncher = rememberSystemCropLauncher(cacheName = "wallpaper_crop_cache") { cropped ->
         persist(cropped)
+    }
+
+    val pageCropLauncher = rememberSystemCropLauncher(cacheName = "wallpaper_page_crop_cache") { cropped ->
+        persistPage(pendingPage, cropped)
     }
 
     val workCardCropLauncher = rememberSystemCropLauncher(cacheName = "work_card_crop_cache") { cropped ->
@@ -175,6 +207,13 @@ fun WallpaperScreen() {
         if (uri != null) {
             pendingWorkCardCrop = uri
             showWorkCardCropDialog = true
+        }
+    }
+
+    val pickPageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            pendingPageCrop = uri
+            showPageCropDialog = true
         }
     }
 
@@ -286,6 +325,47 @@ fun WallpaperScreen() {
         )
     }
 
+    if (showPageCropDialog) {
+        val target = pendingPageCrop
+        AlertDialog(
+            onDismissRequest = {
+                showPageCropDialog = false
+                pendingPageCrop = null
+                pendingPage = NO_PAGE
+            },
+            title = { Text(stringResource(R.string.wallpaper_crop_title)) },
+            text = { Text(stringResource(R.string.wallpaper_crop_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPageCropDialog = false
+                    pendingPageCrop = null
+                    if (target != null) {
+                        val launched = runCatching { pageCropLauncher.launch(target) }.isSuccess
+                        if (!launched) {
+                            scope.launch {
+                                snackbarHost.showSnackbar(
+                                    context.getString(R.string.wallpaper_crop_unsupported)
+                                )
+                            }
+                            persistPage(pendingPage, target)
+                        }
+                    }
+                }) {
+                    Text(stringResource(R.string.wallpaper_crop_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPageCropDialog = false
+                    pendingPageCrop = null
+                    if (target != null) persistPage(pendingPage, target)
+                }) {
+                    Text(stringResource(R.string.wallpaper_crop_direct))
+                }
+            },
+        )
+    }
+
     val state = WallpaperUiState(
         enabled = WallpaperConfig.enabled,
         hasImage = !WallpaperConfig.uri.isNullOrEmpty(),
@@ -297,6 +377,11 @@ fun WallpaperScreen() {
         dayDim = WallpaperConfig.dayDim,
         nightDim = WallpaperConfig.nightDim,
         useWallpaperColor = WallpaperConfig.useWallpaperColor,
+        multiBackgroundEnabled = WallpaperConfig.multiBackgroundEnabled,
+        homeBackgroundSelected = !WallpaperConfig.homeBackgroundUri.isNullOrEmpty(),
+        superuserBackgroundSelected = !WallpaperConfig.superuserBackgroundUri.isNullOrEmpty(),
+        moduleBackgroundSelected = !WallpaperConfig.moduleBackgroundUri.isNullOrEmpty(),
+        settingsBackgroundSelected = !WallpaperConfig.settingsBackgroundUri.isNullOrEmpty(),
         workCardBackgroundEnabled = WallpaperConfig.workCardBackgroundEnabled,
         workCardHasImage = !WallpaperConfig.workCardBackgroundUri.isNullOrEmpty(),
         workCardOpacity = WallpaperConfig.workCardOpacity,
@@ -351,6 +436,26 @@ fun WallpaperScreen() {
             if (enabled) {
                 scope.launch(Dispatchers.IO) { WallpaperManager.refreshDerivedIfMissing(context) }
             }
+        },
+        onToggleMultiBackground = { enabled ->
+            WallpaperConfig.updateMultiBackgroundEnabled(enabled)
+            WallpaperConfig.save(context)
+        },
+        onPickHomeBackground = {
+            pendingPage = WallpaperConfig.PAGE_HOME
+            pickPageLauncher.launch("image/*")
+        },
+        onPickSuperuserBackground = {
+            pendingPage = WallpaperConfig.PAGE_SUPERUSER
+            pickPageLauncher.launch("image/*")
+        },
+        onPickModuleBackground = {
+            pendingPage = WallpaperConfig.PAGE_MODULE
+            pickPageLauncher.launch("image/*")
+        },
+        onPickSettingsBackground = {
+            pendingPage = WallpaperConfig.PAGE_SETTINGS
+            pickPageLauncher.launch("image/*")
         },
         onToggleWorkCardBackground = { enabled ->
             WallpaperConfig.updateWorkCardBackgroundEnabled(enabled)
@@ -439,31 +544,77 @@ fun WallpaperScreenMaterial(
                         )
                     }
                     add {
-                        SegmentedListItem(
-                            onClick = actions.onPickImage,
-                            enabled = !state.isSaving,
-                            headlineContent = {
-                                Text(stringResource(if (state.hasImage) R.string.wallpaper_change else R.string.wallpaper_pick))
-                            },
-                            leadingContent = { Icon(Icons.Filled.Image, null) },
-                            trailingContent = {
-                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
-                            },
+                        SegmentedSwitchItem(
+                            icon = Icons.Filled.GridView,
+                            title = stringResource(R.string.wallpaper_multi_background_mode),
+                            summary = stringResource(R.string.wallpaper_multi_background_mode_summary),
+                            checked = state.multiBackgroundEnabled,
+                            onCheckedChange = actions.onToggleMultiBackground,
                         )
                     }
-                    if (state.hasImage) {
+                    if (state.multiBackgroundEnabled) {
+                        add {
+                            WallpaperPagePickItem(
+                                titleRes = R.string.wallpaper_select_home_background,
+                                selected = state.homeBackgroundSelected,
+                                enabled = !state.isSaving,
+                                onClick = actions.onPickHomeBackground,
+                            )
+                        }
+                        add {
+                            WallpaperPagePickItem(
+                                titleRes = R.string.wallpaper_select_superuser_background,
+                                selected = state.superuserBackgroundSelected,
+                                enabled = !state.isSaving,
+                                onClick = actions.onPickSuperuserBackground,
+                            )
+                        }
+                        add {
+                            WallpaperPagePickItem(
+                                titleRes = R.string.wallpaper_select_module_background,
+                                selected = state.moduleBackgroundSelected,
+                                enabled = !state.isSaving,
+                                onClick = actions.onPickModuleBackground,
+                            )
+                        }
+                        add {
+                            WallpaperPagePickItem(
+                                titleRes = R.string.wallpaper_select_settings_background,
+                                selected = state.settingsBackgroundSelected,
+                                enabled = !state.isSaving,
+                                onClick = actions.onPickSettingsBackground,
+                            )
+                        }
+                    } else {
                         add {
                             SegmentedListItem(
-                                onClick = actions.onClear,
-                                headlineContent = { Text(stringResource(R.string.wallpaper_clear)) },
-                                leadingContent = { Icon(Icons.Filled.Delete, null) },
+                                onClick = actions.onPickImage,
+                                enabled = !state.isSaving,
+                                headlineContent = {
+                                    Text(stringResource(if (state.hasImage) R.string.wallpaper_change else R.string.wallpaper_pick))
+                                },
+                                leadingContent = { Icon(Icons.Filled.Image, null) },
+                                trailingContent = {
+                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                                },
                             )
+                        }
+                        if (state.hasImage) {
+                            add {
+                                SegmentedListItem(
+                                    onClick = actions.onClear,
+                                    headlineContent = { Text(stringResource(R.string.wallpaper_clear)) },
+                                    leadingContent = { Icon(Icons.Filled.Delete, null) },
+                                )
+                            }
                         }
                     }
                 },
             )
 
-            if (state.enabled && state.hasImage) {
+            // The appearance controls apply to every page, so they must stay reachable in multi mode
+            // even though the single wallpaper is unused there.
+            if (state.enabled && (state.hasImage || state.multiBackgroundEnabled)) {
                 FolkWallpaperSurface(
                     role = WallpaperSurfaceRole.Group,
                     modifier = Modifier
@@ -652,4 +803,26 @@ private fun SliderSetting(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+/** A row that picks the background image for one main page. */
+@Composable
+private fun WallpaperPagePickItem(
+    titleRes: Int,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    SegmentedListItem(
+        onClick = onClick,
+        enabled = enabled,
+        headlineContent = { Text(stringResource(titleRes)) },
+        supportingContent = if (selected) {
+            { Text(stringResource(R.string.wallpaper_background_selected)) }
+        } else {
+            null
+        },
+        leadingContent = { Icon(Icons.Filled.Image, null) },
+        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) },
+    )
 }
