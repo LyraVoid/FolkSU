@@ -406,4 +406,17 @@
     <string name="wallpaper_work_card_saved">工作卡片图片已更新</string>
     <string name="wallpaper_work_card_save_failed">图片加载失败</string>
     <string name="wallpaper_work_card_removed">工作卡片图片已移除</string>
+    <string name="font_title">字体</string>
+    <string name="settings_font_summary">自定义字体配置</string>
+    <string name="font_mode_app">软件默认</string>
+    <string name="font_mode_system">系统默认</string>
+    <string name="font_mode_custom">自定义</string>
+    <string name="font_select_file">选择字体文件</string>
+    <string name="font_restore_default">恢复默认字体</string>
+    <string name="font_restore_default_confirm">确定要恢复默认字体吗？</string>
+    <string name="font_restored">已恢复默认字体</string>
+    <string name="font_applied">字体已应用</string>
+    <string name="font_apply_failed">字体应用失败</string>
+    <string name="font_confirm">确定</string>
+    <string name="font_cancel">取消</string>
 </resources>

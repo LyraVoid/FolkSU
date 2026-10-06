@@ -412,4 +412,17 @@
     <string name="wallpaper_work_card_saved">Work card image updated</string>
     <string name="wallpaper_work_card_save_failed">Failed to load the image</string>
     <string name="wallpaper_work_card_removed">Work card image removed</string>
+    <string name="font_title">Fonts</string>
+    <string name="settings_font_summary">Custom font configuration</string>
+    <string name="font_mode_app">App default</string>
+    <string name="font_mode_system">System default</string>
+    <string name="font_mode_custom">Custom</string>
+    <string name="font_select_file">Select font file</string>
+    <string name="font_restore_default">Restore default font</string>
+    <string name="font_restore_default_confirm">Are you sure you want to restore the default font?</string>
+    <string name="font_restored">Default font restored</string>
+    <string name="font_applied">Font applied</string>
+    <string name="font_apply_failed">Failed to apply the font</string>
+    <string name="font_confirm">Confirm</string>
+    <string name="font_cancel">Cancel</string>
 </resources>

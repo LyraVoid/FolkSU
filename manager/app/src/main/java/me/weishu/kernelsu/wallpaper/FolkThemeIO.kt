@@ -3,6 +3,8 @@ package me.weishu.kernelsu.wallpaper
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import me.weishu.kernelsu.ui.theme.FontConfig
+import me.weishu.kernelsu.ui.theme.FontMode
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
@@ -145,6 +147,41 @@ private object WorkCardBackgroundAsset : ThemedAsset {
 }
 
 /**
+ * The app font. Only [FontMode.CUSTOM] owns a file; the other two modes are pure configuration, so
+ * they round-trip through `theme.json` alone.
+ *
+ * The key names and the `font.ttf` asset name are shared with the wider theme ecosystem, so a theme
+ * exported elsewhere imports here (and vice versa).
+ */
+private object FontAsset : ThemedAsset {
+    override val base = "font"
+
+    override fun currentFile(context: Context): File? {
+        if (FontConfig.fontMode != FontMode.CUSTOM) return null
+        val filename = FontConfig.customFontFilename ?: return null
+        val file = File(context.filesDir, filename)
+        return if (file.exists() && file.length() > 0L) file else null
+    }
+
+    override fun writeConfig(json: JSONObject) {
+        json.put("fontMode", FontConfig.fontMode.serializedName)
+        json.put("isFontEnabled", FontConfig.isCustomFontEnabled)
+    }
+
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        // Themes written before the three-mode setting only carry the legacy boolean.
+        val mode = FontMode.fromSerializedName(json.optString("fontMode").ifEmpty { null })
+            ?: if (json.optBoolean("isFontEnabled", false)) FontMode.CUSTOM else FontMode.SYSTEM_DEFAULT
+
+        when {
+            mode != FontMode.CUSTOM -> FontConfig.setFontMode(context, mode)
+            file != null -> FontConfig.applyCustomFont(context, file)
+            else -> FontConfig.setFontMode(context, FontMode.APP_DEFAULT)
+        }
+    }
+}
+
+/**
  * Reads and writes the `.fpt` background theme container.
  *
  * The container is `[16-byte IV][AES/CBC/PKCS5Padding(ZIP)]`; the zip holds `theme.json` plus one
@@ -162,6 +199,7 @@ object FolkThemeIO {
     private val assets: List<ThemedAsset> = listOf(
         MainWallpaperAsset,
         WorkCardBackgroundAsset,
+        FontAsset,
     )
 
     suspend fun exportBackground(context: Context, target: Uri, name: String): Boolean =

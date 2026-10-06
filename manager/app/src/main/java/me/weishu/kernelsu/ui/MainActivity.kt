@@ -86,6 +86,7 @@ import me.weishu.kernelsu.ui.screen.sulog.SulogScreen
 import me.weishu.kernelsu.ui.screen.superuser.SuperUserPager
 import me.weishu.kernelsu.ui.screen.template.AppProfileTemplateScreen
 import me.weishu.kernelsu.ui.screen.templateeditor.TemplateEditorScreen
+import me.weishu.kernelsu.ui.screen.font.FontScreen
 import me.weishu.kernelsu.ui.screen.wallpaper.WallpaperScreen
 import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.LocalColorMode
@@ -101,6 +102,7 @@ import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
 import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
 import me.weishu.kernelsu.wallpaper.WallpaperBackgroundLayer
+import me.weishu.kernelsu.ui.theme.FontConfig
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
 
 class MainActivity : ComponentActivity() {
@@ -126,6 +128,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) intent?.let { intentChannel.trySend(it) }
 
         WallpaperConfig.load(this)
+        FontConfig.load(this)
 
         setContent {
             val viewModel = viewModel<MainActivityViewModel>()
@@ -211,6 +214,7 @@ class MainActivity : ComponentActivity() {
                                 entry<Route.Module> { mainScreenEntry() }
                                 entry<Route.Settings> { mainScreenEntry() }
                                 entry<Route.Wallpaper> { WallpaperScreen() }
+                                entry<Route.Font> { FontScreen() }
                             },
                         )
                     }

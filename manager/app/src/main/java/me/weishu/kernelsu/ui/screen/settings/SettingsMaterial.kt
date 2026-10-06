@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
@@ -146,6 +147,20 @@ fun SettingPagerMaterial(
                             headlineContent = { Text(stringResource(id = R.string.wallpaper_title)) },
                             supportingContent = { Text(stringResource(id = R.string.settings_wallpaper_summary)) },
                             leadingContent = { Icon(Icons.Filled.Wallpaper, stringResource(id = R.string.wallpaper_title)) },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    null
+                                )
+                            }
+                        )
+                    }
+                    add {
+                        SegmentedListItem(
+                            onClick = actions.onOpenFont,
+                            headlineContent = { Text(stringResource(id = R.string.font_title)) },
+                            supportingContent = { Text(stringResource(id = R.string.settings_font_summary)) },
+                            leadingContent = { Icon(Icons.Filled.FontDownload, stringResource(id = R.string.font_title)) },
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,

@@ -36,10 +36,10 @@ fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
         .coerceIn(0f, 1f)
     val path = remember(uri) { Uri.parse(uri).path }
     val file = remember(path) { path?.let { File(it) } }
-    val animated = file?.let { isAnimatedImageFile(it) } == true
+    val animatedFile = file?.takeIf { isAnimatedImageFile(it) }
 
-    val image by produceState<ImageBitmap?>(initialValue = null, path, animated) {
-        value = if (animated) {
+    val image by produceState<ImageBitmap?>(initialValue = null, path, animatedFile) {
+        value = if (animatedFile != null) {
             null
         } else {
             withContext(Dispatchers.IO) {
@@ -49,12 +49,12 @@ fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
     }
 
     Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
-        if (animated && file != null) {
+        if (animatedFile != null) {
             // Animated wallpapers cannot go through the downsampled bitmap path, so they are handed
             // to the drawable view; the blur is applied as a render effect there.
             val blurPx = with(LocalDensity.current) { blurRadius.dp.toPx() }
             AnimatedFileImage(
-                file = file,
+                file = animatedFile,
                 modifier = Modifier.fillMaxSize(),
                 blurRadiusPx = blurPx,
             )
