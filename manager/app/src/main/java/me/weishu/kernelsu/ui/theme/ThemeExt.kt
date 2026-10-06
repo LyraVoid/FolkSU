@@ -32,7 +32,7 @@ fun ColorScheme.amoledBackground(amoled: Boolean): ColorScheme =
  * wallpaper: the same "not installed" card can render as the standard soft
  * `errorContainer` on one wallpaper and a loud saturated red on another. Attention
  * and destructive states must stay recognisable, so we keep the semantic error
- * role fixed (FolkPatch does the same in its themes).
+ * role fixed whatever the wallpaper does.
  */
 fun ColorScheme.withSemanticError(isDark: Boolean): ColorScheme = copy(
     error = if (isDark) Color(0xFFFFB4AB) else Color(0xFFBA1A1A),

@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,10 +48,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
@@ -66,9 +70,11 @@ import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
+import me.weishu.kernelsu.ui.component.material.folkPressScale
 import me.weishu.kernelsu.ui.component.rebootlistpopup.RebootListPopup
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkShape
+import me.weishu.kernelsu.ui.theme.FolkType
 
 @Composable
 fun HomePagerMaterial(
@@ -250,14 +256,14 @@ private fun CountCard(
             Column {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = FolkType.Summary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = count.toString(),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = FolkType.Numeral,
                     color = MaterialTheme.colorScheme.outline
                 )
             }
@@ -345,7 +351,7 @@ private fun StatusCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = statusTitle,
-                        style = MaterialTheme.typography.titleMedium
+                        style = FolkType.Title
                     )
                     if (ksuActive && state.isSafeMode) {
                         Spacer(Modifier.width(8.dp))
@@ -369,7 +375,7 @@ private fun StatusCard(
                     Text(
                         text = statusSummary,
                         modifier = Modifier.weight(1f, fill = false),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = FolkType.Summary,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (state.showCustomLkmBadge) {
@@ -408,7 +414,7 @@ private fun WarningCard(
         ) {
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium,
+                style = FolkType.Summary,
                 color = MaterialTheme.colorScheme.contentColorFor(containerColor)
             )
         }
@@ -452,10 +458,20 @@ private fun SupportLinkRow(
     subtitle: String,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .folkPressScale(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onClick()
+                },
+            )
             .padding(horizontal = 24.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -467,11 +483,11 @@ private fun SupportLinkRow(
         )
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            Text(text = title, style = FolkType.Summary)
             Spacer(Modifier.height(4.dp))
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
+                style = FolkType.Caption,
                 color = MaterialTheme.colorScheme.outline
             )
         }
@@ -563,10 +579,10 @@ private fun InfoRow(
         )
         Spacer(Modifier.width(16.dp))
         Column {
-            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Text(text = label, style = FolkType.Summary)
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
+                style = FolkType.Caption,
                 color = MaterialTheme.colorScheme.outline
             )
         }

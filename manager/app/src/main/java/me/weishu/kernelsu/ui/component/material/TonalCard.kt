@@ -1,7 +1,6 @@
 package me.weishu.kernelsu.ui.component.material
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.Card
@@ -14,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -32,28 +33,44 @@ fun TonalCard(
         containerColor = containerColor,
         contentColor = contentColor,
     )
+    val haptic = LocalHapticFeedback.current
     when {
         onLongClick != null -> Card(
             modifier = modifier
                 .clip(shape)
+                .folkPressScale(interactionSource, enabled)
                 .combinedClickable(
                     enabled = enabled,
-                    onClick = onClick ?: {},
-                    onLongClick = onLongClick,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onClick?.invoke()
+                    },
+                    onLongClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onLongClick()
+                    },
                     interactionSource = interactionSource,
-                    indication = LocalIndication.current,
+                    indication = null,
                 ),
             colors = colors,
             shape = shape,
         ) { content() }
 
         onClick != null -> Card(
-            onClick = onClick,
-            modifier = modifier,
-            enabled = enabled,
+            modifier = modifier
+                .clip(shape)
+                .folkPressScale(interactionSource, enabled)
+                .combinedClickable(
+                    enabled = enabled,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onClick()
+                    },
+                    interactionSource = interactionSource,
+                    indication = null,
+                ),
             colors = colors,
             shape = shape,
-            interactionSource = interactionSource,
         ) { content() }
 
         else -> Card(

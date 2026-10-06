@@ -139,6 +139,7 @@ import me.weishu.kernelsu.ui.component.material.ExpressiveSwitch
 import me.weishu.kernelsu.ui.component.material.SearchAppBar
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
 import me.weishu.kernelsu.ui.component.material.TonalCard
+import me.weishu.kernelsu.ui.component.material.folkPressScale
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.LocalModuleDescriptionMaxLines
 import me.weishu.kernelsu.ui.util.reboot
@@ -788,10 +789,15 @@ private fun ModuleItem(
                         .fillMaxWidth()
                         .then(
                             if (canOpenWebUi) {
-                                Modifier.clickable(
-                                    interactionSource = descriptionInteractionSource,
-                                    indication = null
-                                ) { expanded = !expanded }
+                                Modifier
+                                    .folkPressScale(descriptionInteractionSource)
+                                    .clickable(
+                                        interactionSource = descriptionInteractionSource,
+                                        indication = null
+                                    ) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        expanded = !expanded
+                                    }
                             } else {
                                 Modifier
                             }

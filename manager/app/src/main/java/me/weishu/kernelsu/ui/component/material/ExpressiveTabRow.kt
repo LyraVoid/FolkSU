@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
@@ -38,15 +40,20 @@ fun ExpressiveTabRow(
         tabs.forEachIndexed { index, label ->
             val selected = safeIndex == index
             val interactionSource = remember { MutableInteractionSource() }
+            val haptic = LocalHapticFeedback.current
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
+                    .folkPressScale(interactionSource)
                     .selectable(
                         selected = selected,
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Tab,
-                        onClick = { onTabClick(index) },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onTabClick(index)
+                        },
                     ),
                 contentAlignment = Alignment.Center,
             ) {

@@ -25,11 +25,13 @@ import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,6 +52,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -69,6 +72,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.zIndex
+import me.weishu.kernelsu.ui.theme.FolkMotion
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -169,14 +173,13 @@ fun SegmentedColumn(
             )
         }
 
-        val floatSpring = spring<Float>(SegmentedSpringDamping, SegmentedSpringStiffness)
         val dpSpring = spring<Dp>(SegmentedSpringDamping, SegmentedSpringStiffness)
 
         val progresses = entries.mapIndexed { index, entry ->
             key(entry.key ?: index) {
                 animateFloatAsState(
                     targetValue = if (entry.visible) 1f else 0f,
-                    animationSpec = floatSpring,
+                    animationSpec = FolkMotion.smoothSpring(),
                     label = "SegmentedProgress"
                 )
             }
@@ -284,6 +287,32 @@ fun SegmentedItemContainer(
     }
 }
 
+/**
+ * M3's [SegmentedListItem] hard-codes its ripple and has no `indication` parameter to turn it off,
+ * so a press reads through [folkPressScale] instead. The same [MutableInteractionSource] drives the
+ * scale and the row's own clickable, and a transparent ripple configuration stands in for
+ * `indication = null` on the row.
+ */
+@Composable
+private fun SegmentedRow(
+    modifier: Modifier,
+    clickable: Boolean,
+    enabled: Boolean,
+    interactionSource: MutableInteractionSource?,
+    content: @Composable (Modifier, MutableInteractionSource) -> Unit,
+) {
+    val pressedSource = interactionSource ?: remember { MutableInteractionSource() }
+    val rowModifier = if (clickable) modifier.folkPressScale(pressedSource, enabled) else modifier
+    val rippleConfiguration = if (clickable) {
+        RippleConfiguration(color = Color.Transparent)
+    } else {
+        LocalRippleConfiguration.current
+    }
+    CompositionLocalProvider(LocalRippleConfiguration provides rippleConfiguration) {
+        content(rowModifier, pressedSource)
+    }
+}
+
 @Composable
 fun SegmentedListItem(
     modifier: Modifier = Modifier,
@@ -298,21 +327,28 @@ fun SegmentedListItem(
     leadingContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
 ) {
-    SegmentedListItem(
-        onClick = onClick ?: {},
-        onLongClick = onLongClick,
-        enabled = enabled,
-        colors = colors,
-        interactionSource = interactionSource,
-        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+    SegmentedRow(
         modifier = modifier,
-        leadingContent = leadingContent,
-        trailingContent = trailingContent,
-        overlineContent = overlineContent,
-        supportingContent = supportingContent,
-        verticalAlignment = Alignment.CenterVertically,
-        content = headlineContent
-    )
+        clickable = onClick != null,
+        enabled = enabled,
+        interactionSource = interactionSource,
+    ) { rowModifier, source ->
+        SegmentedListItem(
+            onClick = onClick ?: {},
+            onLongClick = onLongClick,
+            enabled = enabled,
+            colors = colors,
+            interactionSource = source,
+            shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+            modifier = rowModifier,
+            leadingContent = leadingContent,
+            trailingContent = trailingContent,
+            overlineContent = overlineContent,
+            supportingContent = supportingContent,
+            verticalAlignment = Alignment.CenterVertically,
+            content = headlineContent
+        )
+    }
 }
 
 @Composable
@@ -330,22 +366,29 @@ fun SegmentedListItem(
     trailingContent: @Composable (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
 ) {
-    SegmentedListItem(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+    SegmentedRow(
         modifier = modifier,
+        clickable = true,
         enabled = enabled,
-        colors = colors,
         interactionSource = interactionSource,
-        leadingContent = leadingContent,
-        trailingContent = trailingContent,
-        overlineContent = overlineContent,
-        supportingContent = supportingContent,
-        verticalAlignment = Alignment.CenterVertically,
-        onLongClick = onLongClick,
-        content = headlineContent
-    )
+    ) { rowModifier, source ->
+        SegmentedListItem(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+            modifier = rowModifier,
+            enabled = enabled,
+            colors = colors,
+            interactionSource = source,
+            leadingContent = leadingContent,
+            trailingContent = trailingContent,
+            overlineContent = overlineContent,
+            supportingContent = supportingContent,
+            verticalAlignment = Alignment.CenterVertically,
+            onLongClick = onLongClick,
+            content = headlineContent
+        )
+    }
 }
 
 @Composable
@@ -363,22 +406,29 @@ fun SegmentedListItem(
     trailingContent: @Composable (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
 ) {
-    SegmentedListItem(
-        selected = selected,
-        onClick = onClick,
-        shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+    SegmentedRow(
         modifier = modifier,
+        clickable = true,
         enabled = enabled,
-        colors = colors,
         interactionSource = interactionSource,
-        leadingContent = leadingContent,
-        trailingContent = trailingContent,
-        overlineContent = overlineContent,
-        supportingContent = supportingContent,
-        verticalAlignment = Alignment.CenterVertically,
-        onLongClick = onLongClick,
-        content = headlineContent
-    )
+    ) { rowModifier, source ->
+        SegmentedListItem(
+            selected = selected,
+            onClick = onClick,
+            shapes = LocalListItemShapes.current ?: ListItemDefaults.segmentedShapes(0, 1),
+            modifier = rowModifier,
+            enabled = enabled,
+            colors = colors,
+            interactionSource = source,
+            leadingContent = leadingContent,
+            trailingContent = trailingContent,
+            overlineContent = overlineContent,
+            supportingContent = supportingContent,
+            verticalAlignment = Alignment.CenterVertically,
+            onLongClick = onLongClick,
+            content = headlineContent
+        )
+    }
 }
 
 @Composable
