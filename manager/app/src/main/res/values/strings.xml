@@ -401,8 +401,8 @@
     <string name="wallpaper_work_card_pick">Choose work card image</string>
     <string name="wallpaper_work_card_change">Change work card image</string>
     <string name="wallpaper_work_card_clear">Remove work card image</string>
-    <string name="wallpaper_work_card_opacity">Image opacity</string>
-    <string name="wallpaper_work_card_dim">Image scrim</string>
+    <string name="wallpaper_work_card_opacity">Card opacity</string>
+    <string name="wallpaper_work_card_dim">Background dim</string>
     <string name="wallpaper_work_card_dual_opacity">Separate day/night opacity</string>
     <string name="wallpaper_work_card_day_opacity">Day opacity</string>
     <string name="wallpaper_work_card_night_opacity">Night opacity</string>
