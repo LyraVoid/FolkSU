@@ -14,7 +14,6 @@ interface SettingsRepository {
     var colorSpec: String
     var enablePredictiveBack: Boolean
     var enableNavigationBadge: Boolean
-    var navigationRailExpanded: Boolean
     var pageScale: Float
     var moduleDescriptionMaxLines: Int
     var enableWebDebugging: Boolean

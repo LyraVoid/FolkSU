@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import me.weishu.kernelsu.ksuApp
 
 /**
- * Persisted configuration for the optional floating bottom navigation bar.
+ * Persisted appearance for the optional floating bottom navigation bar.
  *
  * Stored in the shared `settings` preferences used by the rest of the app so existing
  * observers keep working. [revision] bumps on every write so the bars recompose immediately.
@@ -16,7 +16,6 @@ import me.weishu.kernelsu.ksuApp
 object FloatingBarConfig {
 
     private const val PREFS = "settings"
-    private const val KEY_ENABLED = "floating_bar_enabled"
     private const val KEY_STYLE = "floating_bar_style"
     private const val KEY_COMPACT = "floating_bar_compact"
     private const val KEY_GLASS = "floating_bar_glass"
@@ -35,14 +34,6 @@ object FloatingBarConfig {
     private fun notifyChanged() {
         _revision.value++
     }
-
-    /** Whether the bottom bar floats above the content instead of being docked. */
-    var enabled: Boolean
-        get() = prefs.getBoolean(KEY_ENABLED, false)
-        set(value) {
-            prefs.edit { putBoolean(KEY_ENABLED, value) }
-            notifyChanged()
-        }
 
     /** Which floating form to use. */
     var style: Style

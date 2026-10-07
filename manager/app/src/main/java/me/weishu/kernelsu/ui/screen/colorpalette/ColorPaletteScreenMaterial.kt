@@ -106,7 +106,7 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.RoundedCorner
-import androidx.compose.material.icons.rounded.ViewCarousel
+import androidx.compose.material.icons.rounded.SpaceDashboard
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -122,6 +122,8 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarIconConfig
 import me.weishu.kernelsu.ui.component.bottombar.FloatingBarConfig
+import me.weishu.kernelsu.ui.component.bottombar.NavMode
+import me.weishu.kernelsu.ui.component.bottombar.NavModeConfig
 import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
@@ -389,11 +391,19 @@ fun ColorPaletteScreenMaterial(
             }
 
             item {
+                val navModeRevision by NavModeConfig.revision.collectAsState()
+                val navMode = remember(navModeRevision) { NavModeConfig.mode }
                 val floatingRevision by FloatingBarConfig.revision.collectAsState()
-                val floatingEnabled = remember(floatingRevision) { FloatingBarConfig.enabled }
                 val floatingStyle = remember(floatingRevision) { FloatingBarConfig.style }
                 val floatingCompact = remember(floatingRevision) { FloatingBarConfig.compact }
                 val floatingGlass = remember(floatingRevision) { FloatingBarConfig.glass }
+                val navModes = NavMode.entries
+                val navModeLabels = listOf(
+                    stringResource(R.string.settings_nav_mode_auto),
+                    stringResource(R.string.settings_nav_mode_bottom),
+                    stringResource(R.string.settings_nav_mode_rail),
+                    stringResource(R.string.settings_nav_mode_floating),
+                )
                 val styles = FloatingBarConfig.Style.entries
                 val styleLabels = listOf(
                     stringResource(R.string.settings_floating_bar_style_standard),
@@ -404,15 +414,16 @@ fun ColorPaletteScreenMaterial(
                     modifier = Modifier.padding(horizontal = 16.dp),
                     content = buildList<@Composable () -> Unit> {
                         add {
-                            SegmentedSwitchItem(
-                                icon = Icons.Rounded.ViewCarousel,
-                                title = stringResource(R.string.settings_floating_bar),
-                                summary = stringResource(R.string.settings_floating_bar_summary),
-                                checked = floatingEnabled,
-                                onCheckedChange = { FloatingBarConfig.enabled = it },
+                            SegmentedDropdownItem(
+                                icon = Icons.Rounded.SpaceDashboard,
+                                title = stringResource(R.string.settings_nav_mode),
+                                summary = stringResource(R.string.settings_nav_mode_summary),
+                                items = navModeLabels,
+                                selectedIndex = navModes.indexOf(navMode).coerceAtLeast(0),
+                                onItemSelected = { NavModeConfig.mode = navModes[it] },
                             )
                         }
-                        if (floatingEnabled) {
+                        if (navMode == NavMode.Floating) {
                             add {
                                 SegmentedDropdownItem(
                                     icon = Icons.Rounded.Style,

@@ -361,6 +361,12 @@
     <string name="settings_floating_bar_compact">紧凑圆角</string>
     <string name="settings_floating_bar_glass">毛玻璃效果</string>
     <string name="settings_floating_bar_glass_summary">悬浮栏背后的实时模糊（Android 13+）</string>
+    <string name="settings_nav_mode">导航栏模式</string>
+    <string name="settings_nav_mode_summary">选择导航栏的显示方式</string>
+    <string name="settings_nav_mode_auto">自动传统导航栏</string>
+    <string name="settings_nav_mode_bottom">始终底部导航栏</string>
+    <string name="settings_nav_mode_rail">始终侧边导航栏</string>
+    <string name="settings_nav_mode_floating">悬浮底部导航栏</string>
     <string name="nav_icon_default">默认图标</string>
     <string name="nav_icon_custom_selected">自定义图标</string>
     <string name="nav_icon_set">图标已更新</string>

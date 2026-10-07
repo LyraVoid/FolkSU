@@ -65,6 +65,8 @@ import me.weishu.kernelsu.ui.component.bottombar.BottomBar
 import me.weishu.kernelsu.ui.component.bottombar.FloatingBar
 import me.weishu.kernelsu.ui.component.bottombar.FloatingBarConfig
 import me.weishu.kernelsu.ui.component.bottombar.MainPagerState
+import me.weishu.kernelsu.ui.component.bottombar.NavMode
+import me.weishu.kernelsu.ui.component.bottombar.NavModeConfig
 import me.weishu.kernelsu.ui.component.bottombar.NavigationBadgeState
 import me.weishu.kernelsu.ui.component.bottombar.SideRail
 import me.weishu.kernelsu.ui.component.bottombar.floatingBarReservedHeight
@@ -347,9 +349,9 @@ fun MainScreen(
     ) {
         val contentReady = rememberContentReady()
         val floatingBarRevision = FloatingBarConfig.revision.collectAsStateWithLifecycle().value
-        val floatingBarEnabled = remember(floatingBarRevision, useNavigationRail) {
-            !useNavigationRail && FloatingBarConfig.enabled
-        }
+        val navModeRevision = NavModeConfig.revision.collectAsStateWithLifecycle().value
+        val navMode = remember(navModeRevision) { NavModeConfig.mode }
+        val floatingBarEnabled = navMode == NavMode.Floating
         val floatingBarStyle = remember(floatingBarRevision) { FloatingBarConfig.style }
         val floatingBarCompact = remember(floatingBarRevision) { FloatingBarConfig.compact }
         val floatingBarGlassEnabled = floatingBarEnabled &&
@@ -397,7 +399,9 @@ fun MainScreen(
                 }
             ) {
                 Row {
-                    SideRail(navigationBadge)
+                    SideRail(
+                        navigationBadge = navigationBadge,
+                    )
                     Box(
                         modifier = Modifier
                             .weight(1f)

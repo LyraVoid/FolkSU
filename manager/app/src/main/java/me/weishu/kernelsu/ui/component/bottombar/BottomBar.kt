@@ -21,12 +21,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.util.shouldShowSplitPane
+import me.weishu.kernelsu.ui.util.shouldUseNavigationRailInAutoMode
 import me.weishu.kernelsu.ui.util.springAnimateToPage
 
 class MainPagerState(
@@ -130,7 +131,13 @@ internal fun badgeFor(index: Int, state: NavigationBadgeState): NavBadge? = when
 
 @Composable
 fun useNavigationRail(): Boolean {
-    return shouldShowSplitPane()
+    val modeRevision = NavModeConfig.revision.collectAsStateWithLifecycle().value
+    val mode = remember(modeRevision) { NavModeConfig.mode }
+    return when (mode) {
+        NavMode.Rail -> true
+        NavMode.Bottom, NavMode.Floating -> false
+        NavMode.Auto -> shouldUseNavigationRailInAutoMode()
+    }
 }
 
 @Composable
