@@ -1,12 +1,12 @@
 use anyhow::{Context, Error, Ok, Result, bail};
-use rustix::fs::{Mode, OFlags, open};
+use rustix::fs::{IFlags, Mode, OFlags, ioctl_getflags, ioctl_setflags, open};
 use rustix::process::setpgid;
 use rustix::stdio::{dup2_stderr, dup2_stdin, dup2_stdout};
 use std::{
     ffi::{CStr, CString, c_char, c_void},
     fs::{File, OpenOptions, create_dir_all, remove_file, write},
     io::{
-        ErrorKind::{AlreadyExists, NotFound},
+        ErrorKind::{AlreadyExists, NotFound, PermissionDenied},
         Write,
     },
     path::Path,
@@ -229,9 +229,31 @@ fn link_ksud_to_bin() -> Result<()> {
     Ok(())
 }
 
+/// Clear the `FS_IMMUTABLE_FL` inode flag on `path` if it is set.
+///
+/// Some kernels mark `/data/adb/ksud` immutable while a dynamic manager is
+/// active, which makes the `remove_file`/`copy` in [`install`] fail with
+/// `EPERM`. We run as root here, so dropping the flag is permitted and lets the
+/// daemon be replaced.
+fn clear_immutable(path: &Path) -> Result<()> {
+    let file = File::open(path)?;
+    let flags = ioctl_getflags(&file).with_context(|| format!("getflags {}", path.display()))?;
+    if flags.contains(IFlags::IMMUTABLE) {
+        ioctl_setflags(&file, flags - IFlags::IMMUTABLE)
+            .with_context(|| format!("setflags {}", path.display()))?;
+    }
+    Ok(())
+}
+
 pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Result<()> {
     ensure_dir_exists(defs::ADB_DIR)?;
-    let _ = std::fs::remove_file(defs::DAEMON_PATH);
+    if let Err(e) = std::fs::remove_file(defs::DAEMON_PATH) {
+        // The daemon may be marked immutable; clear the flag and retry so we
+        // can overwrite it.
+        if e.kind() == PermissionDenied && clear_immutable(Path::new(defs::DAEMON_PATH)).is_ok() {
+            let _ = std::fs::remove_file(defs::DAEMON_PATH);
+        }
+    }
     std::fs::copy(
         // We should use /proc/self/exe, DO NOT resolve the real path
         // So that if someone execute /data/adb/ksud install, ksud won't be removed unexpectedly
