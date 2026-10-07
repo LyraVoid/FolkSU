@@ -55,6 +55,10 @@ data class SurfaceConfig(
 
     fun hasFlag(flag: SurfaceFlag): Boolean = flag in flags
 
+    /** Returns a copy with [flag] added or removed. */
+    fun withFlag(flag: SurfaceFlag, value: Boolean): SurfaceConfig =
+        copy(flags = if (value) flags + flag else flags - flag)
+
     /** Alpha for the image, honoring the day/night switch when [dualOpacity] is on. */
     fun effectiveOpacity(isDark: Boolean): Float =
         if (dualOpacity) (if (isDark) nightOpacity else dayOpacity) else opacity

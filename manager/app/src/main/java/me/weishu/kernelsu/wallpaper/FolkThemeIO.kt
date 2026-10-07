@@ -5,6 +5,10 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
+import me.weishu.kernelsu.wallpaper.surface.SurfaceField
+import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
+import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
+import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarIconConfig
 import me.weishu.kernelsu.ui.theme.FontConfig
@@ -80,6 +84,7 @@ private object MainWallpaperAsset : ThemedAsset {
         json.put("backgroundDayDim", WallpaperConfig.dayDim.toDouble())
         json.put("backgroundNightDim", WallpaperConfig.nightDim.toDouble())
         json.put("isMultiBackgroundEnabled", WallpaperConfig.multiBackgroundEnabled)
+        json.put("wallpaper_use_color", WallpaperConfig.useWallpaperColor)
     }
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
@@ -114,6 +119,9 @@ private object MainWallpaperAsset : ThemedAsset {
         WallpaperConfig.updateNightDim(
             json.optDouble("backgroundNightDim", WallpaperConfig.nightDim.toDouble()).toFloat()
         )
+        WallpaperConfig.updateUseWallpaperColor(
+            json.optBoolean("wallpaper_use_color", WallpaperConfig.useWallpaperColor)
+        )
     }
 }
 
@@ -130,48 +138,100 @@ private object WorkCardBackgroundAsset : ThemedAsset {
     override fun currentFile(context: Context): File? = WallpaperManager.currentWorkCardFile(context)
 
     override fun writeConfig(json: JSONObject) {
-        json.put("isGridWorkingCardBackgroundEnabled", WallpaperConfig.workCardBackgroundEnabled)
-        json.put("gridWorkingCardBackgroundOpacity", WallpaperConfig.workCardOpacity.toDouble())
-        json.put("gridWorkingCardBackgroundDim", WallpaperConfig.workCardDim.toDouble())
-        json.put("isGridDualOpacityEnabled", WallpaperConfig.workCardDualOpacityEnabled)
-        json.put("gridWorkingCardBackgroundDayOpacity", WallpaperConfig.workCardDayOpacity.toDouble())
-        json.put("gridWorkingCardBackgroundNightOpacity", WallpaperConfig.workCardNightOpacity.toDouble())
-        json.put("isGridWorkingCardCheckHidden", WallpaperConfig.workCardCheckHidden)
-        json.put("isGridWorkingCardTextHidden", WallpaperConfig.workCardTextHidden)
-        json.put("isGridWorkingCardModeHidden", WallpaperConfig.workCardModeHidden)
+        val id = SurfaceRegistry.GRID_WORK_CARD
+        val surface = SurfaceStore.config(id)
+        // Registry keys, so a surface theme round-trips under the same names the store uses.
+        json.put(SurfaceStore.key(id, SurfaceField.Enabled), surface.enabled)
+        json.put(SurfaceStore.key(id, SurfaceField.Opacity), surface.opacity.toDouble())
+        json.put(SurfaceStore.key(id, SurfaceField.Dim), surface.dim.toDouble())
+        json.put(SurfaceStore.key(id, SurfaceField.DualOpacity), surface.dualOpacity)
+        json.put(SurfaceStore.key(id, SurfaceField.DayOpacity), surface.dayOpacity.toDouble())
+        json.put(SurfaceStore.key(id, SurfaceField.NightOpacity), surface.nightOpacity.toDouble())
+        json.put(SurfaceStore.key(id, SurfaceFlag.HideIcon), surface.hasFlag(SurfaceFlag.HideIcon))
+        json.put(SurfaceStore.key(id, SurfaceFlag.HideText), surface.hasFlag(SurfaceFlag.HideText))
+        json.put(SurfaceStore.key(id, SurfaceFlag.HideMode), surface.hasFlag(SurfaceFlag.HideMode))
+        // Legacy aliases kept for interop with themes from the wider ecosystem (and older builds).
+        json.put("isGridWorkingCardBackgroundEnabled", surface.enabled)
+        json.put("gridWorkingCardBackgroundOpacity", surface.opacity.toDouble())
+        json.put("gridWorkingCardBackgroundDim", surface.dim.toDouble())
+        json.put("isGridDualOpacityEnabled", surface.dualOpacity)
+        json.put("gridWorkingCardBackgroundDayOpacity", surface.dayOpacity.toDouble())
+        json.put("gridWorkingCardBackgroundNightOpacity", surface.nightOpacity.toDouble())
+        json.put("isGridWorkingCardCheckHidden", surface.hasFlag(SurfaceFlag.HideIcon))
+        json.put("isGridWorkingCardTextHidden", surface.hasFlag(SurfaceFlag.HideText))
+        json.put("isGridWorkingCardModeHidden", surface.hasFlag(SurfaceFlag.HideMode))
     }
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
-        val enabled = json.optBoolean("isGridWorkingCardBackgroundEnabled", false)
-        if (enabled && file != null) {
+        val id = SurfaceRegistry.GRID_WORK_CARD
+        val current = SurfaceStore.config(id)
+        // New keys win; the legacy aliases are only consulted when the new key is absent.
+        val parsed = current.copy(
+            enabled = json.optBoolean(
+                SurfaceStore.key(id, SurfaceField.Enabled),
+                json.optBoolean("isGridWorkingCardBackgroundEnabled", current.enabled),
+            ),
+            opacity = json.optDouble(
+                SurfaceStore.key(id, SurfaceField.Opacity),
+                json.optDouble("gridWorkingCardBackgroundOpacity", current.opacity.toDouble()),
+            ).toFloat(),
+            dim = json.optDouble(
+                SurfaceStore.key(id, SurfaceField.Dim),
+                json.optDouble("gridWorkingCardBackgroundDim", current.dim.toDouble()),
+            ).toFloat(),
+            dualOpacity = json.optBoolean(
+                SurfaceStore.key(id, SurfaceField.DualOpacity),
+                json.optBoolean("isGridDualOpacityEnabled", current.dualOpacity),
+            ),
+            dayOpacity = json.optDouble(
+                SurfaceStore.key(id, SurfaceField.DayOpacity),
+                json.optDouble("gridWorkingCardBackgroundDayOpacity", current.dayOpacity.toDouble()),
+            ).toFloat(),
+            nightOpacity = json.optDouble(
+                SurfaceStore.key(id, SurfaceField.NightOpacity),
+                json.optDouble("gridWorkingCardBackgroundNightOpacity", current.nightOpacity.toDouble()),
+            ).toFloat(),
+        )
+            .withFlag(
+                SurfaceFlag.HideIcon,
+                json.optBoolean(
+                    SurfaceStore.key(id, SurfaceFlag.HideIcon),
+                    json.optBoolean("isGridWorkingCardCheckHidden", current.hasFlag(SurfaceFlag.HideIcon)),
+                ),
+            )
+            .withFlag(
+                SurfaceFlag.HideText,
+                json.optBoolean(
+                    SurfaceStore.key(id, SurfaceFlag.HideText),
+                    json.optBoolean("isGridWorkingCardTextHidden", current.hasFlag(SurfaceFlag.HideText)),
+                ),
+            )
+            .withFlag(
+                SurfaceFlag.HideMode,
+                json.optBoolean(
+                    SurfaceStore.key(id, SurfaceFlag.HideMode),
+                    json.optBoolean("isGridWorkingCardModeHidden", current.hasFlag(SurfaceFlag.HideMode)),
+                ),
+            )
+
+        if (parsed.enabled && file != null) {
             WallpaperManager.saveWorkCardBackground(context, Uri.fromFile(file))
         } else {
             WallpaperManager.clearWorkCardBackground(context)
         }
-        WallpaperConfig.updateWorkCardOpacity(
-            json.optDouble("gridWorkingCardBackgroundOpacity", WallpaperConfig.workCardOpacity.toDouble()).toFloat()
-        )
-        WallpaperConfig.updateWorkCardDim(
-            json.optDouble("gridWorkingCardBackgroundDim", WallpaperConfig.workCardDim.toDouble()).toFloat()
-        )
-        WallpaperConfig.updateWorkCardDualOpacityEnabled(
-            json.optBoolean("isGridDualOpacityEnabled", WallpaperConfig.workCardDualOpacityEnabled)
-        )
-        WallpaperConfig.updateWorkCardDayOpacity(
-            json.optDouble("gridWorkingCardBackgroundDayOpacity", WallpaperConfig.workCardDayOpacity.toDouble()).toFloat()
-        )
-        WallpaperConfig.updateWorkCardNightOpacity(
-            json.optDouble("gridWorkingCardBackgroundNightOpacity", WallpaperConfig.workCardNightOpacity.toDouble()).toFloat()
-        )
-        WallpaperConfig.updateWorkCardCheckHidden(
-            json.optBoolean("isGridWorkingCardCheckHidden", WallpaperConfig.workCardCheckHidden)
-        )
-        WallpaperConfig.updateWorkCardTextHidden(
-            json.optBoolean("isGridWorkingCardTextHidden", WallpaperConfig.workCardTextHidden)
-        )
-        WallpaperConfig.updateWorkCardModeHidden(
-            json.optBoolean("isGridWorkingCardModeHidden", WallpaperConfig.workCardModeHidden)
-        )
+        // The image handled the enable/uri; carry over the numbers and flags (the outer import saves).
+        SurfaceStore.update(id) { s ->
+            s.copy(
+                opacity = parsed.opacity,
+                dim = parsed.dim,
+                dualOpacity = parsed.dualOpacity,
+                dayOpacity = parsed.dayOpacity,
+                nightOpacity = parsed.nightOpacity,
+            )
+                .withFlag(SurfaceFlag.HideIcon, parsed.hasFlag(SurfaceFlag.HideIcon))
+                .withFlag(SurfaceFlag.HideText, parsed.hasFlag(SurfaceFlag.HideText))
+                .withFlag(SurfaceFlag.HideMode, parsed.hasFlag(SurfaceFlag.HideMode))
+        }
     }
 }
 

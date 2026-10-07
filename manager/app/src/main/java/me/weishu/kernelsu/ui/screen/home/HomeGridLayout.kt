@@ -52,6 +52,8 @@ import me.weishu.kernelsu.wallpaper.AnimatedFileImage
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
 
 /** The gap between the tiles of the two-column grid. */
 private val GridTileSpacing = 12.dp
@@ -121,9 +123,11 @@ private fun GridStatusCard(
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
 
+    val workCardSurface = WallpaperConfig.workCardSurface
     val workCardStyle = HomeWorkCardControl.style(
         layout = HomeWorkCardLayout.Grid,
         working = ksuActive,
+        surface = workCardSurface,
     )
     val containerColor = workCardStyle.containerColor
     val contentColor = workCardStyle.contentColor ?: contentColorFor(containerColor)
@@ -148,7 +152,7 @@ private fun GridStatusCard(
     } else ""
 
     var showWorkCardOptions by remember { mutableStateOf(false) }
-    val longPressEnabled = ksuActive && WallpaperConfig.workCardBackgroundEnabled
+    val longPressEnabled = ksuActive && workCardSurface.enabled
 
     HomeCard(
         modifier = modifier,
@@ -168,7 +172,7 @@ private fun GridStatusCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (backgroundUri != null) {
-                WorkCardBackgroundImage(uri = backgroundUri)
+                WorkCardBackgroundImage(uri = backgroundUri, surface = workCardSurface)
             }
             Column(
                 modifier = Modifier
@@ -176,14 +180,14 @@ private fun GridStatusCard(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (!WallpaperConfig.workCardTextHidden) {
+                if (!workCardSurface.hasFlag(SurfaceFlag.HideText)) {
                     Text(
                         text = statusTitle,
                         style = FolkType.Title
                     )
                 }
                 if (ksuActive && workingMode.isNotEmpty()) {
-                    if (!WallpaperConfig.workCardModeHidden) {
+                    if (!workCardSurface.hasFlag(SurfaceFlag.HideMode)) {
                         StatusTag(
                             label = workingMode,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -194,7 +198,7 @@ private fun GridStatusCard(
                     StatusJailbreakButton(onClick = actions.onJailbreakClick)
                 }
             }
-            if (!WallpaperConfig.workCardCheckHidden) {
+            if (!workCardSurface.hasFlag(SurfaceFlag.HideIcon)) {
                 Icon(
                     imageVector = statusIcon,
                     contentDescription = statusTitle,
@@ -217,8 +221,9 @@ private fun GridStatusCard(
  * readable. Draws nothing until the stored bitmap is decoded.
  */
 @Composable
-private fun WorkCardBackgroundImage(uri: String) {
+private fun WorkCardBackgroundImage(uri: String, surface: SurfaceConfig) {
     val isDark = isInDarkTheme()
+    val opacity = surface.effectiveOpacity(isDark)
     val path = remember(uri) { Uri.parse(uri).path }
     val file = remember(path) { path?.let { File(it) } }
     if (file != null && isAnimatedImageFile(file)) {
@@ -227,7 +232,7 @@ private fun WorkCardBackgroundImage(uri: String) {
             file = file,
             modifier = Modifier
                 .fillMaxSize()
-                .alpha(WallpaperConfig.effectiveWorkCardOpacity(isDark)),
+                .alpha(opacity),
         )
     } else {
         val image by produceState<ImageBitmap?>(initialValue = null, path) {
@@ -242,13 +247,13 @@ private fun WorkCardBackgroundImage(uri: String) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(WallpaperConfig.effectiveWorkCardOpacity(isDark)),
+                    .alpha(opacity),
             )
         }
     }
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = WallpaperConfig.workCardDim)),
+            .background(Color.Black.copy(alpha = surface.dim)),
     )
 }

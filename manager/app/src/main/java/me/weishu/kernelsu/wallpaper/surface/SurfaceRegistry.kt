@@ -43,8 +43,11 @@ data class SurfaceDescriptor(
  */
 object SurfaceRegistry {
 
+    /** Stable id of the grid work-card background surface. */
+    val GRID_WORK_CARD = SurfaceId("layout.grid.workCard")
+
     private val gridWorkCard = SurfaceDescriptor(
-        id = SurfaceId("layout.grid.workCard"),
+        id = GRID_WORK_CARD,
         titleRes = R.string.wallpaper_work_card_section,
         icon = Icons.Outlined.Wallpaper,
         scope = SurfaceScope.Slot,

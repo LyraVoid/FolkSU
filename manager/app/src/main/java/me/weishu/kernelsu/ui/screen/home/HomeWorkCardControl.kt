@@ -5,8 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
-import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
 
 /** Which home layout owns the work (status) card. */
 enum class HomeWorkCardLayout {
@@ -46,10 +46,11 @@ object HomeWorkCardControl {
     fun style(
         layout: HomeWorkCardLayout,
         working: Boolean,
+        surface: SurfaceConfig? = null,
     ): HomeWorkCardStyle = when (layout) {
         HomeWorkCardLayout.Circle -> circleStyle(working)
 
-        HomeWorkCardLayout.Grid -> gridStyle(working)
+        HomeWorkCardLayout.Grid -> gridStyle(working, surface)
     }
 
     /**
@@ -86,13 +87,13 @@ object HomeWorkCardControl {
      * by the card is what shows through.
      */
     @Composable
-    private fun gridStyle(working: Boolean): HomeWorkCardStyle {
-        if (WallpaperConfig.hasWorkCardBackground) {
+    private fun gridStyle(working: Boolean, surface: SurfaceConfig?): HomeWorkCardStyle {
+        if (surface?.hasImage == true) {
             return HomeWorkCardStyle(
                 containerColor = Color.Transparent,
                 contentColor = Color.White,
                 wallpaperRole = null,
-                workCardBackgroundUri = WallpaperConfig.workCardBackgroundUri,
+                workCardBackgroundUri = surface.imageUri,
             )
         }
         val containerColor = if (working) {
