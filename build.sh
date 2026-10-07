@@ -18,6 +18,9 @@ cd "$REPO_ROOT"
 # --------------------------------------------------------------------------- #
 # Defaults (every one of these can be overridden from the environment)
 # --------------------------------------------------------------------------- #
+# A single-KMI local build serves only that KMI; late-load/boot-patch will fail
+# on other KMIs. Use a CI release package (pack_lkm: true, full KMI matrix) for
+# all-KMI support, or widen KMIS here.
 KMIS="${KMIS:-android15-6.6}"
 ABIS="${ABIS:-arm64-v8a}"
 DDK_RELEASE="${DDK_RELEASE:-20260828}"       # .github/workflows/ddk-lkm.yml default

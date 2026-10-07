@@ -222,8 +222,40 @@ fn assemble_bootstrap() {
     }
 }
 
+/// Warn when the embedded asset set carries too few KMI modules.
+///
+/// `late_load` and `boot_patch` look up `{kmi}_kernelsu.ko` in the embedded
+/// resources under `bin/aarch64`, so a package built with a single KMI can only
+/// serve that one KMI. Local `build.sh` runs default to a single KMI; CI release
+/// packages embed the full matrix. Warn instead of failing so local builds keep
+/// working.
+fn warn_on_single_kmi() {
+    let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let dir = manifest.join("bin/aarch64");
+    println!("cargo:rerun-if-changed={}", dir.display());
+    let count = fs::read_dir(&dir)
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .filter(|entry| {
+                    entry
+                        .file_name()
+                        .to_str()
+                        .is_some_and(|name| name.ends_with("_kernelsu.ko"))
+                })
+                .count()
+        })
+        .unwrap_or(0);
+    if count <= 1 {
+        println!(
+            "cargo:warning=Only {count} KMI module(s) embedded; late-load/boot-patch will fail on other KMIs. Use a CI release package."
+        );
+    }
+}
+
 fn main() {
     assemble_bootstrap();
+    warn_on_single_kmi();
 
     let (code, name) = match get_git_version() {
         Ok((code, name)) => (code, name),
@@ -234,7 +266,7 @@ fn main() {
         }
     };
     if env::var("KSU_PACKAGE_NAME").is_err() {
-        println!("cargo:rustc-env=KSU_PACKAGE_NAME=me.weishu.kernelsu");
+        println!("cargo:rustc-env=KSU_PACKAGE_NAME=me.yuki.folksu");
     }
     println!("cargo:rustc-env=VERSION_CODE={code}");
     println!("cargo:rustc-env=VERSION_NAME={name}");
