@@ -1,7 +1,6 @@
 package me.weishu.kernelsu.ui.component.chart
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +18,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -35,6 +36,10 @@ private data class ChartPoint(val x: Float, val y: Float)
 
 /** How much of the canvas height the wave may use, leaving the rest as breathing room. */
 private const val WaveHeightFraction = 0.85f
+
+/** The fill and the rule both use this alpha, and the rule the same width as the curve stroke. */
+private const val WaveAlpha = 0.35f
+private const val WaveStrokeWidth = 2.5f
 
 /** Maps the samples onto the unit square, stretching the value axis to its own range. */
 private fun normalizePoints(samples: List<Float>): List<ChartPoint> {
@@ -65,11 +70,11 @@ private fun interpolatePoints(
     }
 }
 
-/** The smoothed curve through [points]: quadratic segments joined at the midpoint of each pair. */
-private fun buildWavePath(points: List<ChartPoint>, size: Size): Path {
+/** Writes the smoothed curve through [points] into [path]: quadratic segments joined at the midpoint of each pair. */
+private fun buildWavePath(path: Path, points: List<ChartPoint>, size: Size) {
     val height = size.height * WaveHeightFraction
-    val path = Path()
-    if (points.isEmpty()) return path
+    path.reset()
+    if (points.isEmpty()) return
 
     path.moveTo(points[0].x * size.width, height - points[0].y * height)
     for (index in 1 until points.size - 1) {
@@ -83,15 +88,15 @@ private fun buildWavePath(points: List<ChartPoint>, size: Size): Path {
         )
     }
     path.lineTo(points.last().x * size.width, height - points.last().y * height)
-    return path
 }
 
-/** Closes the curve down to the baseline so it can be filled with the fading gradient. */
-private fun buildFillPath(line: Path, size: Size): Path = Path().apply {
-    addPath(line)
-    lineTo(size.width, size.height)
-    lineTo(0f, size.height)
-    close()
+/** Writes the baseline closure of [line] into [path] so it can be filled with the fading gradient. */
+private fun buildFillPath(path: Path, line: Path, size: Size) {
+    path.reset()
+    path.addPath(line)
+    path.lineTo(size.width, size.height)
+    path.lineTo(0f, size.height)
+    path.close()
 }
 
 /**
@@ -101,6 +106,9 @@ private fun buildFillPath(line: Path, size: Size): Path = Path().apply {
  * The value axis stretches to whatever the samples happen to span, so a flat metric still reads as
  * a line instead of collapsing to zero; a single sample draws as a flat rule until the next one
  * arrives.
+ *
+ * The curve, its fill, the gradient and the stroke live in the draw cache, so a new frame only
+ * rewrites the same two paths instead of allocating a fresh set.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -140,32 +148,41 @@ fun WaveChart(
             )
         }
         Spacer(Modifier.height(8.dp))
-        Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
-            val points = interpolatePoints(previous, current, animatable.value)
-            if (points.size < 2) {
-                drawLine(
-                    color = color.copy(alpha = 0.35f),
-                    start = androidx.compose.ui.geometry.Offset(0f, size.height / 2f),
-                    end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2f),
-                    strokeWidth = 2.5f,
-                    cap = StrokeCap.Round,
-                )
-                return@Canvas
-            }
-            val line = buildWavePath(points, size)
-            drawPath(
-                path = buildFillPath(line, size),
-                brush = Brush.verticalGradient(
-                    colors = listOf(color.copy(alpha = 0.35f), color.copy(alpha = 0f)),
-                    startY = 0f,
-                    endY = size.height,
-                ),
-            )
-            drawPath(
-                path = line,
-                color = color,
-                style = Stroke(width = 2.5f, cap = StrokeCap.Round, join = StrokeJoin.Round),
-            )
-        }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+                .drawWithCache {
+                    val line = Path()
+                    val fill = Path()
+                    val stroke = Stroke(
+                        width = WaveStrokeWidth,
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round,
+                    )
+                    val brush = Brush.verticalGradient(
+                        colors = listOf(color.copy(alpha = WaveAlpha), color.copy(alpha = 0f)),
+                        startY = 0f,
+                        endY = size.height,
+                    )
+                    onDrawBehind {
+                        val points = interpolatePoints(previous, current, animatable.value)
+                        if (points.size < 2) {
+                            drawLine(
+                                color = color.copy(alpha = WaveAlpha),
+                                start = Offset(0f, size.height / 2f),
+                                end = Offset(size.width, size.height / 2f),
+                                strokeWidth = WaveStrokeWidth,
+                                cap = StrokeCap.Round,
+                            )
+                            return@onDrawBehind
+                        }
+                        buildWavePath(line, points, size)
+                        buildFillPath(fill, line, size)
+                        drawPath(path = fill, brush = brush)
+                        drawPath(path = line, color = color, style = stroke)
+                    }
+                },
+        )
     }
 }
