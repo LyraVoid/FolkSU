@@ -1,32 +1,44 @@
 package me.weishu.kernelsu.ui.screen.wallpaper
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.filled.Brightness6
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Contrast
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Opacity
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.component.material.SegmentedSliderItem
 import me.weishu.kernelsu.ui.component.material.SegmentedSwitchItem
 import me.weishu.kernelsu.ui.screen.home.LocalHomeLayoutStyle
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceDescriptor
+import me.weishu.kernelsu.wallpaper.surface.SurfaceField
+import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
+import me.weishu.kernelsu.wallpaper.surface.SurfaceImageRow
+import me.weishu.kernelsu.wallpaper.surface.SurfaceOpacityRow
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
+import me.weishu.kernelsu.wallpaper.surface.SurfaceSliderRow
+import me.weishu.kernelsu.wallpaper.surface.SurfaceToggleRow
 import kotlin.math.roundToInt
+
+/**
+ * The mutation callbacks one rendered surface needs.
+ *
+ * A descriptor describes what to show; this groups how to apply the edits, so the renderer stays
+ * independent of which surface it is drawing.
+ */
+class SurfaceCallbacks(
+    val onToggle: (SurfaceField, Boolean) -> Unit,
+    val onFlagChange: (SurfaceFlag, Boolean) -> Unit,
+    val onSlider: (SurfaceField, Float) -> Unit,
+    val onPickImage: () -> Unit,
+    val onClearImage: () -> Unit,
+)
 
 /**
  * Renders the settings of every surface the active home layout actually uses.
  *
  * [SurfaceRegistry.forLayout] is the single availability gate, so a layout-exclusive surface such
- * as the grid work card can never leak into the settings of another layout.
+ * as the grid work card can never leak into the settings of another layout. The rows themselves
+ * come from each descriptor, so registering a surface is a data change, not a new UI branch.
  */
 @Composable
 fun SurfaceSettingsHost(
@@ -35,176 +47,147 @@ fun SurfaceSettingsHost(
 ) {
     val layout = LocalHomeLayoutStyle.current
     SurfaceRegistry.forLayout(layout).forEach { descriptor ->
-        when (descriptor.id) {
-            SurfaceRegistry.GRID_WORK_CARD -> SurfaceSettingsGroup(
-                titleRes = descriptor.titleRes,
-                rows = workCardRows(
-                    enabled = state.workCardBackgroundEnabled,
-                    hasImage = state.workCardHasImage,
-                    opacity = state.workCardOpacity,
-                    dim = state.workCardDim,
-                    dualOpacityEnabled = state.workCardDualOpacityEnabled,
-                    dayOpacity = state.workCardDayOpacity,
-                    nightOpacity = state.workCardNightOpacity,
-                    checkHidden = state.workCardCheckHidden,
-                    textHidden = state.workCardTextHidden,
-                    modeHidden = state.workCardModeHidden,
-                    onEnabledChange = actions.onToggleWorkCardBackground,
-                    onPickImage = actions.onPickWorkCardImage,
-                    onClearImage = actions.onClearWorkCardImage,
-                    onOpacityChange = actions.onSetWorkCardOpacity,
-                    onDimChange = actions.onSetWorkCardDim,
-                    onDualOpacityChange = actions.onToggleWorkCardDualOpacity,
-                    onDayOpacityChange = actions.onSetWorkCardDayOpacity,
-                    onNightOpacityChange = actions.onSetWorkCardNightOpacity,
-                    onCheckHiddenChange = actions.onToggleWorkCardCheckHidden,
-                    onTextHiddenChange = actions.onToggleWorkCardTextHidden,
-                    onModeHiddenChange = actions.onToggleWorkCardModeHidden,
-                ),
-            )
-        }
+        val config = state.surfaceFor(descriptor.id) ?: return@forEach
+        SurfaceSettingsGroup(
+            titleRes = descriptor.titleRes,
+            rows = surfaceRows(descriptor, config, workCardCallbacks(actions)),
+        )
     }
 }
 
 /**
- * The segmented rows of the grid work-card surface.
+ * The segmented rows of one surface, built from its descriptor.
  *
- * Shared by the settings host and the card's long-press dialog so both expose the same controls,
- * and every row carries a semantic icon.
+ * Shared by the settings host and each card's long-press dialog so both expose the same controls,
+ * and every row carries a semantic icon declared by the descriptor.
  */
-fun workCardRows(
-    enabled: Boolean,
-    hasImage: Boolean,
-    opacity: Float,
-    dim: Float,
-    dualOpacityEnabled: Boolean,
-    dayOpacity: Float,
-    nightOpacity: Float,
-    checkHidden: Boolean,
-    textHidden: Boolean,
-    modeHidden: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
-    onPickImage: () -> Unit,
-    onClearImage: () -> Unit,
-    onOpacityChange: (Float) -> Unit,
-    onDimChange: (Float) -> Unit,
-    onDualOpacityChange: (Boolean) -> Unit,
-    onDayOpacityChange: (Float) -> Unit,
-    onNightOpacityChange: (Float) -> Unit,
-    onCheckHiddenChange: (Boolean) -> Unit,
-    onTextHiddenChange: (Boolean) -> Unit,
-    onModeHiddenChange: (Boolean) -> Unit,
+@Composable
+fun surfaceRows(
+    descriptor: SurfaceDescriptor,
+    config: SurfaceConfig,
+    callbacks: SurfaceCallbacks,
 ): List<@Composable () -> Unit> = buildList {
-    add {
-        SegmentedSwitchItem(
-            icon = Icons.Filled.Wallpaper,
-            title = stringResource(R.string.wallpaper_work_card_enable),
-            summary = stringResource(R.string.wallpaper_work_card_enable_summary),
-            checked = enabled,
-            onCheckedChange = onEnabledChange,
-        )
-    }
-    // The tuning controls and the image rows only matter once the card background is on; the order
-    // matches the reference implementation: appearance first, then the image itself.
-    if (enabled) {
-        add {
-            SegmentedSwitchItem(
-                icon = Icons.Filled.Contrast,
-                title = stringResource(R.string.wallpaper_work_card_dual_opacity),
-                checked = dualOpacityEnabled,
-                onCheckedChange = onDualOpacityChange,
-            )
-        }
-        if (dualOpacityEnabled) {
-            add {
-                SegmentedSliderItem(
-                    icon = Icons.Filled.Contrast,
-                    title = stringResource(R.string.wallpaper_work_card_day_opacity),
-                    value = dayOpacity,
-                    valueRange = 0f..1f,
-                    valueText = percentText,
-                    onValueChangeFinished = onDayOpacityChange,
+    descriptor.rows.forEach { row ->
+        if (row.showWhenEnabled && !config.enabled) return@forEach
+        when (row) {
+            is SurfaceToggleRow -> add {
+                val checked = row.field?.let { config.toggle(it) }
+                    ?: row.flag?.let { config.hasFlag(it) }
+                    ?: false
+                SegmentedSwitchItem(
+                    icon = row.icon,
+                    title = stringResource(row.titleRes),
+                    summary = row.summaryRes?.let { stringResource(it) },
+                    checked = checked,
+                    onCheckedChange = { value ->
+                        row.field?.let { callbacks.onToggle(it, value) }
+                        row.flag?.let { callbacks.onFlagChange(it, value) }
+                    },
                 )
             }
-            add {
+
+            is SurfaceSliderRow -> add {
                 SegmentedSliderItem(
-                    icon = Icons.Filled.Contrast,
-                    title = stringResource(R.string.wallpaper_work_card_night_opacity),
-                    value = nightOpacity,
+                    icon = row.icon,
+                    title = stringResource(row.titleRes),
+                    value = config.scalar(row.field),
                     valueRange = 0f..1f,
                     valueText = percentText,
-                    onValueChangeFinished = onNightOpacityChange,
+                    onValueChangeFinished = { callbacks.onSlider(row.field, it) },
                 )
             }
-        } else {
-            add {
-                SegmentedSliderItem(
-                    icon = Icons.Filled.Opacity,
-                    title = stringResource(R.string.wallpaper_work_card_opacity),
-                    value = opacity,
-                    valueRange = 0f..1f,
-                    valueText = percentText,
-                    onValueChangeFinished = onOpacityChange,
-                )
-            }
-        }
-        add {
-            SegmentedSliderItem(
-                icon = Icons.Filled.Brightness6,
-                title = stringResource(R.string.wallpaper_work_card_dim),
-                value = dim,
-                valueRange = 0f..1f,
-                valueText = percentText,
-                onValueChangeFinished = onDimChange,
-            )
-        }
-        add {
-            SegmentedListItem(
-                onClick = onPickImage,
-                headlineContent = {
-                    Text(
-                        stringResource(
-                            if (hasImage) R.string.wallpaper_work_card_change else R.string.wallpaper_work_card_pick
+
+            is SurfaceOpacityRow -> {
+                if (config.dualOpacity) {
+                    add {
+                        SegmentedSliderItem(
+                            icon = row.dayNightIcon,
+                            title = stringResource(row.dayTitleRes),
+                            value = config.dayOpacity,
+                            valueRange = 0f..1f,
+                            valueText = percentText,
+                            onValueChangeFinished = { callbacks.onSlider(SurfaceField.DayOpacity, it) },
                         )
+                    }
+                    add {
+                        SegmentedSliderItem(
+                            icon = row.dayNightIcon,
+                            title = stringResource(row.nightTitleRes),
+                            value = config.nightOpacity,
+                            valueRange = 0f..1f,
+                            valueText = percentText,
+                            onValueChangeFinished = { callbacks.onSlider(SurfaceField.NightOpacity, it) },
+                        )
+                    }
+                } else {
+                    add {
+                        SegmentedSliderItem(
+                            icon = row.singleIcon,
+                            title = stringResource(row.singleTitleRes),
+                            value = config.opacity,
+                            valueRange = 0f..1f,
+                            valueText = percentText,
+                            onValueChangeFinished = { callbacks.onSlider(SurfaceField.Opacity, it) },
+                        )
+                    }
+                }
+            }
+
+            is SurfaceImageRow -> {
+                add {
+                    SegmentedListItem(
+                        onClick = callbacks.onPickImage,
+                        headlineContent = {
+                            Text(
+                                stringResource(
+                                    if (config.hasImage) row.changeTitleRes else row.pickTitleRes
+                                )
+                            )
+                        },
+                        leadingContent = { Icon(row.pickIcon, null) },
                     )
-                },
-                leadingContent = { Icon(Icons.Filled.Image, null) },
-            )
-        }
-        if (hasImage) {
-            add {
-                SegmentedListItem(
-                    onClick = onClearImage,
-                    headlineContent = { Text(stringResource(R.string.wallpaper_work_card_clear)) },
-                    leadingContent = { Icon(Icons.Filled.Delete, null) },
-                )
+                }
+                if (config.hasImage) {
+                    add {
+                        SegmentedListItem(
+                            onClick = callbacks.onClearImage,
+                            headlineContent = { Text(stringResource(row.clearTitleRes)) },
+                            leadingContent = { Icon(row.clearIcon, null) },
+                        )
+                    }
+                }
             }
         }
-    }
-    add {
-        SegmentedSwitchItem(
-            icon = Icons.Filled.CheckCircle,
-            title = stringResource(R.string.wallpaper_work_card_hide_check),
-            checked = checkHidden,
-            onCheckedChange = onCheckHiddenChange,
-        )
-    }
-    add {
-        SegmentedSwitchItem(
-            icon = Icons.Filled.TextFields,
-            title = stringResource(R.string.wallpaper_work_card_hide_text),
-            checked = textHidden,
-            onCheckedChange = onTextHiddenChange,
-        )
-    }
-    add {
-        SegmentedSwitchItem(
-            icon = Icons.AutoMirrored.Filled.Label,
-            title = stringResource(R.string.wallpaper_work_card_hide_mode),
-            checked = modeHidden,
-            onCheckedChange = onModeHiddenChange,
-        )
     }
 }
+
+/** Wires the card surfaces to the wallpaper actions. */
+private fun workCardCallbacks(actions: WallpaperScreenActions): SurfaceCallbacks = SurfaceCallbacks(
+    onToggle = { field, value ->
+        when (field) {
+            SurfaceField.Enabled -> actions.onToggleWorkCardBackground(value)
+            SurfaceField.DualOpacity -> actions.onToggleWorkCardDualOpacity(value)
+            else -> Unit
+        }
+    },
+    onFlagChange = { flag, value ->
+        when (flag) {
+            SurfaceFlag.HideIcon -> actions.onToggleWorkCardCheckHidden(value)
+            SurfaceFlag.HideText -> actions.onToggleWorkCardTextHidden(value)
+            SurfaceFlag.HideMode -> actions.onToggleWorkCardModeHidden(value)
+        }
+    },
+    onSlider = { field, value ->
+        when (field) {
+            SurfaceField.Opacity -> actions.onSetWorkCardOpacity(value)
+            SurfaceField.Dim -> actions.onSetWorkCardDim(value)
+            SurfaceField.DayOpacity -> actions.onSetWorkCardDayOpacity(value)
+            SurfaceField.NightOpacity -> actions.onSetWorkCardNightOpacity(value)
+            else -> Unit
+        }
+    },
+    onPickImage = actions.onPickWorkCardImage,
+    onClearImage = actions.onClearWorkCardImage,
+)
 
 private val percentText: (Float) -> String = { "${(it * 100).roundToInt()}%" }

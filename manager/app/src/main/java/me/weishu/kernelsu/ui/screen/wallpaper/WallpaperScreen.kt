@@ -71,6 +71,9 @@ import me.weishu.kernelsu.wallpaper.FolkThemeIO
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceId
+import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import kotlin.math.roundToInt
 
 /** Sentinel for "no per-page background is being picked". */
@@ -93,18 +96,15 @@ data class WallpaperUiState(
     val superuserBackgroundSelected: Boolean,
     val moduleBackgroundSelected: Boolean,
     val settingsBackgroundSelected: Boolean,
-    val workCardBackgroundEnabled: Boolean,
-    val workCardHasImage: Boolean,
-    val workCardOpacity: Float,
-    val workCardDim: Float,
-    val workCardDualOpacityEnabled: Boolean,
-    val workCardDayOpacity: Float,
-    val workCardNightOpacity: Float,
-    val workCardCheckHidden: Boolean,
-    val workCardTextHidden: Boolean,
-    val workCardModeHidden: Boolean,
+    val workCardSurface: SurfaceConfig,
     val isSaving: Boolean,
-)
+) {
+    /** The config of the surface [id], or null when this state does not carry it. */
+    fun surfaceFor(id: SurfaceId): SurfaceConfig? = when (id) {
+        SurfaceRegistry.GRID_WORK_CARD -> workCardSurface
+        else -> null
+    }
+}
 
 @Immutable
 data class WallpaperScreenActions(
@@ -388,16 +388,7 @@ fun WallpaperScreen() {
         superuserBackgroundSelected = !WallpaperConfig.superuserBackgroundUri.isNullOrEmpty(),
         moduleBackgroundSelected = !WallpaperConfig.moduleBackgroundUri.isNullOrEmpty(),
         settingsBackgroundSelected = !WallpaperConfig.settingsBackgroundUri.isNullOrEmpty(),
-        workCardBackgroundEnabled = WallpaperConfig.workCardBackgroundEnabled,
-        workCardHasImage = !WallpaperConfig.workCardBackgroundUri.isNullOrEmpty(),
-        workCardOpacity = WallpaperConfig.workCardOpacity,
-        workCardDim = WallpaperConfig.workCardDim,
-        workCardDualOpacityEnabled = WallpaperConfig.workCardDualOpacityEnabled,
-        workCardDayOpacity = WallpaperConfig.workCardDayOpacity,
-        workCardNightOpacity = WallpaperConfig.workCardNightOpacity,
-        workCardCheckHidden = WallpaperConfig.workCardCheckHidden,
-        workCardTextHidden = WallpaperConfig.workCardTextHidden,
-        workCardModeHidden = WallpaperConfig.workCardModeHidden,
+        workCardSurface = WallpaperConfig.workCardSurface,
         isSaving = isSaving,
     )
 

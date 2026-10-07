@@ -7,6 +7,9 @@ import android.net.Uri
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import com.materialkolor.ktx.themeColorOrNull
+import me.weishu.kernelsu.wallpaper.surface.SurfaceId
+import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
+import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -60,26 +63,54 @@ object WallpaperManager {
     }
 
     /** Copies the picked image into app storage and points the grid work card at it. */
-    suspend fun saveWorkCardBackground(context: Context, source: Uri): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            val ext = resolveExtension(context, source)
-            clearOldWorkCardFiles(context)
-            val target = File(context.filesDir, "$WORK_CARD_FILENAME_BASE$ext")
-            if (!copyToFile(context, source, target)) return@runCatching false
-            val stamped = "${Uri.fromFile(target)}?t=${System.currentTimeMillis()}"
-            WallpaperConfig.updateWorkCardBackgroundUri(stamped)
-            WallpaperConfig.updateWorkCardBackgroundEnabled(true)
-            WallpaperConfig.save(context)
-            true
-        }.getOrDefault(false)
-    }
+    suspend fun saveWorkCardBackground(context: Context, source: Uri): Boolean =
+        saveSurfaceImage(context, SurfaceRegistry.GRID_WORK_CARD, source)
 
     /** Deletes the stored work-card image and turns the feature off, keeping the user's slider values. */
-    fun clearWorkCardBackground(context: Context) {
-        clearOldWorkCardFiles(context)
-        WallpaperConfig.updateWorkCardBackgroundUri(null)
-        WallpaperConfig.updateWorkCardBackgroundEnabled(false)
+    fun clearWorkCardBackground(context: Context) =
+        clearSurfaceImage(context, SurfaceRegistry.GRID_WORK_CARD)
+
+    /** Copies the picked image into app storage and points surface [id] at it. */
+    suspend fun saveSurfaceImage(context: Context, id: SurfaceId, source: Uri): Boolean =
+        withContext(Dispatchers.IO) {
+            val stem = surfaceStem(id) ?: return@withContext false
+            runCatching {
+                val ext = resolveExtension(context, source)
+                clearSurfaceFiles(context, stem)
+                val target = File(context.filesDir, "$stem$ext")
+                if (!copyToFile(context, source, target)) return@runCatching false
+                val stamped = "${Uri.fromFile(target)}?t=${System.currentTimeMillis()}"
+                SurfaceStore.update(id) { it.copy(imageUri = stamped, enabled = true) }
+                WallpaperConfig.save(context)
+                true
+            }.getOrDefault(false)
+        }
+
+    /** Deletes surface [id]'s stored image and turns it off, keeping the user's slider values. */
+    fun clearSurfaceImage(context: Context, id: SurfaceId) {
+        val stem = surfaceStem(id) ?: return
+        clearSurfaceFiles(context, stem)
+        SurfaceStore.update(id) { it.copy(imageUri = null, enabled = false) }
         WallpaperConfig.save(context)
+    }
+
+    /** The currently stored image file for surface [id], if any. */
+    fun currentSurfaceFile(context: Context, id: SurfaceId): File? {
+        val path = SurfaceStore.config(id).imageUri?.let { Uri.parse(it).path } ?: return null
+        val file = File(path)
+        return if (file.exists() && file.length() > 0L) file else null
+    }
+
+    /** File-name stem for surface [id], or null when the descriptor declares none. */
+    private fun surfaceStem(id: SurfaceId): String? =
+        SurfaceRegistry.descriptor(id)?.storageStem
+
+    /** Deletes every stored file variant for a surface background. */
+    private fun clearSurfaceFiles(context: Context, stem: String) {
+        KNOWN_EXTENSIONS.forEach { ext ->
+            val file = File(context.filesDir, "$stem$ext")
+            if (file.exists()) file.delete()
+        }
     }
 
     /**
@@ -202,11 +233,8 @@ object WallpaperManager {
     }
 
     /** The currently stored work-card background file, if any. */
-    fun currentWorkCardFile(context: Context): File? {
-        val path = WallpaperConfig.workCardBackgroundUri?.let { Uri.parse(it).path } ?: return null
-        val file = File(path)
-        return if (file.exists() && file.length() > 0L) file else null
-    }
+    fun currentWorkCardFile(context: Context): File? =
+        currentSurfaceFile(context, SurfaceRegistry.GRID_WORK_CARD)
 
     /**
      * Best-effort extension (with leading dot) for [source], so a GIF stays a GIF.

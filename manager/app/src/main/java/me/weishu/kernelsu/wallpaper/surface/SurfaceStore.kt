@@ -35,6 +35,7 @@ object SurfaceStore {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val legacy = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
         SurfaceRegistry.all.forEach { descriptor ->
+            if (descriptor.fields.isEmpty() && descriptor.flags.isEmpty()) return@forEach
             if (prefs.contains(markerKey(descriptor.id))) {
                 configs[descriptor.id] = readNew(prefs, descriptor)
             } else {
@@ -50,6 +51,7 @@ object SurfaceStore {
     fun save(context: Context = ksuApp) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         SurfaceRegistry.all.forEach { descriptor ->
+            if (descriptor.fields.isEmpty() && descriptor.flags.isEmpty()) return@forEach
             val config = configs[descriptor.id] ?: return@forEach
             write(prefs, descriptor, config)
         }

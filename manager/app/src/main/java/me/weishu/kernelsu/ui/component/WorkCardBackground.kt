@@ -16,13 +16,20 @@ import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
-import me.weishu.kernelsu.ui.screen.wallpaper.workCardRows
+import me.weishu.kernelsu.ui.screen.wallpaper.SurfaceCallbacks
+import me.weishu.kernelsu.ui.screen.wallpaper.surfaceRows
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperManager
+import me.weishu.kernelsu.wallpaper.surface.SurfaceField
+import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
+import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 
 /**
  * The card's long-press options: the same controls as the settings panel, wrapped in a dialog and
  * wired straight to [WallpaperConfig]. Picking here launches the system image picker directly.
+ *
+ * The rows come from the work-card descriptor, so the dialog and the settings panel can never
+ * drift apart.
  */
 @Composable
 fun WorkCardBackgroundDialog(
@@ -37,29 +44,35 @@ fun WorkCardBackgroundDialog(
         }
     }
 
-    val rows = workCardRows(
-        enabled = WallpaperConfig.workCardBackgroundEnabled,
-        hasImage = !WallpaperConfig.workCardBackgroundUri.isNullOrEmpty(),
-        opacity = WallpaperConfig.workCardOpacity,
-        dim = WallpaperConfig.workCardDim,
-        dualOpacityEnabled = WallpaperConfig.workCardDualOpacityEnabled,
-        dayOpacity = WallpaperConfig.workCardDayOpacity,
-        nightOpacity = WallpaperConfig.workCardNightOpacity,
-        checkHidden = WallpaperConfig.workCardCheckHidden,
-        textHidden = WallpaperConfig.workCardTextHidden,
-        modeHidden = WallpaperConfig.workCardModeHidden,
-        onEnabledChange = { persist(context) { WallpaperConfig.updateWorkCardBackgroundEnabled(it) } },
+    val descriptor = SurfaceRegistry.descriptor(SurfaceRegistry.GRID_WORK_CARD)!!
+    val callbacks = SurfaceCallbacks(
+        onToggle = { field, value ->
+            when (field) {
+                SurfaceField.Enabled -> persist(context) { WallpaperConfig.updateWorkCardBackgroundEnabled(value) }
+                SurfaceField.DualOpacity -> persist(context) { WallpaperConfig.updateWorkCardDualOpacityEnabled(value) }
+                else -> Unit
+            }
+        },
+        onFlagChange = { flag, value ->
+            when (flag) {
+                SurfaceFlag.HideIcon -> persist(context) { WallpaperConfig.updateWorkCardCheckHidden(value) }
+                SurfaceFlag.HideText -> persist(context) { WallpaperConfig.updateWorkCardTextHidden(value) }
+                SurfaceFlag.HideMode -> persist(context) { WallpaperConfig.updateWorkCardModeHidden(value) }
+            }
+        },
+        onSlider = { field, value ->
+            when (field) {
+                SurfaceField.Opacity -> persist(context) { WallpaperConfig.updateWorkCardOpacity(value) }
+                SurfaceField.Dim -> persist(context) { WallpaperConfig.updateWorkCardDim(value) }
+                SurfaceField.DayOpacity -> persist(context) { WallpaperConfig.updateWorkCardDayOpacity(value) }
+                SurfaceField.NightOpacity -> persist(context) { WallpaperConfig.updateWorkCardNightOpacity(value) }
+                else -> Unit
+            }
+        },
         onPickImage = { pickImageLauncher.launch("image/*") },
         onClearImage = { WallpaperManager.clearWorkCardBackground(context) },
-        onOpacityChange = { persist(context) { WallpaperConfig.updateWorkCardOpacity(it) } },
-        onDimChange = { persist(context) { WallpaperConfig.updateWorkCardDim(it) } },
-        onDualOpacityChange = { persist(context) { WallpaperConfig.updateWorkCardDualOpacityEnabled(it) } },
-        onDayOpacityChange = { persist(context) { WallpaperConfig.updateWorkCardDayOpacity(it) } },
-        onNightOpacityChange = { persist(context) { WallpaperConfig.updateWorkCardNightOpacity(it) } },
-        onCheckHiddenChange = { persist(context) { WallpaperConfig.updateWorkCardCheckHidden(it) } },
-        onTextHiddenChange = { persist(context) { WallpaperConfig.updateWorkCardTextHidden(it) } },
-        onModeHiddenChange = { persist(context) { WallpaperConfig.updateWorkCardModeHidden(it) } },
     )
+    val rows = surfaceRows(descriptor, WallpaperConfig.workCardSurface, callbacks)
 
     AlertDialog(
         onDismissRequest = onDismiss,

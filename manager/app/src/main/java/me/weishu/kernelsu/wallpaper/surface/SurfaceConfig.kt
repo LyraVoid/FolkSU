@@ -66,4 +66,49 @@ data class SurfaceConfig(
     /** Scrim strength, honoring the day/night switch when [dualDim] is on. */
     fun effectiveDim(isDark: Boolean): Float =
         if (dualDim) (if (isDark) nightDim else dayDim) else dim
+
+    /** The value of the toggle [field], or false when [field] is not a toggle. */
+    fun toggle(field: SurfaceField): Boolean = when (field) {
+        SurfaceField.Enabled -> enabled
+        SurfaceField.DualOpacity -> dualOpacity
+        SurfaceField.DualDim -> dualDim
+        else -> false
+    }
+
+    /** The value of the scalar [field], or 0 when [field] is not a scalar. */
+    fun scalar(field: SurfaceField): Float = when (field) {
+        SurfaceField.Opacity -> opacity
+        SurfaceField.Dim -> dim
+        SurfaceField.DayOpacity -> dayOpacity
+        SurfaceField.NightOpacity -> nightOpacity
+        SurfaceField.DayDim -> dayDim
+        SurfaceField.NightDim -> nightDim
+        else -> 0f
+    }
+
+    /** Returns a copy with the toggle [field] set, ignoring non-toggle fields. */
+    fun withToggle(field: SurfaceField, value: Boolean): SurfaceConfig = when (field) {
+        SurfaceField.Enabled -> copy(enabled = value)
+        SurfaceField.DualOpacity -> copy(dualOpacity = value)
+        SurfaceField.DualDim -> copy(dualDim = value)
+        else -> this
+    }
+
+    /** Returns a copy with the scalar [field] set, ignoring non-scalar fields. */
+    fun withScalar(field: SurfaceField, value: Float): SurfaceConfig = when (field) {
+        SurfaceField.Opacity -> copy(opacity = value)
+        SurfaceField.Dim -> copy(dim = value)
+        SurfaceField.DayOpacity -> copy(dayOpacity = value)
+        SurfaceField.NightOpacity -> copy(nightOpacity = value)
+        SurfaceField.DayDim -> copy(dayDim = value)
+        SurfaceField.NightDim -> copy(nightDim = value)
+        else -> this
+    }
 }
+
+/** Whether [field] is a boolean toggle rather than a 0..1 slider. */
+val SurfaceField.isToggle: Boolean
+    get() = when (this) {
+        SurfaceField.Enabled, SurfaceField.DualOpacity, SurfaceField.DualDim -> true
+        else -> false
+    }

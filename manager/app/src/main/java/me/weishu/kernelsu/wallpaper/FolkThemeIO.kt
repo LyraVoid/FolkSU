@@ -5,10 +5,11 @@ import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
+import me.weishu.kernelsu.wallpaper.surface.SurfaceDescriptor
 import me.weishu.kernelsu.wallpaper.surface.SurfaceField
-import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
+import me.weishu.kernelsu.wallpaper.surface.isToggle
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarIconConfig
 import me.weishu.kernelsu.ui.theme.FontConfig
@@ -126,98 +127,77 @@ private object MainWallpaperAsset : ThemedAsset {
 }
 
 /**
- * The home work card's own background image. It is an independent feature: it round-trips even when
- * the main wallpaper is off.
+ * A slot's own background image and its opacity/dim/hide settings.
  *
- * The key names and the asset base are shared with the wider theme ecosystem, so a theme exported
- * elsewhere can be imported here (and vice versa).
+ * It round-trips the registry keys (`surface.<id>.<field>`) so a surface theme reloads under the
+ * same names the store uses, plus the wider-ecosystem legacy aliases the descriptor declares so a
+ * theme exported elsewhere still imports here (and vice versa).
  */
-private object WorkCardBackgroundAsset : ThemedAsset {
-    override val base = "grid_working_card_background"
+private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) : ThemedAsset {
+    private val id = descriptor.id
 
-    override fun currentFile(context: Context): File? = WallpaperManager.currentWorkCardFile(context)
+    override val base: String = requireNotNull(descriptor.themeBase)
+
+    override fun currentFile(context: Context): File? = WallpaperManager.currentSurfaceFile(context, id)
 
     override fun writeConfig(json: JSONObject) {
-        val id = SurfaceRegistry.GRID_WORK_CARD
         val surface = SurfaceStore.config(id)
-        // Registry keys, so a surface theme round-trips under the same names the store uses.
-        json.put(SurfaceStore.key(id, SurfaceField.Enabled), surface.enabled)
-        json.put(SurfaceStore.key(id, SurfaceField.Opacity), surface.opacity.toDouble())
-        json.put(SurfaceStore.key(id, SurfaceField.Dim), surface.dim.toDouble())
-        json.put(SurfaceStore.key(id, SurfaceField.DualOpacity), surface.dualOpacity)
-        json.put(SurfaceStore.key(id, SurfaceField.DayOpacity), surface.dayOpacity.toDouble())
-        json.put(SurfaceStore.key(id, SurfaceField.NightOpacity), surface.nightOpacity.toDouble())
-        json.put(SurfaceStore.key(id, SurfaceFlag.HideIcon), surface.hasFlag(SurfaceFlag.HideIcon))
-        json.put(SurfaceStore.key(id, SurfaceFlag.HideText), surface.hasFlag(SurfaceFlag.HideText))
-        json.put(SurfaceStore.key(id, SurfaceFlag.HideMode), surface.hasFlag(SurfaceFlag.HideMode))
-        // Legacy aliases kept for interop with themes from the wider ecosystem (and older builds).
-        json.put("isGridWorkingCardBackgroundEnabled", surface.enabled)
-        json.put("gridWorkingCardBackgroundOpacity", surface.opacity.toDouble())
-        json.put("gridWorkingCardBackgroundDim", surface.dim.toDouble())
-        json.put("isGridDualOpacityEnabled", surface.dualOpacity)
-        json.put("gridWorkingCardBackgroundDayOpacity", surface.dayOpacity.toDouble())
-        json.put("gridWorkingCardBackgroundNightOpacity", surface.nightOpacity.toDouble())
-        json.put("isGridWorkingCardCheckHidden", surface.hasFlag(SurfaceFlag.HideIcon))
-        json.put("isGridWorkingCardTextHidden", surface.hasFlag(SurfaceFlag.HideText))
-        json.put("isGridWorkingCardModeHidden", surface.hasFlag(SurfaceFlag.HideMode))
+        descriptor.fields.forEach { field ->
+            if (field == SurfaceField.Image) return@forEach
+            val key = SurfaceStore.key(id, field)
+            if (field.isToggle) json.put(key, surface.toggle(field))
+            else json.put(key, surface.scalar(field).toDouble())
+        }
+        descriptor.flags.forEach { flag ->
+            json.put(SurfaceStore.key(id, flag), surface.hasFlag(flag))
+        }
+        descriptor.legacyThemeFields.forEach { (field, legacyKey) ->
+            if (field.isToggle) json.put(legacyKey, surface.toggle(field))
+            else json.put(legacyKey, surface.scalar(field).toDouble())
+        }
+        descriptor.legacyThemeFlags.forEach { (flag, legacyKey) ->
+            json.put(legacyKey, surface.hasFlag(flag))
+        }
     }
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
-        val id = SurfaceRegistry.GRID_WORK_CARD
         val current = SurfaceStore.config(id)
-        // New keys win; the legacy aliases are only consulted when the new key is absent.
-        val parsed = current.copy(
-            enabled = json.optBoolean(
-                SurfaceStore.key(id, SurfaceField.Enabled),
-                json.optBoolean("isGridWorkingCardBackgroundEnabled", current.enabled),
-            ),
-            opacity = json.optDouble(
-                SurfaceStore.key(id, SurfaceField.Opacity),
-                json.optDouble("gridWorkingCardBackgroundOpacity", current.opacity.toDouble()),
-            ).toFloat(),
-            dim = json.optDouble(
-                SurfaceStore.key(id, SurfaceField.Dim),
-                json.optDouble("gridWorkingCardBackgroundDim", current.dim.toDouble()),
-            ).toFloat(),
-            dualOpacity = json.optBoolean(
-                SurfaceStore.key(id, SurfaceField.DualOpacity),
-                json.optBoolean("isGridDualOpacityEnabled", current.dualOpacity),
-            ),
-            dayOpacity = json.optDouble(
-                SurfaceStore.key(id, SurfaceField.DayOpacity),
-                json.optDouble("gridWorkingCardBackgroundDayOpacity", current.dayOpacity.toDouble()),
-            ).toFloat(),
-            nightOpacity = json.optDouble(
-                SurfaceStore.key(id, SurfaceField.NightOpacity),
-                json.optDouble("gridWorkingCardBackgroundNightOpacity", current.nightOpacity.toDouble()),
-            ).toFloat(),
-        )
-            .withFlag(
-                SurfaceFlag.HideIcon,
-                json.optBoolean(
-                    SurfaceStore.key(id, SurfaceFlag.HideIcon),
-                    json.optBoolean("isGridWorkingCardCheckHidden", current.hasFlag(SurfaceFlag.HideIcon)),
-                ),
-            )
-            .withFlag(
-                SurfaceFlag.HideText,
-                json.optBoolean(
-                    SurfaceStore.key(id, SurfaceFlag.HideText),
-                    json.optBoolean("isGridWorkingCardTextHidden", current.hasFlag(SurfaceFlag.HideText)),
-                ),
-            )
-            .withFlag(
-                SurfaceFlag.HideMode,
-                json.optBoolean(
-                    SurfaceStore.key(id, SurfaceFlag.HideMode),
-                    json.optBoolean("isGridWorkingCardModeHidden", current.hasFlag(SurfaceFlag.HideMode)),
-                ),
-            )
-
+        var parsed = current
+        descriptor.fields.forEach { field ->
+            if (field == SurfaceField.Image) return@forEach
+            val legacyKey = descriptor.legacyThemeFields[field]
+            if (field.isToggle) {
+                val fallback = if (legacyKey != null) {
+                    json.optBoolean(legacyKey, current.toggle(field))
+                } else {
+                    current.toggle(field)
+                }
+                parsed = parsed.withToggle(field, json.optBoolean(SurfaceStore.key(id, field), fallback))
+            } else {
+                val fallback = if (legacyKey != null) {
+                    json.optDouble(legacyKey, current.scalar(field).toDouble())
+                } else {
+                    current.scalar(field).toDouble()
+                }
+                parsed = parsed.withScalar(
+                    field,
+                    json.optDouble(SurfaceStore.key(id, field), fallback).toFloat(),
+                )
+            }
+        }
+        descriptor.flags.forEach { flag ->
+            val legacyKey = descriptor.legacyThemeFlags[flag]
+            val fallback = if (legacyKey != null) {
+                json.optBoolean(legacyKey, current.hasFlag(flag))
+            } else {
+                current.hasFlag(flag)
+            }
+            parsed = parsed.withFlag(flag, json.optBoolean(SurfaceStore.key(id, flag), fallback))
+        }
         if (parsed.enabled && file != null) {
-            WallpaperManager.saveWorkCardBackground(context, Uri.fromFile(file))
+            WallpaperManager.saveSurfaceImage(context, id, Uri.fromFile(file))
         } else {
-            WallpaperManager.clearWorkCardBackground(context)
+            WallpaperManager.clearSurfaceImage(context, id)
         }
         // The image handled the enable/uri; carry over the numbers and flags (the outer import saves).
         SurfaceStore.update(id) { s ->
@@ -227,10 +207,11 @@ private object WorkCardBackgroundAsset : ThemedAsset {
                 dualOpacity = parsed.dualOpacity,
                 dayOpacity = parsed.dayOpacity,
                 nightOpacity = parsed.nightOpacity,
+                dualDim = parsed.dualDim,
+                dayDim = parsed.dayDim,
+                nightDim = parsed.nightDim,
+                flags = parsed.flags,
             )
-                .withFlag(SurfaceFlag.HideIcon, parsed.hasFlag(SurfaceFlag.HideIcon))
-                .withFlag(SurfaceFlag.HideText, parsed.hasFlag(SurfaceFlag.HideText))
-                .withFlag(SurfaceFlag.HideMode, parsed.hasFlag(SurfaceFlag.HideMode))
         }
     }
 }
@@ -466,16 +447,17 @@ object FolkThemeIO {
     const val FILE_NAME = "wallpaper.fpt"
 
     /** The registered themed assets, in export order. Add a themed asset by adding one entry here. */
-    private val assets: List<ThemedAsset> = listOf(
-        MainWallpaperAsset,
-        WorkCardBackgroundAsset,
-        HomeBackgroundAsset,
-        SuperuserBackgroundAsset,
-        ModuleBackgroundAsset,
-        SettingsBackgroundAsset,
-        FontAsset,
-        HomeLayoutAsset,
-    )
+    private val assets: List<ThemedAsset> = buildList {
+        add(MainWallpaperAsset)
+        // Every surface that owns a theme payload and a legacy alias set round-trips here.
+        SurfaceRegistry.themeSlots().forEach { add(SurfaceBackgroundAsset(it)) }
+        add(HomeBackgroundAsset)
+        add(SuperuserBackgroundAsset)
+        add(ModuleBackgroundAsset)
+        add(SettingsBackgroundAsset)
+        add(FontAsset)
+        add(HomeLayoutAsset)
+    }
 
     /** Multi-file themed assets, registered alongside the single-file [assets]. */
     private val groups: List<ThemedAssetGroup> = listOf(NavIconsAsset)
