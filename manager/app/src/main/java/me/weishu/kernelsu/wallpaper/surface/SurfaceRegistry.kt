@@ -59,15 +59,27 @@ data class SurfaceDescriptor(
 /**
  * The registry of every configurable wallpaper surface.
  *
- * Only the grid work card is a live surface today. The focus, dashboard and stats slots are
- * registered as reserved placeholders — their descriptors belong to the model but expose no fields
- * yet, so they render nothing and their values never leak. Adding a real surface later is a data
- * change here plus, when needed, a file stem.
+ * The grid work card is the only live surface today. The focus and dashboard surfaces are fully
+ * described — fields, aliases and file/entry stems — but stay unavailable, so they render nothing
+ * and their settings never leak; their values still round-trip through the theme container. Flipping
+ * [SurfaceDescriptor.available] on is what turns one into a live surface once its rendering exists.
  */
 object SurfaceRegistry {
 
     /** Stable id of the grid work-card background surface. */
     val GRID_WORK_CARD = SurfaceId("layout.grid.workCard")
+
+    /** Shared config of the focus layout's card backgrounds; its four cards own only their image. */
+    val FOCUS = SurfaceId("layout.focus")
+
+    /** The four focus-layout card slots, mirroring the wider ecosystem's card ids. */
+    val FOCUS_CARD_KERNEL = SurfaceId("layout.focus.card.kernel")
+    val FOCUS_CARD_APP = SurfaceId("layout.focus.card.app")
+    val FOCUS_CARD_DEVICE = SurfaceId("layout.focus.card.device")
+    val FOCUS_CARD_STORAGE = SurfaceId("layout.focus.card.storage")
+
+    /** The dashboard layout's hero card. */
+    val DASHBOARD_HERO = SurfaceId("layout.dashboard.hero")
 
     private val gridWorkCard = SurfaceDescriptor(
         id = GRID_WORK_CARD,
@@ -152,18 +164,130 @@ object SurfaceRegistry {
     )
 
     /**
-     * Reserved slot ids. They are part of the model so the next UI can be plugged in by filling in
-     * its descriptor, but they expose no controls and are unavailable, so nothing renders and no
-     * value is written for them yet.
+     * The focus layout shares one set of dim/opacity values across its four cards, so the shared
+     * values live on this parent surface and each card below stores only its own image. This
+     * mirrors the wider ecosystem's keys exactly and keeps the two halves from drifting.
      */
-    private val reserved = listOf(
-        reservedSlot("layout.focus.card.status", R.string.home_tile_status, Icons.Outlined.AdminPanelSettings),
-        reservedSlot("layout.focus.card.manager", R.string.home_tile_manager, Icons.Outlined.AdminPanelSettings),
-        reservedSlot("layout.focus.card.device", R.string.home_tile_device, Icons.Outlined.Memory),
-        reservedSlot("layout.focus.card.storage", R.string.home_tile_storage, Icons.Outlined.SdStorage),
-        reservedSlot("layout.dashboard.hero", R.string.home_tile_status, Icons.Outlined.Memory),
-        reservedSlot("layout.stats.topCard", R.string.home_tile_status, Icons.Outlined.SdStorage),
+    private val focus = SurfaceDescriptor(
+        id = FOCUS,
+        titleRes = R.string.settings_home_layout_focus,
+        icon = Icons.Outlined.AdminPanelSettings,
+        scope = SurfaceScope.Layout,
+        layouts = setOf(HomeLayoutStyle.FOCUS),
+        fields = setOf(
+            SurfaceField.Enabled,
+            SurfaceField.Opacity,
+            SurfaceField.DualOpacity,
+            SurfaceField.DayOpacity,
+            SurfaceField.NightOpacity,
+            SurfaceField.Dim,
+            SurfaceField.DualDim,
+            SurfaceField.DayDim,
+            SurfaceField.NightDim,
+        ),
+        legacyThemeFields = mapOf(
+            SurfaceField.Enabled to "isFocusCardBackgroundEnabled",
+            SurfaceField.Dim to "focusCardBgDim",
+            SurfaceField.DualDim to "isFocusCardDualDimEnabled",
+            SurfaceField.DayDim to "focusCardBgDayDim",
+            SurfaceField.NightDim to "focusCardBgNightDim",
+            SurfaceField.Opacity to "focusCardBgOpacity",
+            SurfaceField.DualOpacity to "isFocusCardDualOpacityEnabled",
+            SurfaceField.DayOpacity to "focusCardBgDayOpacity",
+            SurfaceField.NightOpacity to "focusCardBgNightOpacity",
+        ),
+        available = { false },
     )
+
+    private val focusCards = listOf(
+        focusCard(
+            FOCUS_CARD_KERNEL,
+            R.string.home_tile_status,
+            Icons.Outlined.AdminPanelSettings,
+            "focus_card_kernel_bg",
+            "hasFocusCardKernelBg",
+        ),
+        focusCard(
+            FOCUS_CARD_APP,
+            R.string.home_tile_manager,
+            Icons.Outlined.Memory,
+            "focus_card_app_bg",
+            "hasFocusCardAppBg",
+        ),
+        focusCard(
+            FOCUS_CARD_DEVICE,
+            R.string.home_tile_device,
+            Icons.Outlined.Memory,
+            "focus_card_device_bg",
+            "hasFocusCardDeviceBg",
+        ),
+        focusCard(
+            FOCUS_CARD_STORAGE,
+            R.string.home_tile_storage,
+            Icons.Outlined.SdStorage,
+            "focus_card_storage_bg",
+            "hasFocusCardStorageBg",
+        ),
+    )
+
+    /** The dashboard layout's hero card, which owns an image plus its own dim/opacity values. */
+    private val dashboardHero = SurfaceDescriptor(
+        id = DASHBOARD_HERO,
+        titleRes = R.string.settings_home_layout_dashboard,
+        icon = Icons.Outlined.Memory,
+        scope = SurfaceScope.Slot,
+        layouts = setOf(HomeLayoutStyle.DASHBOARD),
+        fields = setOf(
+            SurfaceField.Image,
+            SurfaceField.Enabled,
+            SurfaceField.Opacity,
+            SurfaceField.DualOpacity,
+            SurfaceField.DayOpacity,
+            SurfaceField.NightOpacity,
+            SurfaceField.Dim,
+            SurfaceField.DualDim,
+            SurfaceField.DayDim,
+            SurfaceField.NightDim,
+        ),
+        storageStem = "dashboard_card_bg",
+        themeBase = "dashboard_card_bg",
+        legacyThemeFields = mapOf(
+            SurfaceField.Image to "hasDashboardCardBg",
+            SurfaceField.Enabled to "isDashboardCardBackgroundEnabled",
+            SurfaceField.Dim to "dashboardCardBgDim",
+            SurfaceField.DualDim to "isDashboardCardDualDimEnabled",
+            SurfaceField.DayDim to "dashboardCardBgDayDim",
+            SurfaceField.NightDim to "dashboardCardBgNightDim",
+            SurfaceField.Opacity to "dashboardCardBgOpacity",
+            SurfaceField.DualOpacity to "isDashboardCardDualOpacityEnabled",
+            SurfaceField.DayOpacity to "dashboardCardBgDayOpacity",
+            SurfaceField.NightOpacity to "dashboardCardBgNightOpacity",
+        ),
+        available = { false },
+    )
+
+    /** A focus card that only stores its own image; the shared values live on [focus]. */
+    private fun focusCard(
+        id: SurfaceId,
+        titleRes: Int,
+        icon: ImageVector,
+        themeBase: String,
+        legacyKey: String,
+    ): SurfaceDescriptor = SurfaceDescriptor(
+        id = id,
+        titleRes = titleRes,
+        icon = icon,
+        scope = SurfaceScope.Slot,
+        layouts = setOf(HomeLayoutStyle.FOCUS),
+        fields = setOf(SurfaceField.Image),
+        storageStem = themeBase,
+        themeBase = themeBase,
+        legacyThemeFields = mapOf(SurfaceField.Image to legacyKey),
+        available = { false },
+    )
+
+    /** Reserved slot for the stats layout; the model is in place but exposes no controls yet. */
+    private val statsTopCard = reservedSlot("layout.stats.topCard", R.string.home_tile_status, Icons.Outlined.SdStorage)
 
     private fun reservedSlot(id: String, titleRes: Int, icon: ImageVector): SurfaceDescriptor = SurfaceDescriptor(
         id = SurfaceId(id),
@@ -175,7 +299,8 @@ object SurfaceRegistry {
     )
 
     /** Every registered surface. */
-    val all: List<SurfaceDescriptor> = listOf(gridWorkCard) + reserved
+    val all: List<SurfaceDescriptor> =
+        listOf(gridWorkCard, focus) + focusCards + listOf(dashboardHero, statsTopCard)
 
     /** The surfaces available for a home layout token, in registration order. */
     fun forLayout(layout: String): List<SurfaceDescriptor> =
@@ -184,6 +309,13 @@ object SurfaceRegistry {
     /** The descriptor registered under [id], or null when no surface uses it. */
     fun descriptor(id: SurfaceId): SurfaceDescriptor? = all.firstOrNull { it.id == id }
 
-    /** The surfaces that carry a file and therefore a theme-container asset. */
-    fun themeSlots(): List<SurfaceDescriptor> = all.filter { it.themeBase != null }
+    /**
+     * The surfaces that carry theme data: either a file, or historical `theme.json` keys, so their
+     * values round-trip through the theme container. A config-only surface (the focus parent) has no
+     * file but is still exported for its shared dim/opacity values.
+     */
+    fun themeSlots(): List<SurfaceDescriptor> =
+        all.filter {
+            it.themeBase != null || it.legacyThemeFields.isNotEmpty() || it.legacyThemeFlags.isNotEmpty()
+        }
 }

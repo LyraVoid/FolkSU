@@ -136,9 +136,16 @@ private object MainWallpaperAsset : ThemedAsset {
 private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) : ThemedAsset {
     private val id = descriptor.id
 
-    override val base: String = requireNotNull(descriptor.themeBase)
+    /** Whether this surface stores a background file at all (the focus parent does not). */
+    private val ownsImage = SurfaceField.Image in descriptor.fields
 
-    override fun currentFile(context: Context): File? = WallpaperManager.currentSurfaceFile(context, id)
+    /** Whether the surface has a per-surface enable flag, as opposed to a bare image slot. */
+    private val hasEnabledField = SurfaceField.Enabled in descriptor.fields
+
+    override val base: String = descriptor.themeBase ?: id.value
+
+    override fun currentFile(context: Context): File? =
+        if (ownsImage) WallpaperManager.currentSurfaceFile(context, id) else null
 
     override fun writeConfig(json: JSONObject) {
         val surface = SurfaceStore.config(id)
@@ -152,8 +159,11 @@ private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) 
             json.put(SurfaceStore.key(id, flag), surface.hasFlag(flag))
         }
         descriptor.legacyThemeFields.forEach { (field, legacyKey) ->
-            if (field.isToggle) json.put(legacyKey, surface.toggle(field))
-            else json.put(legacyKey, surface.scalar(field).toDouble())
+            when {
+                field == SurfaceField.Image -> json.put(legacyKey, !surface.imageUri.isNullOrEmpty())
+                field.isToggle -> json.put(legacyKey, surface.toggle(field))
+                else -> json.put(legacyKey, surface.scalar(field).toDouble())
+            }
         }
         descriptor.legacyThemeFlags.forEach { (flag, legacyKey) ->
             json.put(legacyKey, surface.hasFlag(flag))
@@ -194,14 +204,21 @@ private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) 
             }
             parsed = parsed.withFlag(flag, json.optBoolean(SurfaceStore.key(id, flag), fallback))
         }
-        if (parsed.enabled && file != null) {
-            WallpaperManager.saveSurfaceImage(context, id, Uri.fromFile(file))
-        } else {
-            WallpaperManager.clearSurfaceImage(context, id)
+        if (ownsImage) {
+            // A surface with its own enable flag follows that flag; a bare image slot follows the
+            // file, because the wider ecosystem stores such cards as an entry plus a presence bool.
+            val wantsImage = if (hasEnabledField) parsed.enabled else file != null
+            if (wantsImage && file != null) {
+                WallpaperManager.saveSurfaceImage(context, id, Uri.fromFile(file))
+            } else {
+                WallpaperManager.clearSurfaceImage(context, id)
+            }
         }
-        // The image handled the enable/uri; carry over the numbers and flags (the outer import saves).
+        // Saving/clearing the file already set the image and, for image-backed surfaces, the enable
+        // flag; carry the numbers and flags over, and the enable flag only when there is no image.
         SurfaceStore.update(id) { s ->
             s.copy(
+                enabled = if (ownsImage) s.enabled else parsed.enabled,
                 opacity = parsed.opacity,
                 dim = parsed.dim,
                 dualOpacity = parsed.dualOpacity,
