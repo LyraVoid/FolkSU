@@ -12,6 +12,9 @@ import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 enum class HomeWorkCardLayout {
     Circle,
     Grid,
+    Focus,
+    Dashboard,
+    Stats,
 }
 
 /**
@@ -47,14 +50,20 @@ object HomeWorkCardControl {
         layout: HomeWorkCardLayout,
         working: Boolean,
     ): HomeWorkCardStyle = when (layout) {
-        HomeWorkCardLayout.Circle -> circleStyle(working)
+        HomeWorkCardLayout.Circle,
+        HomeWorkCardLayout.Focus,
+        HomeWorkCardLayout.Dashboard,
+        HomeWorkCardLayout.Stats,
+        -> circleStyle(working)
+
         HomeWorkCardLayout.Grid -> gridStyle(working)
     }
 
     /**
-     * CircleUI. Outside wallpaper mode the card keeps its semantic accent pair; in wallpaper mode
-     * it drops to the shared neutral material, because an alpha-reduced accent container loses the
-     * contrast of its paired on-colour once a photo shows through.
+     * CircleUI, plus the status card of every layout that reads as a list of tiles (Focus,
+     * Dashboard and Stats). Outside wallpaper mode the card keeps its semantic accent pair; in
+     * wallpaper mode it drops to the shared neutral material, because an alpha-reduced accent
+     * container loses the contrast of its paired on-colour once a photo shows through.
      */
     @Composable
     private fun circleStyle(working: Boolean): HomeWorkCardStyle {

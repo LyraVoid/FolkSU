@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The built-in geometric KernelSU mark (the two linked squares used by the launcher
+  icon), redrawn on a tight viewport so it optically matches 32dp card header icons.
+  Monochrome on purpose: Compose tints it with Icon(tint = ...).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M0.9,0.9 H23.1 V23.1 H0.9 Z"
+        android:strokeWidth="1.5"
+        android:strokeColor="#000000" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M0,0 H12.6 V12.6 H0 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M11.4,11.4 H24 V24 H11.4 Z" />
+</vector>

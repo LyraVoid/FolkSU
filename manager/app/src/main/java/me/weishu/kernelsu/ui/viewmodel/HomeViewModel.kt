@@ -5,14 +5,21 @@ import android.system.Os
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.BuildConfig
 import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.data.HomeMetrics
+import me.weishu.kernelsu.data.SystemMetricsCollector
 import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.getKernelVersion
@@ -32,6 +39,20 @@ class HomeViewModel(
 
     private val _uiState = MutableStateFlow(buildState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    /**
+     * Live device/storage metrics for the home screen. Polled only while a consumer collects the
+     * flow (the focus layout), and stopped a few seconds after it leaves.
+     */
+    val metrics: StateFlow<HomeMetrics> = flow {
+        while (true) {
+            val storage = SystemMetricsCollector.collectStorageStatus()
+            val device = SystemMetricsCollector.collectDeviceStatus(ksuApp)
+            emit(HomeMetrics(device = device, storage = storage))
+            delay(METRICS_POLL_INTERVAL_MS)
+        }
+    }.flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(METRICS_STOP_TIMEOUT_MS), HomeMetrics())
 
     fun refresh() {
         viewModelScope.launch {
@@ -85,3 +106,9 @@ class HomeViewModel(
         )
     }
 }
+
+/** How often the home screen refreshes its device/storage metrics. */
+private const val METRICS_POLL_INTERVAL_MS = 5_000L
+
+/** How long the metrics keep polling after the last collector goes away. */
+private const val METRICS_STOP_TIMEOUT_MS = 5_000L

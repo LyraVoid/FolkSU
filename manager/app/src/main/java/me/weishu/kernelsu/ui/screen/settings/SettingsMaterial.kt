@@ -170,14 +170,20 @@ fun SettingPagerMaterial(
                         )
                     }
                     add {
-                        val homeLayoutItems = listOf(
-                            stringResource(id = R.string.settings_home_layout_circle),
-                            stringResource(id = R.string.settings_home_layout_grid),
-                        )
-                        val selectedHomeLayout = when (uiState.homeLayoutStyle) {
-                            HomeLayoutStyle.GRID -> 1
-                            else -> 0
+                        val supportedHomeLayouts = HomeLayoutStyle.supported
+                        val homeLayoutItems = supportedHomeLayouts.map { style ->
+                            stringResource(
+                                when (style) {
+                                    HomeLayoutStyle.GRID -> R.string.settings_home_layout_grid
+                                    HomeLayoutStyle.FOCUS -> R.string.settings_home_layout_focus
+                                    HomeLayoutStyle.DASHBOARD -> R.string.settings_home_layout_dashboard
+                                    HomeLayoutStyle.STATS -> R.string.settings_home_layout_stats
+                                    else -> R.string.settings_home_layout_circle
+                                }
+                            )
                         }
+                        val selectedHomeLayout =
+                            supportedHomeLayouts.indexOf(uiState.homeLayoutStyle).coerceAtLeast(0)
                         SegmentedDropdownItem(
                             icon = Icons.Filled.GridView,
                             title = stringResource(id = R.string.settings_home_layout),
@@ -186,7 +192,7 @@ fun SettingPagerMaterial(
                             selectedIndex = selectedHomeLayout,
                             onItemSelected = { index ->
                                 actions.onSetHomeLayoutStyle(
-                                    if (index == 1) HomeLayoutStyle.GRID else HomeLayoutStyle.CIRCLE
+                                    supportedHomeLayouts.getOrElse(index) { HomeLayoutStyle.DEFAULT }
                                 )
                             }
                         )

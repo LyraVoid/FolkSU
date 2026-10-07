@@ -14,16 +14,28 @@ object HomeLayoutStyle {
     /** The two-column card grid home. */
     const val GRID = "kernelsu"
 
+    /** The responsive tile grid that becomes a 2x2 board on a landscape screen. */
+    const val FOCUS = "focus"
+
+    /** The hero-first home with a single wide status banner. */
+    const val DASHBOARD = "dashboard_ui"
+
+    /** The counters-first home built around the superuser and module tallies. */
+    const val STATS = "stats"
+
     /** Layout used when the preference is missing or holds an unsupported token. */
     const val DEFAULT = CIRCLE
 
     /** Normalise a stored value to a supported token. */
     fun fromValue(value: String?): String = when (value) {
         GRID -> GRID
+        FOCUS -> FOCUS
+        DASHBOARD -> DASHBOARD
+        STATS -> STATS
         CIRCLE -> CIRCLE
         else -> DEFAULT
     }
 
     /** Every supported token, in display order. */
-    val supported: List<String> = listOf(CIRCLE, GRID)
+    val supported: List<String> = listOf(CIRCLE, GRID, FOCUS, DASHBOARD, STATS)
 }

@@ -288,9 +288,9 @@ private object FontAsset : ThemedAsset {
  * The home layout style (the token persisted under `home_layout_style`).
  *
  * It is pure configuration with no payload file, so it only round-trips through `theme.json`. The
- * key `homeLayoutStyle` and the tokens (`kernelsu` for the grid UI, `circle` for the single column)
- * are shared with the wider theme ecosystem, so a theme exported elsewhere imports here. Tokens we
- * cannot render (e.g. FolkPatch's `focus`/`stats`/`dashboard_ui`) are left untouched instead of
+ * key `homeLayoutStyle` and the tokens (`kernelsu` for the grid UI, `circle` for the single column,
+ * `focus`/`dashboard_ui`/`stats` for the tile layouts) are shared with the wider theme ecosystem, so
+ * a theme exported elsewhere imports here. Tokens we cannot render are left untouched instead of
  * forcing a layout the user did not pick.
  */
 private object HomeLayoutAsset : ThemedAsset {
@@ -308,6 +308,9 @@ private object HomeLayoutAsset : ThemedAsset {
         if (!json.has(KEY)) return
         val token = when (json.optString(KEY)) {
             HomeLayoutStyle.GRID -> HomeLayoutStyle.GRID
+            HomeLayoutStyle.FOCUS -> HomeLayoutStyle.FOCUS
+            HomeLayoutStyle.DASHBOARD -> HomeLayoutStyle.DASHBOARD
+            HomeLayoutStyle.STATS -> HomeLayoutStyle.STATS
             HomeLayoutStyle.CIRCLE, "default" -> HomeLayoutStyle.CIRCLE
             else -> return
         }

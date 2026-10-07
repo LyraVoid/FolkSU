@@ -83,6 +83,7 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.KernelVersion
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.data.HomeMetrics
 import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.ui.component.WarningLevel
 import me.weishu.kernelsu.ui.component.WorkCardBackgroundDialog
@@ -111,6 +112,7 @@ fun HomePagerMaterial(
     bottomInnerPadding: Dp,
     superuserCount: Int = 0,
     moduleEnabledCount: Int = 0,
+    metrics: HomeMetrics = HomeMetrics(),
 ) {
     ExpressiveScaffold(
         topBar = { TopBar() },
@@ -124,8 +126,29 @@ fun HomePagerMaterial(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             HomeWarnings(state = state, actions = actions)
-            when (LocalHomeLayoutStyle.current) {
+            val layout = LocalHomeLayoutStyle.current
+            when (layout) {
                 HomeLayoutStyle.GRID -> GridHomeContent(
+                    state = state,
+                    actions = actions,
+                    superuserCount = superuserCount,
+                    moduleEnabledCount = moduleEnabledCount,
+                )
+
+                HomeLayoutStyle.FOCUS -> FocusHomeContent(
+                    state = state,
+                    actions = actions,
+                    metrics = metrics,
+                )
+
+                HomeLayoutStyle.DASHBOARD -> DashboardHomeContent(
+                    state = state,
+                    actions = actions,
+                    superuserCount = superuserCount,
+                    moduleEnabledCount = moduleEnabledCount,
+                )
+
+                HomeLayoutStyle.STATS -> StatsHomeContent(
                     state = state,
                     actions = actions,
                     superuserCount = superuserCount,
@@ -139,7 +162,10 @@ fun HomePagerMaterial(
                     moduleEnabledCount = moduleEnabledCount,
                 )
             }
-            InfoCard(systemInfo = state.systemInfo)
+            // The tile layouts place the facts card inside their own board.
+            if (layout == HomeLayoutStyle.CIRCLE || layout == HomeLayoutStyle.GRID) {
+                InfoCard(systemInfo = state.systemInfo)
+            }
             SupportLinks(onOpenUrl = actions.onOpenUrl)
             Spacer(
                 Modifier.height(
@@ -493,9 +519,10 @@ internal fun HomeCard(
 }
 
 @Composable
-private fun StatusCard(
+internal fun StatusCard(
     state: HomeUiState,
     actions: HomeActions,
+    modifier: Modifier = Modifier,
 ) {
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
@@ -551,7 +578,7 @@ private fun StatusCard(
     } else null
 
     HomeCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         containerColor = workCardStyle.containerColor,
         contentColor = workCardStyle.contentColor ?: contentColorFor(workCardStyle.containerColor),
         wallpaperRole = workCardStyle.wallpaperRole,
@@ -724,23 +751,12 @@ private fun SupportLinkRow(
 }
 
 @Composable
-private fun InfoCard(
+internal fun InfoCard(
     systemInfo: SystemInfo,
     modifier: Modifier = Modifier,
 ) {
-    val selinuxDisplay = when (systemInfo.selinuxStatus) {
-        "Enforcing" -> stringResource(R.string.selinux_status_enforcing)
-        "Permissive" -> stringResource(R.string.selinux_status_permissive)
-        "Disabled" -> stringResource(R.string.selinux_status_disabled)
-        else -> stringResource(R.string.selinux_status_unknown)
-    }
-    val seccompDisplay = when (systemInfo.seccompStatus) {
-        -1 -> stringResource(R.string.seccomp_status_not_supported)
-        0 -> stringResource(R.string.seccomp_status_disabled)
-        1 -> stringResource(R.string.seccomp_status_strict)
-        2 -> stringResource(R.string.seccomp_status_filter)
-        else -> stringResource(R.string.seccomp_status_unknown)
-    }
+    val selinuxDisplay = selinuxDisplayName(systemInfo.selinuxStatus)
+    val seccompDisplay = seccompDisplayName(systemInfo.seccompStatus)
 
     HomeCard(modifier = modifier.fillMaxWidth()) {
         Column(
@@ -784,7 +800,7 @@ private fun InfoCard(
 }
 
 @Composable
-private fun InfoRow(
+internal fun InfoRow(
     icon: ImageVector,
     label: String,
     value: String,
@@ -809,6 +825,25 @@ private fun InfoRow(
             )
         }
     }
+}
+
+/** The localised SELinux state, shared by the facts card and the layouts that show it inline. */
+@Composable
+internal fun selinuxDisplayName(status: String): String = when (status) {
+    "Enforcing" -> stringResource(R.string.selinux_status_enforcing)
+    "Permissive" -> stringResource(R.string.selinux_status_permissive)
+    "Disabled" -> stringResource(R.string.selinux_status_disabled)
+    else -> stringResource(R.string.selinux_status_unknown)
+}
+
+/** The localised Seccomp state, shared by the facts card and the layouts that show it inline. */
+@Composable
+internal fun seccompDisplayName(status: Int): String = when (status) {
+    -1 -> stringResource(R.string.seccomp_status_not_supported)
+    0 -> stringResource(R.string.seccomp_status_disabled)
+    1 -> stringResource(R.string.seccomp_status_strict)
+    2 -> stringResource(R.string.seccomp_status_filter)
+    else -> stringResource(R.string.seccomp_status_unknown)
 }
 
 @Preview(name = "Activated")

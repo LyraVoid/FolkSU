@@ -40,6 +40,7 @@ fun HomePager(
 ) {
     val viewModel = viewModel<HomeViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val metrics by viewModel.metrics.collectAsStateWithLifecycle()
     val mainPagerState = LocalMainPagerState.current
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
@@ -90,5 +91,6 @@ fun HomePager(
         bottomInnerPadding = bottomInnerPadding,
         superuserCount = superuserCount,
         moduleEnabledCount = moduleEnabledCount,
+        metrics = metrics,
     )
 }
