@@ -68,15 +68,14 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.KernelVersion
@@ -88,20 +87,16 @@ import me.weishu.kernelsu.ui.component.WarningLevel
 import me.weishu.kernelsu.ui.component.WorkCardBackgroundDialog
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
-import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
 import me.weishu.kernelsu.ui.component.material.folkPressScale
 import me.weishu.kernelsu.ui.component.rebootlistpopup.RebootListPopup
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
-import me.weishu.kernelsu.ui.theme.FolkShape
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.ui.theme.isInDarkTheme
 import me.weishu.kernelsu.wallpaper.AnimatedFileImage
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
-import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
 import me.weishu.kernelsu.wallpaper.WallpaperManager
-import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
-import java.io.File
+import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
 
 @Composable
 fun HomePagerMaterial(
@@ -482,30 +477,6 @@ private fun TopBar() {
         actions = { RebootListPopup() },
         colors = expressiveTopAppBarColors(),
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-    )
-}
-
-/** A full-width tonal surface, the one shape every card on the home screen shares. */
-@Composable
-internal fun HomeCard(
-    modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
-    contentColor: Color = contentColorFor(containerColor),
-    wallpaperRole: WallpaperSurfaceRole? =
-        if (containerColor == MaterialTheme.colorScheme.surfaceBright) WallpaperSurfaceRole.Group else null,
-    onClick: (() -> Unit)? = null,
-    onLongClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    TonalCard(
-        modifier = modifier,
-        containerColor = containerColor,
-        contentColor = contentColor,
-        wallpaperRole = wallpaperRole,
-        shape = FolkShape.Corner20,
-        onClick = onClick,
-        onLongClick = onLongClick,
-        content = content,
     )
 }
 

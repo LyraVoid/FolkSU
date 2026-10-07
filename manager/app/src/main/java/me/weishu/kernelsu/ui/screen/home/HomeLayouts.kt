@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,25 +25,24 @@ import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.util.Locale
+import kotlin.math.roundToInt
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.CpuFrequency
@@ -53,9 +51,6 @@ import me.weishu.kernelsu.ui.component.chart.ModulePieChart
 import me.weishu.kernelsu.ui.component.chart.PieSlice
 import me.weishu.kernelsu.ui.component.chart.WaveChart
 import me.weishu.kernelsu.ui.theme.FolkType
-import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
-import java.util.Locale
-import kotlin.math.roundToInt
 
 /** The gap between the tiles of every multi-column home layout. */
 internal val TileSpacing = 16.dp
@@ -93,7 +88,7 @@ internal fun FocusHomeContent(
     if (!fullFeatured || !isWideLayout(withOrientation = true)) {
         Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
             FocusStatusTile(state = state, actions = actions)
-            FocusFactsTile(
+            HomeFactsTile(
                 state = state,
                 title = stringResource(R.string.home_tile_manager),
                 icon = Icons.Outlined.AdminPanelSettings,
@@ -118,7 +113,7 @@ internal fun FocusHomeContent(
                     .weight(1f)
                     .fillMaxHeight(),
             )
-            FocusFactsTile(
+            HomeFactsTile(
                 state = state,
                 title = stringResource(R.string.home_tile_manager),
                 icon = Icons.Outlined.AdminPanelSettings,
@@ -183,7 +178,7 @@ internal fun StatsHomeContent(
                     superuserCount = superuserCount,
                     moduleEnabledCount = moduleEnabledCount,
                 )
-                FocusFactsTile(
+                HomeFactsTile(
                     state = state,
                     title = stringResource(R.string.home_tile_system),
                     icon = Icons.Outlined.Info,
@@ -200,78 +195,11 @@ internal fun StatsHomeContent(
             superuserCount = superuserCount,
             moduleEnabledCount = moduleEnabledCount,
         )
-        FocusFactsTile(
+        HomeFactsTile(
             state = state,
             title = stringResource(R.string.home_tile_system),
             icon = Icons.Outlined.Info,
         )
-    }
-}
-
-/**
- * One card of the Focus board: the icon-and-title header, a hairline, then the rows. The action
- * button in the header is the card's only control.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun FocusCard(
-    title: String,
-    modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
-    iconRes: Int? = null,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
-    contentColor: Color = contentColorFor(containerColor),
-    wallpaperRole: WallpaperSurfaceRole? =
-        if (containerColor == MaterialTheme.colorScheme.surfaceBright) WallpaperSurfaceRole.Group else null,
-    iconTint: Color = MaterialTheme.colorScheme.primary,
-    action: (@Composable () -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    HomeCard(
-        modifier = modifier,
-        containerColor = containerColor,
-        contentColor = contentColor,
-        wallpaperRole = wallpaperRole,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val headerIconModifier = Modifier.size(32.dp)
-                when {
-                    iconRes != null -> Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        modifier = headerIconModifier,
-                        tint = iconTint,
-                    )
-
-                    icon != null -> Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = headerIconModifier,
-                        tint = iconTint,
-                    )
-                }
-                Spacer(Modifier.width(16.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLargeEmphasized,
-                    modifier = Modifier.weight(1f),
-                )
-                if (action != null) {
-                    action()
-                }
-            }
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 16.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                content()
-            }
-        }
     }
 }
 
@@ -306,17 +234,17 @@ private fun FocusStatusTile(
         else -> null
     }
 
-    FocusCard(
+    HomeTileCard(
         title = stringResource(R.string.home_tile_status),
         iconRes = R.drawable.ic_kernelsu_foreground,
         modifier = modifier.fillMaxWidth(),
         action = cardAction,
     ) {
-        FocusInfoRow(
+        HomeFactRow(
             label = stringResource(R.string.home_running_status),
             value = statusTitle,
         )
-        FocusInfoRow(
+        HomeFactRow(
             label = stringResource(R.string.home_version),
             value = if (ksuActive) {
                 "${state.ksuVersion}-${state.kernelUAPIVersion}"
@@ -325,50 +253,11 @@ private fun FocusStatusTile(
             },
         )
         statusStateTexts(state).forEach { (label, value) ->
-            FocusInfoRow(label = label, value = value)
+            HomeFactRow(label = label, value = value)
         }
     }
 }
 
-/** The manager build and the policy it runs under, or the system facts the stats board closes with. */
-@Composable
-private fun FocusFactsTile(
-    state: HomeUiState,
-    title: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-) {
-    FocusCard(
-        title = title,
-        icon = icon,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        FocusInfoRow(
-            label = stringResource(R.string.home_manager_version),
-            value = state.systemInfo.managerVersion,
-        )
-        FocusInfoRow(
-            label = stringResource(R.string.home_kernel),
-            value = state.systemInfo.kernelVersion,
-        )
-        FocusInfoRow(
-            label = stringResource(R.string.home_device_model),
-            value = state.systemInfo.deviceModel,
-        )
-        FocusInfoRow(
-            label = stringResource(R.string.home_fingerprint),
-            value = state.systemInfo.fingerprint,
-        )
-        FocusInfoRow(
-            label = stringResource(R.string.home_selinux_status),
-            value = selinuxDisplayName(state.systemInfo.selinuxStatus),
-        )
-        FocusInfoRow(
-            label = stringResource(R.string.home_seccomp_status),
-            value = seccompDisplayName(state.systemInfo.seccompStatus),
-        )
-    }
-}
 
 /** The live battery and CPU metrics of the device the module is running on. */
 @Composable
@@ -379,7 +268,7 @@ private fun FocusDeviceTile(
     val device = metrics.device
     val cpuTemperature = device?.cpuTemperatureC
 
-    FocusCard(
+    HomeTileCard(
         title = stringResource(R.string.home_tile_device),
         icon = Icons.Outlined.Memory,
         modifier = modifier.fillMaxWidth(),
@@ -466,7 +355,7 @@ private fun FocusStorageTile(
 ) {
     val storage = metrics.storage
 
-    FocusCard(
+    HomeTileCard(
         title = stringResource(R.string.home_tile_storage),
         icon = Icons.Outlined.SdStorage,
         modifier = modifier.fillMaxWidth(),
@@ -515,7 +404,7 @@ private fun StatsMonitorTile(
     val batteryLevel = device?.batteryLevelPercent
     val clusters = cpuClusters(device?.cpuFrequencies.orEmpty())
 
-    FocusCard(
+    HomeTileCard(
         title = stringResource(R.string.home_tile_monitor),
         icon = Icons.Outlined.Speed,
         modifier = modifier.fillMaxWidth(),
@@ -592,7 +481,7 @@ private fun StatsModuleTile(
         PieSlice(label = superuserLabel, value = superuserCount, color = colors.tertiary),
     )
 
-    FocusCard(
+    HomeTileCard(
         title = stringResource(R.string.home_tile_stats),
         icon = Icons.Outlined.PieChart,
         modifier = modifier.fillMaxWidth(),
@@ -708,26 +597,6 @@ private fun MetricBar(
     }
 }
 
-/** One `label: value` line, the shape every row of the Focus board takes. */
-@Composable
-private fun FocusInfoRow(
-    label: String,
-    value: String,
-) {
-    Row(verticalAlignment = Alignment.Top) {
-        Text(
-            text = "$label: ",
-            style = FolkType.Summary,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = value,
-            style = FolkType.Summary.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
 
 private const val DEFAULT_METRIC = "—"
 private const val BATTERY_TEMPERATURE_MAX_C = 50f
