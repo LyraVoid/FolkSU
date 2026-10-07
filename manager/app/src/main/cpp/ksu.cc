@@ -77,11 +77,23 @@ static int ksuctl(unsigned long op, Args &&... args) {
 
 static struct ksu_get_info_cmd g_version {};
 
+// A driver answer that carries the MANAGER flag is cached; a negative one never is. When this
+// process is authorized only after it started (late-load, or a manager registered as the dynamic
+// manager), a cached answer without the flag would otherwise keep is_manager()/isFullFeatured()
+// false until the app is restarted.
+static bool info_is_final(const struct ksu_get_info_cmd &info) {
+    return info.version != 0 && (info.flags & KSU_GET_INFO_FLAG_MANAGER) != 0;
+}
+
 struct ksu_get_info_cmd get_info() {
-    if (!g_version.version) {
-        if (ksuctl(KSU_IOCTL_GET_INFO, &g_version) < 0) {
-            ksuctl(KSU_IOCTL_GET_INFO_LEGACY, &g_version);
-            g_version.uapi_version = 0;
+    if (!info_is_final(g_version)) {
+        struct ksu_get_info_cmd info {};
+        if (ksuctl(KSU_IOCTL_GET_INFO, &info) == 0) {
+            g_version = info;
+        } else {
+            ksuctl(KSU_IOCTL_GET_INFO_LEGACY, &info);
+            info.uapi_version = 0;
+            g_version = info;
         }
     }
     return g_version;
