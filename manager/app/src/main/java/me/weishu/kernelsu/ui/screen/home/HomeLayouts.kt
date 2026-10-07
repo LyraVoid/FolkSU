@@ -1,7 +1,6 @@
 package me.weishu.kernelsu.ui.screen.home
 
 import android.text.format.Formatter
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,7 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
@@ -38,10 +35,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -256,9 +251,8 @@ internal fun StatsHomeContent(
  * The Dashboard banner: the state icon and title over the three facts the hero was built to carry
  * (the working version, the kernel and SELinux).
  *
- * While wallpaper mode is off the card fades its accent container into the neutral surface, which
- * is the linear gradient this layout is known for; in wallpaper mode the shared wallpaper surface
- * paints the background instead, exactly as the other cards do.
+ * It is a plain card, exactly like the ones under it: the state is read from the icon and the
+ * wording, so the surface never has to switch to an accent role.
  */
 @Composable
 private fun DashboardHeroCard(
@@ -268,13 +262,6 @@ private fun DashboardHeroCard(
 ) {
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
-
-    val workCardStyle = HomeWorkCardControl.style(
-        layout = HomeWorkCardLayout.Dashboard,
-        working = ksuActive,
-    )
-    val containerColor = workCardStyle.containerColor
-    val contentColor = workCardStyle.contentColor ?: contentColorFor(containerColor)
 
     val statusIcon = when {
         ksuActive -> Icons.Rounded.CheckCircle
@@ -294,89 +281,66 @@ private fun DashboardHeroCard(
     val workingMode = workingModeLabel(state)
 
     HomeCard(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 160.dp),
-        containerColor = containerColor,
-        contentColor = contentColor,
-        wallpaperRole = workCardStyle.wallpaperRole,
+        modifier = modifier.fillMaxWidth(),
         onClick = {
             if (!state.isLateLoadMode) {
                 actions.onInstallClick()
             }
         },
     ) {
-        Box(
-            modifier = Modifier.fillMaxWidth(),
-            contentAlignment = Alignment.CenterStart,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            if (workCardStyle.wallpaperRole == null) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    containerColor,
-                                    lerp(containerColor, MaterialTheme.colorScheme.surfaceBright, 0.6f),
-                                )
-                            )
-                        )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = statusIcon,
+                    contentDescription = statusTitle,
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = statusIcon,
-                        contentDescription = statusTitle,
-                        modifier = Modifier.size(36.dp),
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = statusTitle, style = FolkType.Title)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = statusSummary,
+                        style = FolkType.Summary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
+                }
+                if (workingMode.isNotEmpty()) {
                     Spacer(Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = statusTitle, style = FolkType.Title)
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = statusSummary,
-                            style = FolkType.Summary,
-                            color = LocalContentColor.current.copy(alpha = 0.75f),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (workingMode.isNotEmpty()) {
-                        Spacer(Modifier.width(16.dp))
-                        StatusTag(
-                            label = workingMode,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            backgroundColor = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    HeroFact(
-                        label = stringResource(R.string.module_version),
-                        value = if (ksuActive) "${state.ksuVersion}-${state.kernelUAPIVersion}" else "—",
-                        modifier = Modifier.weight(1f),
-                    )
-                    HeroFact(
-                        label = stringResource(R.string.home_kernel),
-                        value = state.systemInfo.kernelVersion,
-                        modifier = Modifier.weight(1f),
-                    )
-                    HeroFact(
-                        label = stringResource(R.string.home_selinux_status),
-                        value = selinuxDisplayName(state.systemInfo.selinuxStatus),
-                        modifier = Modifier.weight(1f),
+                    StatusTag(
+                        label = workingMode,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        backgroundColor = MaterialTheme.colorScheme.primary,
                     )
                 }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                HeroFact(
+                    label = stringResource(R.string.module_version),
+                    value = if (ksuActive) "${state.ksuVersion}-${state.kernelUAPIVersion}" else "—",
+                    modifier = Modifier.weight(1f),
+                )
+                HeroFact(
+                    label = stringResource(R.string.home_kernel),
+                    value = state.systemInfo.kernelVersion,
+                    modifier = Modifier.weight(1f),
+                )
+                HeroFact(
+                    label = stringResource(R.string.home_selinux_status),
+                    value = selinuxDisplayName(state.systemInfo.selinuxStatus),
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -393,7 +357,7 @@ private fun HeroFact(
         Text(
             text = label,
             style = FolkType.Caption,
-            color = LocalContentColor.current.copy(alpha = 0.75f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
