@@ -19,6 +19,9 @@ enum class BottomBarLayout {
 
     /** Reserved for the upcoming floating bar (悬浮底栏). */
     Floating,
+
+    /** The side navigation rail hugging the start edge. */
+    Rail,
 }
 
 /**
@@ -51,6 +54,9 @@ object BottomBarControl {
         return when (layout) {
             BottomBarLayout.Docked -> dockedStyle(tokens)
             BottomBarLayout.Floating -> floatingStyle(tokens)
+            // The rail follows the docked bar's rule exactly: it is the same "chrome" surface, only
+            // laid out along the start edge instead of the bottom, so the wallpaper reads through it.
+            BottomBarLayout.Rail -> dockedStyle(tokens)
         }
     }
 

@@ -8,13 +8,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.wallpaper.LocalFolkWallpaperTokens
 import me.weishu.kernelsu.wallpaper.WallpaperMaterial
 
 /** Which screen edge a chrome zone hugs. */
-enum class ChromeEdge { Top, Bottom }
+enum class ChromeEdge { Top, Bottom, Start }
 
 /**
  * How opaque a collapsing top bar becomes once it is fully collapsed, no matter what transparency
@@ -46,6 +48,7 @@ fun WallpaperChromeZone(
     }
     val chrome = material ?: tokens.chrome
     val tailPx = with(LocalDensity.current) { tailHeight.toPx() }
+    val layoutDirection = LocalLayoutDirection.current
     Box(
         modifier = modifier.drawBehind {
             val collapsed = progress().coerceIn(0f, 1f)
@@ -85,6 +88,22 @@ fun WallpaperChromeZone(
                         size = Size(width, tailPx),
                     )
                     drawRect(solid, topLeft = Offset.Zero, size = Size(width, size.height))
+                }
+
+                ChromeEdge.Start -> {
+                    // A side rail fills the start edge; fade past its far edge (right in LTR, left in
+                    // RTL) over the (transparent) page canvas, so the rail does not end in a hard band.
+                    val rtl = layoutDirection == LayoutDirection.Rtl
+                    drawRect(solid, topLeft = Offset.Zero, size = Size(width, size.height))
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = if (rtl) listOf(clear, solid) else listOf(solid, clear),
+                            startX = if (rtl) -tailPx else width,
+                            endX = if (rtl) 0f else width + tailPx,
+                        ),
+                        topLeft = Offset(if (rtl) -tailPx else width, 0f),
+                        size = Size(tailPx, size.height),
+                    )
                 }
             }
         }
