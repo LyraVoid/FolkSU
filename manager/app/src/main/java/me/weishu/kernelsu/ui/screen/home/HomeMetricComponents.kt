@@ -17,11 +17,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -87,10 +89,15 @@ internal fun StorageBar(
         0f
     }
 
+    val configuration = LocalConfiguration.current
+    val sizeText = remember(context, configuration, usedBytes, totalBytes) {
+        "${Formatter.formatFileSize(context, usedBytes)} / " +
+            Formatter.formatFileSize(context, totalBytes)
+    }
+
     MetricBar(
         label = label,
-        value = "${Formatter.formatFileSize(context, usedBytes)} / " +
-            Formatter.formatFileSize(context, totalBytes),
+        value = sizeText,
         progress = progress,
         color = color,
     )

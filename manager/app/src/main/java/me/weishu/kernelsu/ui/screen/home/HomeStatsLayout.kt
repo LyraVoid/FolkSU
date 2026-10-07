@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -106,7 +107,8 @@ private fun StatsMonitorTile(
     val history = metrics.history
     val cpuTemperature = device?.cpuTemperatureC
     val batteryLevel = device?.batteryLevelPercent
-    val clusters = cpuClusters(device?.cpuFrequencies.orEmpty())
+    val cpuFrequencies = device?.cpuFrequencies.orEmpty()
+    val clusters = remember(cpuFrequencies) { cpuClusters(cpuFrequencies) }
 
     HomeTileCard(
         title = stringResource(R.string.home_tile_monitor),
@@ -180,10 +182,12 @@ private fun StatsModuleTile(
     val colors = MaterialTheme.colorScheme
     val moduleLabel = stringResource(R.string.module)
     val superuserLabel = stringResource(R.string.superuser)
-    val slices = listOf(
-        PieSlice(value = moduleEnabledCount, color = colors.primary),
-        PieSlice(value = superuserCount, color = colors.tertiary),
-    )
+    val slices = remember(moduleEnabledCount, superuserCount, colors) {
+        listOf(
+            PieSlice(value = moduleEnabledCount, color = colors.primary),
+            PieSlice(value = superuserCount, color = colors.tertiary),
+        )
+    }
 
     HomeTileCard(
         title = stringResource(R.string.home_tile_stats),
