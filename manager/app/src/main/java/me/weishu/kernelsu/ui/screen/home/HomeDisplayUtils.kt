@@ -1,14 +1,17 @@
 package me.weishu.kernelsu.ui.screen.home
 
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.CpuFrequency
 
 /** The gap between the tiles of every multi-column home layout. */
@@ -76,4 +79,23 @@ internal fun workingModeLabel(state: HomeUiState): String = when {
     state.lkmMode == true -> "LKM"
     state.lkmMode == false -> "GKI"
     else -> ""
+}
+
+/** The localised SELinux state, shared by the facts card and the layouts that show it inline. */
+@Composable
+internal fun selinuxDisplayName(status: String): String = when (status) {
+    "Enforcing" -> stringResource(R.string.selinux_status_enforcing)
+    "Permissive" -> stringResource(R.string.selinux_status_permissive)
+    "Disabled" -> stringResource(R.string.selinux_status_disabled)
+    else -> stringResource(R.string.selinux_status_unknown)
+}
+
+/** The localised Seccomp state, shared by the facts card and the layouts that show it inline. */
+@Composable
+internal fun seccompDisplayName(status: Int): String = when (status) {
+    -1 -> stringResource(R.string.seccomp_status_not_supported)
+    0 -> stringResource(R.string.seccomp_status_disabled)
+    1 -> stringResource(R.string.seccomp_status_strict)
+    2 -> stringResource(R.string.seccomp_status_filter)
+    else -> stringResource(R.string.seccomp_status_unknown)
 }
