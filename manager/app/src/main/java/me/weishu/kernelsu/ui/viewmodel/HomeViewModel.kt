@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.BuildConfig
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.data.HomeMetrics
+import me.weishu.kernelsu.data.MetricsHistory
 import me.weishu.kernelsu.data.SystemMetricsCollector
 import me.weishu.kernelsu.data.repository.SettingsRepository
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
@@ -45,10 +46,26 @@ class HomeViewModel(
      * flow (the focus layout), and stopped a few seconds after it leaves.
      */
     val metrics: StateFlow<HomeMetrics> = flow {
+        val cpuTemperature = ArrayDeque<Float>()
+        val memoryUsage = ArrayDeque<Float>()
+        val batteryLevel = ArrayDeque<Float>()
         while (true) {
             val storage = SystemMetricsCollector.collectStorageStatus()
             val device = SystemMetricsCollector.collectDeviceStatus(ksuApp)
-            emit(HomeMetrics(device = device, storage = storage))
+            device.cpuTemperatureC?.let { cpuTemperature.record(it) }
+            if (storage.ramTotalBytes > 0L) memoryUsage.record(storage.ramUsedFraction * 100f)
+            device.batteryLevelPercent?.let { batteryLevel.record(it.toFloat()) }
+            emit(
+                HomeMetrics(
+                    device = device,
+                    storage = storage,
+                    history = MetricsHistory(
+                        cpuTemperature = cpuTemperature.toList(),
+                        memoryUsage = memoryUsage.toList(),
+                        batteryLevel = batteryLevel.toList(),
+                    ),
+                )
+            )
             delay(METRICS_POLL_INTERVAL_MS)
         }
     }.flowOn(Dispatchers.IO)
@@ -112,3 +129,12 @@ private const val METRICS_POLL_INTERVAL_MS = 5_000L
 
 /** How long the metrics keep polling after the last collector goes away. */
 private const val METRICS_STOP_TIMEOUT_MS = 5_000L
+
+/** How many samples the wave charts of the stats board keep, oldest dropped first. */
+private const val METRICS_HISTORY_SIZE = 30
+
+/** Appends a sample, keeping the buffer at its fixed length. */
+private fun ArrayDeque<Float>.record(value: Float) {
+    addLast(value)
+    while (size > METRICS_HISTORY_SIZE) removeFirst()
+}

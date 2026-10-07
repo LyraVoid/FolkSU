@@ -153,6 +153,7 @@ fun HomePagerMaterial(
                     actions = actions,
                     superuserCount = superuserCount,
                     moduleEnabledCount = moduleEnabledCount,
+                    metrics = metrics,
                 )
 
                 else -> CircleHomeContent(

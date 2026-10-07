@@ -36,6 +36,12 @@ object HomeLayoutStyle {
         else -> DEFAULT
     }
 
+    /**
+     * Whether a layout draws live device metrics, and therefore has to keep the collector polled.
+     * The others read a single snapshot of the module state and must leave the sampler idle.
+     */
+    fun usesMetrics(value: String): Boolean = value == FOCUS || value == STATS
+
     /** Every supported token, in display order. */
     val supported: List<String> = listOf(CIRCLE, GRID, FOCUS, DASHBOARD, STATS)
 }

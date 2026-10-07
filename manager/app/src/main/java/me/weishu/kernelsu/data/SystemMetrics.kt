@@ -20,7 +20,25 @@ data class DeviceStatus(
     val batteryLevelPercent: Int? = null,
     val batteryTemperatureC: Float? = null,
     val cpuTemperatureC: Float? = null,
+    val cpuFrequencies: List<CpuFrequency> = emptyList(),
 )
+
+/**
+ * One CPU core's clock, in kilohertz, as reported by `/sys/devices/system/cpu/cpuN/cpufreq`.
+ *
+ * The pairs are what the stats board groups into clusters, so a core whose `cpufreq` node is
+ * missing simply does not appear.
+ */
+@Immutable
+data class CpuFrequency(
+    val coreIndex: Int,
+    val currentFreqKHz: Long,
+    val maxFreqKHz: Long,
+) {
+    /** How far the core currently sits towards its own ceiling, in `0f..1f`. */
+    val usedFraction: Float
+        get() = if (maxFreqKHz > 0L) (currentFreqKHz.toFloat() / maxFreqKHz).coerceIn(0f, 1f) else 0f
+}
 
 /**
  * Internal storage and memory usage, including zram/swap when the device has them.
@@ -52,11 +70,25 @@ data class StorageStatus(
         get() = if ((swapTotalBytes ?: 0L) > 0L) (swapUsedBytes!!.toFloat() / swapTotalBytes!!).coerceIn(0f, 1f) else 0f
 }
 
+/**
+ * The recent samples of the stats board, oldest first, each capped by the collector loop.
+ *
+ * They are the same values as [DeviceStatus]/[StorageStatus] at an earlier poll, kept only so the
+ * wave charts have a curve to draw.
+ */
+@Immutable
+data class MetricsHistory(
+    val cpuTemperature: List<Float> = emptyList(),
+    val memoryUsage: List<Float> = emptyList(),
+    val batteryLevel: List<Float> = emptyList(),
+)
+
 /** The live metrics the home screen renders; either half may be absent. */
 @Immutable
 data class HomeMetrics(
     val device: DeviceStatus? = null,
     val storage: StorageStatus? = null,
+    val history: MetricsHistory = MetricsHistory(),
 )
 
 /**
@@ -64,17 +96,22 @@ data class HomeMetrics(
  *
  * - battery: the sticky `ACTION_BATTERY_CHANGED` broadcast;
  * - CPU temperature: the first `cpu*` thermal zone under `/sys/class/thermal`;
+ * - CPU clocks: the `cpufreq` node of every core under `/sys/devices/system/cpu`;
  * - memory: `MemTotal`/`MemAvailable` in `/proc/meminfo`, plus `/proc/swaps` for zram and swap;
  * - internal storage: `statvfs` on the data partition.
  */
 object SystemMetricsCollector {
 
     private const val KILOBYTE = 1024L
+    private const val CPU_SYSFS = "/sys/devices/system/cpu"
+    private const val CPU_DIR_PREFIX_LENGTH = 3
+    private val CPU_DIR_PATTERN = Regex("cpu\\d+")
 
     fun collectDeviceStatus(context: Context): DeviceStatus = DeviceStatus(
         batteryLevelPercent = readBatteryLevelPercent(context),
         batteryTemperatureC = readBatteryTemperatureC(context),
         cpuTemperatureC = readCpuTemperatureC(),
+        cpuFrequencies = readCpuFrequencies(),
     )
 
     fun collectStorageStatus(): StorageStatus {
@@ -133,6 +170,36 @@ object SystemMetricsCollector {
             ?: return null
         return raw / 1000f
     }
+
+    /**
+     * The current and maximum clock of every core that exposes a `cpufreq` node, ordered by core.
+     *
+     * `scaling_cur_freq` is the governor's view of the live clock, so it is preferred over
+     * `cpuinfo_cur_freq`; the ceiling comes from `cpuinfo_max_freq` and falls back to the scaling
+     * limit. Cores without the node (or without read permission) are skipped.
+     */
+    private fun readCpuFrequencies(): List<CpuFrequency> {
+        val cores = runCatching {
+            File(CPU_SYSFS)
+                .listFiles { file -> CPU_DIR_PATTERN.matches(file.name) }
+                ?.sortedBy { it.name.drop(CPU_DIR_PREFIX_LENGTH).toIntOrNull() ?: Int.MAX_VALUE }
+        }.getOrNull() ?: return emptyList()
+
+        return cores.mapNotNull { core ->
+            val index = core.name.drop(CPU_DIR_PREFIX_LENGTH).toIntOrNull() ?: return@mapNotNull null
+            val cpufreq = File(core, "cpufreq")
+            val current = readLong(File(cpufreq, "scaling_cur_freq"))
+                ?: readLong(File(cpufreq, "cpuinfo_cur_freq"))
+                ?: return@mapNotNull null
+            val max = readLong(File(cpufreq, "cpuinfo_max_freq"))
+                ?: readLong(File(cpufreq, "scaling_max_freq"))
+                ?: current
+            CpuFrequency(coreIndex = index, currentFreqKHz = current, maxFreqKHz = max)
+        }
+    }
+
+    private fun readLong(file: File): Long? =
+        runCatching { file.readText().trim().toLongOrNull() }.getOrNull()
 
     /** Internal storage (used, total) in bytes, from `statvfs` on the data partition. */
     private fun readDataUsage(): Pair<Long, Long> = runCatching {

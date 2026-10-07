@@ -9,10 +9,13 @@
     <string name="home_tile_system">System info</string>
     <string name="home_tile_device">Device</string>
     <string name="home_tile_storage">Storage</string>
+    <string name="home_tile_monitor">System monitor</string>
+    <string name="home_tile_stats">Statistics</string>
     <string name="home_metric_battery_level">Battery</string>
     <string name="home_metric_battery_temperature">Battery temp</string>
     <string name="home_metric_cpu_load">CPU load</string>
     <string name="home_metric_cpu_temperature">CPU temp</string>
+    <string name="home_metric_cpu_frequency">CPU frequency</string>
     <string name="home_metric_storage_internal">Internal storage</string>
     <string name="home_metric_storage_ram">Memory</string>
     <string name="home_metric_storage_zram">ZRAM</string>

@@ -1,6 +1,7 @@
 package me.weishu.kernelsu.ui.screen.home
 
 import android.text.format.Formatter
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AdminPanelSettings
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.SdStorage
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Warning
@@ -46,11 +51,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.data.CpuFrequency
 import me.weishu.kernelsu.data.HomeMetrics
+import me.weishu.kernelsu.ui.component.chart.ModulePieChart
+import me.weishu.kernelsu.ui.component.chart.PieSlice
+import me.weishu.kernelsu.ui.component.chart.WaveChart
 import me.weishu.kernelsu.ui.component.material.FolkButton
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /** The gap between the tiles of every multi-column home layout. */
@@ -89,7 +99,11 @@ internal fun FocusHomeContent(
     if (!fullFeatured || !isWideLayout(withOrientation = true)) {
         Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
             FocusStatusTile(state = state, actions = actions)
-            FocusManagerTile(state = state)
+            FocusFactsTile(
+                state = state,
+                title = stringResource(R.string.home_tile_manager),
+                icon = Icons.Outlined.AdminPanelSettings,
+            )
             FocusDeviceTile(metrics = metrics)
             FocusStorageTile(metrics = metrics)
         }
@@ -110,8 +124,10 @@ internal fun FocusHomeContent(
                     .weight(1f)
                     .fillMaxHeight(),
             )
-            FocusManagerTile(
+            FocusFactsTile(
                 state = state,
+                title = stringResource(R.string.home_tile_manager),
+                icon = Icons.Outlined.AdminPanelSettings,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
@@ -202,9 +218,9 @@ internal fun StatsHomeContent(
     actions: HomeActions,
     superuserCount: Int,
     moduleEnabledCount: Int,
+    metrics: HomeMetrics,
 ) {
-    val fullFeatured = Natives.isFullFeatured()
-    if (fullFeatured && isWideLayout(withOrientation = false)) {
+    if (isWideLayout(withOrientation = false)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(TileSpacing),
@@ -214,36 +230,38 @@ internal fun StatsHomeContent(
                 verticalArrangement = Arrangement.spacedBy(TileSpacing),
             ) {
                 StatusCard(state = state, actions = actions)
-                CountCardPair(
+                StatsMonitorTile(metrics = metrics)
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(TileSpacing),
+            ) {
+                StatsModuleTile(
                     superuserCount = superuserCount,
                     moduleEnabledCount = moduleEnabledCount,
-                    onOpenSuperUser = actions.onOpenSuperUser,
-                    onOpenModule = actions.onOpenModule,
-                    layout = CountCardLayout.Horizontal,
-                    emphasis = CountCardEmphasis.Value,
+                )
+                FocusFactsTile(
+                    state = state,
+                    title = stringResource(R.string.home_tile_system),
+                    icon = Icons.Outlined.Info,
                 )
             }
-            InfoCard(
-                systemInfo = state.systemInfo,
-                modifier = Modifier.weight(1f),
-            )
         }
         return
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
         StatusCard(state = state, actions = actions)
-        if (fullFeatured) {
-            CountCardPair(
-                superuserCount = superuserCount,
-                moduleEnabledCount = moduleEnabledCount,
-                onOpenSuperUser = actions.onOpenSuperUser,
-                onOpenModule = actions.onOpenModule,
-                layout = CountCardLayout.Horizontal,
-                emphasis = CountCardEmphasis.Value,
-            )
-        }
-        InfoCard(systemInfo = state.systemInfo)
+        StatsMonitorTile(metrics = metrics)
+        StatsModuleTile(
+            superuserCount = superuserCount,
+            moduleEnabledCount = moduleEnabledCount,
+        )
+        FocusFactsTile(
+            state = state,
+            title = stringResource(R.string.home_tile_system),
+            icon = Icons.Outlined.Info,
+        )
     }
 }
 
@@ -492,15 +510,17 @@ private fun FocusStatusTile(
     }
 }
 
-/** The manager build and the policy it runs under. */
+/** The manager build and the policy it runs under, or the system facts the stats board closes with. */
 @Composable
-private fun FocusManagerTile(
+private fun FocusFactsTile(
     state: HomeUiState,
+    title: String,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
 ) {
     FocusCard(
-        title = stringResource(R.string.home_tile_manager),
-        icon = Icons.Outlined.AdminPanelSettings,
+        title = title,
+        icon = icon,
         modifier = modifier.fillMaxWidth(),
     ) {
         FocusInfoRow(
@@ -662,6 +682,155 @@ private fun FocusStorageTile(
     }
 }
 
+/** The live metrics the stats board is built around: CPU, battery and memory. */
+@Composable
+private fun StatsMonitorTile(
+    metrics: HomeMetrics,
+    modifier: Modifier = Modifier,
+) {
+    val device = metrics.device
+    val storage = metrics.storage
+    val history = metrics.history
+    val cpuTemperature = device?.cpuTemperatureC
+    val batteryLevel = device?.batteryLevelPercent
+    val clusters = cpuClusters(device?.cpuFrequencies.orEmpty())
+
+    FocusCard(
+        title = stringResource(R.string.home_tile_monitor),
+        icon = Icons.Outlined.Speed,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        WaveChart(
+            label = stringResource(R.string.home_metric_cpu_temperature),
+            value = cpuTemperature?.let { "${it.roundToInt()}°C" } ?: DEFAULT_METRIC,
+            samples = history.cpuTemperature,
+            color = MaterialTheme.colorScheme.secondary,
+        )
+        WaveChart(
+            label = stringResource(R.string.home_metric_storage_ram),
+            value = storage?.ramUsedFraction?.let { "${(it * 100f).roundToInt()}%" } ?: DEFAULT_METRIC,
+            samples = history.memoryUsage,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        if (clusters.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.home_metric_cpu_frequency),
+                style = FolkType.Caption,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            clusters.forEach { cluster ->
+                MetricBar(
+                    label = cluster.label,
+                    value = formatFrequency(cluster.averageFreqKHz),
+                    progress = cluster.usedFraction,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        MetricBar(
+            label = stringResource(R.string.home_metric_battery_level),
+            value = batteryLevel?.let { "$it%" } ?: DEFAULT_METRIC,
+            progress = batteryLevel?.let { it / 100f } ?: 0f,
+            color = when {
+                batteryLevel == null -> MaterialTheme.colorScheme.primary
+                batteryLevel <= 20 -> MaterialTheme.colorScheme.error
+                batteryLevel <= 50 -> MaterialTheme.colorScheme.tertiary
+                else -> MaterialTheme.colorScheme.primary
+            },
+        )
+        if ((storage?.zramTotalBytes ?: 0L) > 0L) {
+            StorageBar(
+                label = stringResource(R.string.home_metric_storage_zram),
+                usedBytes = storage?.zramUsedBytes ?: 0L,
+                totalBytes = storage?.zramTotalBytes ?: 0L,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+        if ((storage?.swapTotalBytes ?: 0L) > 0L) {
+            StorageBar(
+                label = stringResource(R.string.home_metric_storage_swap),
+                usedBytes = storage?.swapUsedBytes ?: 0L,
+                totalBytes = storage?.swapTotalBytes ?: 0L,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/** The counts of the stats board as a donut: modules against superusers. */
+@Composable
+private fun StatsModuleTile(
+    superuserCount: Int,
+    moduleEnabledCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val moduleLabel = stringResource(R.string.module)
+    val superuserLabel = stringResource(R.string.superuser)
+    val slices = listOf(
+        PieSlice(label = moduleLabel, value = moduleEnabledCount, color = colors.primary),
+        PieSlice(label = superuserLabel, value = superuserCount, color = colors.tertiary),
+    )
+
+    FocusCard(
+        title = stringResource(R.string.home_tile_stats),
+        icon = Icons.Outlined.PieChart,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ModulePieChart(
+                slices = slices,
+                centerLabel = (superuserCount + moduleEnabledCount).toString(),
+                modifier = Modifier.size(140.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ChartLegend(label = moduleLabel, count = moduleEnabledCount, color = colors.primary)
+                ChartLegend(label = superuserLabel, count = superuserCount, color = colors.tertiary)
+            }
+        }
+    }
+}
+
+/** One donut legend line: the slice colour, its name and its count. */
+@Composable
+private fun ChartLegend(
+    label: String,
+    count: Int,
+    color: Color,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text = label,
+            style = FolkType.Summary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = count.toString(),
+            style = FolkType.Summary.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
 /** A labelled usage bar with its used and total size. */
 @Composable
 private fun StorageBar(
@@ -677,6 +846,23 @@ private fun StorageBar(
         0f
     }
 
+    MetricBar(
+        label = label,
+        value = "${Formatter.formatFileSize(context, usedBytes)} / " +
+            Formatter.formatFileSize(context, totalBytes),
+        progress = progress,
+        color = color,
+    )
+}
+
+/** One labelled usage bar; every row of the stats board shares this shape. */
+@Composable
+private fun MetricBar(
+    label: String,
+    value: String,
+    progress: Float,
+    color: Color,
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -684,15 +870,14 @@ private fun StorageBar(
         ) {
             Text(text = label, style = FolkType.Summary)
             Text(
-                text = "${Formatter.formatFileSize(context, usedBytes)} / " +
-                    Formatter.formatFileSize(context, totalBytes),
+                text = value,
                 style = FolkType.Summary,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.height(8.dp))
         LinearProgressIndicator(
-            progress = { progress },
+            progress = { progress.coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
@@ -727,6 +912,40 @@ private fun FocusInfoRow(
 private const val DEFAULT_METRIC = "—"
 private const val BATTERY_TEMPERATURE_MAX_C = 50f
 private const val CPU_TEMPERATURE_MAX_C = 80f
+
+/** A group of cores that share a clock ceiling, the way the stats board draws them. */
+private data class CpuCluster(
+    val label: String,
+    val averageFreqKHz: Long,
+    val maxFreqKHz: Long,
+) {
+    val usedFraction: Float
+        get() = if (maxFreqKHz > 0L) (averageFreqKHz.toFloat() / maxFreqKHz).coerceIn(0f, 1f) else 0f
+}
+
+/** Groups the per-core clocks by their ceiling, so the board shows one bar per cluster. */
+private fun cpuClusters(frequencies: List<CpuFrequency>): List<CpuCluster> =
+    frequencies
+        .groupBy { it.maxFreqKHz }
+        .values
+        .map { cores ->
+            val ordered = cores.sortedBy { it.coreIndex }
+            val first = ordered.first()
+            val last = ordered.last()
+            CpuCluster(
+                label = if (first == last) "CPU${first.coreIndex}" else "CPU${first.coreIndex}-${last.coreIndex}",
+                averageFreqKHz = ordered.sumOf { it.currentFreqKHz } / ordered.size,
+                maxFreqKHz = first.maxFreqKHz,
+            )
+        }
+        .sortedBy { it.label }
+
+/** A clock in the unit that reads best: GHz first, then MHz, then kHz. */
+private fun formatFrequency(khz: Long): String = when {
+    khz >= 1_000_000L -> String.format(Locale.US, "%.2f GHz", khz / 1_000_000.0)
+    khz >= 1_000L -> String.format(Locale.US, "%.0f MHz", khz / 1_000.0)
+    else -> String.format(Locale.US, "%d kHz", khz)
+}
 
 /** The LKM/GKI working mode, or an empty string while the module is not loaded. */
 private fun workingModeLabel(state: HomeUiState): String = when {
