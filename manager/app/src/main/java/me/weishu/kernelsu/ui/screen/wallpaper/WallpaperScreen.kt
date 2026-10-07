@@ -58,7 +58,6 @@ import me.weishu.kernelsu.ui.component.material.SegmentedSwitchItem
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
-import me.weishu.kernelsu.ui.component.WorkCardBackgroundSettings
 import me.weishu.kernelsu.ui.component.rememberSystemCropLauncher
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.wallpaper.FolkThemeIO
@@ -697,48 +696,7 @@ fun WallpaperScreenMaterial(
                 )
             }
 
-            FolkWallpaperSurface(
-                role = WallpaperSurfaceRole.Group,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
-                shape = MaterialTheme.shapes.large,
-                fallbackColor = MaterialTheme.colorScheme.surfaceBright,
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.wallpaper_work_card_section),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    WorkCardBackgroundSettings(
-                        enabled = state.workCardBackgroundEnabled,
-                        hasImage = state.workCardHasImage,
-                        opacity = state.workCardOpacity,
-                        dim = state.workCardDim,
-                        dualOpacityEnabled = state.workCardDualOpacityEnabled,
-                        dayOpacity = state.workCardDayOpacity,
-                        nightOpacity = state.workCardNightOpacity,
-                        checkHidden = state.workCardCheckHidden,
-                        textHidden = state.workCardTextHidden,
-                        modeHidden = state.workCardModeHidden,
-                        onEnabledChange = actions.onToggleWorkCardBackground,
-                        onPickImage = actions.onPickWorkCardImage,
-                        onClearImage = actions.onClearWorkCardImage,
-                        onOpacityChange = actions.onSetWorkCardOpacity,
-                        onDimChange = actions.onSetWorkCardDim,
-                        onDualOpacityChange = actions.onToggleWorkCardDualOpacity,
-                        onDayOpacityChange = actions.onSetWorkCardDayOpacity,
-                        onNightOpacityChange = actions.onSetWorkCardNightOpacity,
-                        onCheckHiddenChange = actions.onToggleWorkCardCheckHidden,
-                        onTextHiddenChange = actions.onToggleWorkCardTextHidden,
-                        onModeHiddenChange = actions.onToggleWorkCardModeHidden,
-                    )
-                }
-            }
+            SurfaceSettingsHost(state = state, actions = actions)
 
             SegmentedColumn(
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
