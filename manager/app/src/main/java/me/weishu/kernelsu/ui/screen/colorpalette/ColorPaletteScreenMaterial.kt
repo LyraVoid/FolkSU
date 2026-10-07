@@ -90,6 +90,7 @@ import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.ExpressiveToggleButton
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
 import me.weishu.kernelsu.ui.component.material.SegmentedDropdownItem
+import me.weishu.kernelsu.ui.component.material.SegmentedSliderItem
 import me.weishu.kernelsu.ui.component.material.SegmentedSwitchItem
 import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
@@ -103,12 +104,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.BorderOuter
+import androidx.compose.material.icons.rounded.BlurCircular
 import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.Brightness7
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Opacity
 import androidx.compose.material.icons.rounded.RoundedCorner
 import androidx.compose.material.icons.rounded.SpaceDashboard
 import androidx.compose.material.icons.rounded.SwipeUp
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.WbTwilight
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -401,6 +408,13 @@ fun ColorPaletteScreenMaterial(
                 val floatingGlass = remember(floatingRevision) { FloatingBarConfig.glass }
                 val floatingAutoHide = remember(floatingRevision) { FloatingBarConfig.autoHide }
                 val floatingSwipeHide = remember(floatingRevision) { FloatingBarConfig.swipeHide }
+                val glassBlurStrength = remember(floatingRevision) { FloatingBarConfig.glassBlurStrength }
+                val glassTransparency = remember(floatingRevision) { FloatingBarConfig.glassTransparency }
+                val glassHighlightStrength = remember(floatingRevision) { FloatingBarConfig.glassHighlightStrength }
+                val glassSpecular = remember(floatingRevision) { FloatingBarConfig.glassSpecular }
+                val glassInnerGlow = remember(floatingRevision) { FloatingBarConfig.glassInnerGlow }
+                val glassBorder = remember(floatingRevision) { FloatingBarConfig.glassBorder }
+                val toPercent: (Float) -> String = { "${(it * 100).roundToInt()}%" }
                 val navModes = NavMode.entries
                 val navModeLabels = listOf(
                     stringResource(R.string.settings_nav_mode_auto),
@@ -439,20 +453,80 @@ fun ColorPaletteScreenMaterial(
                             }
                             add {
                                 SegmentedSwitchItem(
-                                    icon = Icons.Rounded.RoundedCorner,
-                                    title = stringResource(R.string.settings_floating_bar_compact),
-                                    checked = floatingCompact,
-                                    onCheckedChange = { FloatingBarConfig.compact = it },
-                                )
-                            }
-                            add {
-                                SegmentedSwitchItem(
                                     icon = Icons.Rounded.BlurOn,
                                     title = stringResource(R.string.settings_floating_bar_glass),
                                     summary = stringResource(R.string.settings_floating_bar_glass_summary),
                                     checked = floatingGlass,
                                     onCheckedChange = { FloatingBarConfig.glass = it },
                                 )
+                            }
+                            if (floatingGlass) {
+                                add {
+                                    SegmentedSliderItem(
+                                        icon = Icons.Rounded.BlurCircular,
+                                        title = stringResource(R.string.settings_navbar_glass_blur_strength),
+                                        value = glassBlurStrength,
+                                        valueRange = 0f..1f,
+                                        valueText = toPercent,
+                                        onValueChangeFinished = { FloatingBarConfig.glassBlurStrength = it },
+                                    )
+                                }
+                                add {
+                                    SegmentedSliderItem(
+                                        icon = Icons.Rounded.Opacity,
+                                        title = stringResource(R.string.settings_navbar_glass_transparency),
+                                        value = glassTransparency,
+                                        valueRange = 0f..1f,
+                                        valueText = toPercent,
+                                        onValueChangeFinished = { FloatingBarConfig.glassTransparency = it },
+                                    )
+                                }
+                                add {
+                                    SegmentedSliderItem(
+                                        icon = Icons.Rounded.Brightness7,
+                                        title = stringResource(R.string.settings_navbar_glass_highlight_strength),
+                                        value = glassHighlightStrength,
+                                        valueRange = 0f..1f,
+                                        valueText = toPercent,
+                                        onValueChangeFinished = { FloatingBarConfig.glassHighlightStrength = it },
+                                    )
+                                }
+                                add {
+                                    SegmentedSwitchItem(
+                                        icon = Icons.Rounded.FlashOn,
+                                        title = stringResource(R.string.settings_navbar_glass_specular),
+                                        summary = stringResource(R.string.settings_navbar_glass_specular_summary),
+                                        checked = glassSpecular,
+                                        onCheckedChange = { FloatingBarConfig.glassSpecular = it },
+                                    )
+                                }
+                                add {
+                                    SegmentedSwitchItem(
+                                        icon = Icons.Rounded.WbTwilight,
+                                        title = stringResource(R.string.settings_navbar_glass_inner_glow),
+                                        summary = stringResource(R.string.settings_navbar_glass_inner_glow_summary),
+                                        checked = glassInnerGlow,
+                                        onCheckedChange = { FloatingBarConfig.glassInnerGlow = it },
+                                    )
+                                }
+                                add {
+                                    SegmentedSwitchItem(
+                                        icon = Icons.Rounded.BorderOuter,
+                                        title = stringResource(R.string.settings_navbar_glass_border),
+                                        summary = stringResource(R.string.settings_navbar_glass_border_summary),
+                                        checked = glassBorder,
+                                        onCheckedChange = { FloatingBarConfig.glassBorder = it },
+                                    )
+                                }
+                            } else {
+                                add {
+                                    SegmentedSwitchItem(
+                                        icon = Icons.Rounded.RoundedCorner,
+                                        title = stringResource(R.string.settings_floating_bar_compact),
+                                        checked = floatingCompact,
+                                        onCheckedChange = { FloatingBarConfig.compact = it },
+                                    )
+                                }
                             }
                             add {
                                 SegmentedSwitchItem(

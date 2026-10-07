@@ -34,8 +34,10 @@ import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -563,6 +565,40 @@ fun SegmentedSwitchItem(
             )
         },
         supportingContent = summary?.let { { Text(it) } }
+    )
+}
+
+@Composable
+fun SegmentedSliderItem(
+    icon: ImageVector? = null,
+    title: String,
+    summary: String? = null,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    valueText: (Float) -> String,
+    colors: ListItemColors = defaultSegmentedColors(),
+    enabled: Boolean = true,
+    onValueChangeFinished: (Float) -> Unit,
+) {
+    val sliderState = rememberSliderState(value = value, trackRange = valueRange)
+
+    SegmentedListItem(
+        enabled = enabled,
+        colors = colors,
+        headlineContent = { Text(title) },
+        leadingContent = icon?.let { { Icon(it, title) } },
+        trailingContent = { Text(valueText(sliderState.value)) },
+        supportingContent = {
+            Column {
+                summary?.let { Text(it) }
+                Slider(
+                    state = sliderState,
+                    onValueChangeFinished = { onValueChangeFinished(sliderState.value) },
+                    enabled = enabled,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
     )
 }
 

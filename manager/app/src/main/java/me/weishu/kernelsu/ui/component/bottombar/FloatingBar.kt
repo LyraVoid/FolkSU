@@ -53,6 +53,12 @@ internal fun FloatingBar(
     val style = remember(revision) { FloatingBarConfig.style }
     val compact = remember(revision) { FloatingBarConfig.compact }
     val useGlass = remember(revision) { FloatingBarConfig.glass } && liquidState != null
+    val glassBlurStrength = remember(revision) { FloatingBarConfig.glassBlurStrength }
+    val glassTransparency = remember(revision) { FloatingBarConfig.glassTransparency }
+    val glassHighlightStrength = remember(revision) { FloatingBarConfig.glassHighlightStrength }
+    val glassSpecular = remember(revision) { FloatingBarConfig.glassSpecular }
+    val glassInnerGlow = remember(revision) { FloatingBarConfig.glassInnerGlow }
+    val glassBorder = remember(revision) { FloatingBarConfig.glassBorder }
     val destinations = BottomBarDestination.entries
     val selectedIndex = mainPagerState.selectedPage
     val containerColor = BottomBarControl.style(BottomBarLayout.Floating).containerColor
@@ -83,7 +89,16 @@ internal fun FloatingBar(
                     .clip(barShape)
                     .then(
                         if (useGlass) {
-                            Modifier.navBarGlassEffect(shape = barShape, liquidState = liquidState)
+                            Modifier.navBarGlassEffect(
+                                shape = barShape,
+                                blurStrength = glassBlurStrength,
+                                transparency = glassTransparency,
+                                highlightStrength = glassHighlightStrength,
+                                enableSpecular = glassSpecular,
+                                enableInnerGlow = glassInnerGlow,
+                                enableBorder = glassBorder,
+                                liquidState = liquidState,
+                            )
                         } else {
                             Modifier
                         }

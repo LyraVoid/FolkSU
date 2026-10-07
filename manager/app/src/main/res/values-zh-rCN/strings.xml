@@ -365,6 +365,15 @@
     <string name="settings_floating_auto_hide_summary">无操作3秒后自动隐藏悬浮底栏</string>
     <string name="settings_floating_swipe_hide">滑动隐藏悬浮底栏</string>
     <string name="settings_floating_swipe_hide_summary">向下滑动时隐藏底栏，向上滑动时显示底栏</string>
+    <string name="settings_navbar_glass_blur_strength">模糊强度</string>
+    <string name="settings_navbar_glass_transparency">背景透明度</string>
+    <string name="settings_navbar_glass_highlight_strength">高光强度</string>
+    <string name="settings_navbar_glass_specular">镜面反射</string>
+    <string name="settings_navbar_glass_specular_summary">在导航栏顶部启用镜面高光效果</string>
+    <string name="settings_navbar_glass_inner_glow">内发光</string>
+    <string name="settings_navbar_glass_inner_glow_summary">在导航栏底部启用微光效果</string>
+    <string name="settings_navbar_glass_border">玻璃边框</string>
+    <string name="settings_navbar_glass_border_summary">在导航栏周围启用微妙的边框描边</string>
     <string name="settings_nav_mode">导航栏模式</string>
     <string name="settings_nav_mode_summary">选择导航栏的显示方式</string>
     <string name="settings_nav_mode_auto">自动传统导航栏</string>

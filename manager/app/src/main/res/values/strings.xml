@@ -371,6 +371,15 @@
     <string name="settings_floating_auto_hide_summary">Automatically hide the floating bar after 3 seconds of inactivity</string>
     <string name="settings_floating_swipe_hide">Swipe to Hide Floating Bar</string>
     <string name="settings_floating_swipe_hide_summary">Hide the floating bar when scrolling down, show when scrolling up</string>
+    <string name="settings_navbar_glass_blur_strength">Blur Strength</string>
+    <string name="settings_navbar_glass_transparency">Background Transparency</string>
+    <string name="settings_navbar_glass_highlight_strength">Highlight Intensity</string>
+    <string name="settings_navbar_glass_specular">Specular Reflection</string>
+    <string name="settings_navbar_glass_specular_summary">Enable mirror-like highlight at the top of the navigation bar</string>
+    <string name="settings_navbar_glass_inner_glow">Inner Glow</string>
+    <string name="settings_navbar_glass_inner_glow_summary">Enable subtle glow effect at the bottom of the navigation bar</string>
+    <string name="settings_navbar_glass_border">Glass Border</string>
+    <string name="settings_navbar_glass_border_summary">Enable subtle border outline around the navigation bar</string>
     <string name="settings_nav_mode">Navigation Bar Mode</string>
     <string name="settings_nav_mode_summary">Choose how the navigation bar is displayed</string>
     <string name="settings_nav_mode_auto">Auto Traditional</string>
