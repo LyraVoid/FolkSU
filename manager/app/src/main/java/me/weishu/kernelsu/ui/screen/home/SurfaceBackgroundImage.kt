@@ -1,0 +1,68 @@
+package me.weishu.kernelsu.ui.screen.home
+
+import android.net.Uri
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import me.weishu.kernelsu.ui.theme.isInDarkTheme
+import me.weishu.kernelsu.wallpaper.AnimatedFileImage
+import me.weishu.kernelsu.wallpaper.WallpaperManager
+import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+
+/**
+ * The photo behind a home card, dimmed with a black scrim so the overlaid content stays readable.
+ * Draws nothing until the stored bitmap is decoded. Shared by the grid work card and the focus
+ * tiles so every surface paints its image the same way.
+ */
+@Composable
+internal fun SurfaceBackgroundImage(uri: String, surface: SurfaceConfig) {
+    val isDark = isInDarkTheme()
+    val opacity = surface.effectiveOpacity(isDark)
+    val path = remember(uri) { Uri.parse(uri).path }
+    val file = remember(path) { path?.let { File(it) } }
+    if (file != null && isAnimatedImageFile(file)) {
+        // Animated images (GIF) play natively; everything else keeps the downsampled bitmap path.
+        AnimatedFileImage(
+            file = file,
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(opacity),
+        )
+    } else {
+        val image by produceState<ImageBitmap?>(initialValue = null, path) {
+            value = withContext(Dispatchers.IO) {
+                path?.let { WallpaperManager.decodeSampled(File(it), 1600)?.asImageBitmap() }
+            }
+        }
+        image?.let { bitmap ->
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(opacity),
+            )
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = surface.dim)),
+    )
+}

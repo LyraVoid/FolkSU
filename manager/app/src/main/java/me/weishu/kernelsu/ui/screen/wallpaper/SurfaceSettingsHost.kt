@@ -13,6 +13,7 @@ import me.weishu.kernelsu.wallpaper.surface.SurfaceDescriptor
 import me.weishu.kernelsu.wallpaper.surface.SurfaceField
 import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
 import me.weishu.kernelsu.wallpaper.surface.SurfaceImageRow
+import me.weishu.kernelsu.wallpaper.surface.SurfaceId
 import me.weishu.kernelsu.wallpaper.surface.SurfaceOpacityRow
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import me.weishu.kernelsu.wallpaper.surface.SurfaceSliderRow
@@ -50,7 +51,7 @@ fun SurfaceSettingsHost(
         val config = state.surfaceFor(descriptor.id) ?: return@forEach
         SurfaceSettingsGroup(
             titleRes = descriptor.titleRes,
-            rows = surfaceRows(descriptor, config, workCardCallbacks(actions)),
+            rows = surfaceRows(descriptor, config, surfaceCallbacks(descriptor.id, actions)),
         )
     }
 }
@@ -161,33 +162,13 @@ fun surfaceRows(
     }
 }
 
-/** Wires the card surfaces to the wallpaper actions. */
-private fun workCardCallbacks(actions: WallpaperScreenActions): SurfaceCallbacks = SurfaceCallbacks(
-    onToggle = { field, value ->
-        when (field) {
-            SurfaceField.Enabled -> actions.onToggleWorkCardBackground(value)
-            SurfaceField.DualOpacity -> actions.onToggleWorkCardDualOpacity(value)
-            else -> Unit
-        }
-    },
-    onFlagChange = { flag, value ->
-        when (flag) {
-            SurfaceFlag.HideIcon -> actions.onToggleWorkCardCheckHidden(value)
-            SurfaceFlag.HideText -> actions.onToggleWorkCardTextHidden(value)
-            SurfaceFlag.HideMode -> actions.onToggleWorkCardModeHidden(value)
-        }
-    },
-    onSlider = { field, value ->
-        when (field) {
-            SurfaceField.Opacity -> actions.onSetWorkCardOpacity(value)
-            SurfaceField.Dim -> actions.onSetWorkCardDim(value)
-            SurfaceField.DayOpacity -> actions.onSetWorkCardDayOpacity(value)
-            SurfaceField.NightOpacity -> actions.onSetWorkCardNightOpacity(value)
-            else -> Unit
-        }
-    },
-    onPickImage = actions.onPickWorkCardImage,
-    onClearImage = actions.onClearWorkCardImage,
+/** Wires a descriptor's rows to the wallpaper actions for the surface [id]. */
+private fun surfaceCallbacks(id: SurfaceId, actions: WallpaperScreenActions): SurfaceCallbacks = SurfaceCallbacks(
+    onToggle = { field, value -> actions.onSetSurfaceToggle(id, field, value) },
+    onFlagChange = { flag, value -> actions.onSetSurfaceFlag(id, flag, value) },
+    onSlider = { field, value -> actions.onSetSurfaceScalar(id, field, value) },
+    onPickImage = { actions.onPickSurfaceImage(id) },
+    onClearImage = { actions.onClearSurfaceImage(id) },
 )
 
 private val percentText: (Float) -> String = { "${(it * 100).roundToInt()}%" }

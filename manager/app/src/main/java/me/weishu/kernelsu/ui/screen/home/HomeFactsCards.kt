@@ -23,12 +23,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.FolkType
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
 
 /** The manager build and the policy it runs under, or the system facts the stats board closes with. */
 @Composable
@@ -37,11 +39,13 @@ internal fun HomeFactsTile(
     title: String,
     icon: ImageVector,
     modifier: Modifier = Modifier,
+    background: SurfaceConfig? = null,
 ) {
     HomeTileCard(
         title = title,
         icon = icon,
         modifier = modifier.fillMaxWidth(),
+        background = background,
     ) {
         HomeFactRow(
             label = stringResource(R.string.home_manager_version),
@@ -76,16 +80,17 @@ internal fun HomeFactRow(
     label: String,
     value: String,
 ) {
+    val overImage = LocalHomeTileCardOverImage.current
     Row(verticalAlignment = Alignment.Top) {
         Text(
             text = "$label: ",
             style = FolkType.Summary,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (overImage) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = value,
             style = FolkType.Summary.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = if (overImage) Color.White else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
     }

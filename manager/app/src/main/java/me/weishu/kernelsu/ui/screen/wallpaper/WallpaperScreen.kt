@@ -72,8 +72,11 @@ import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceField
+import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
 import me.weishu.kernelsu.wallpaper.surface.SurfaceId
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
+import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
 import kotlin.math.roundToInt
 
 /** Sentinel for "no per-page background is being picked". */
@@ -96,14 +99,11 @@ data class WallpaperUiState(
     val superuserBackgroundSelected: Boolean,
     val moduleBackgroundSelected: Boolean,
     val settingsBackgroundSelected: Boolean,
-    val workCardSurface: SurfaceConfig,
     val isSaving: Boolean,
 ) {
-    /** The config of the surface [id], or null when this state does not carry it. */
-    fun surfaceFor(id: SurfaceId): SurfaceConfig? = when (id) {
-        SurfaceRegistry.GRID_WORK_CARD -> workCardSurface
-        else -> null
-    }
+    /** The config of the surface [id], or null when no surface uses it. */
+    fun surfaceFor(id: SurfaceId): SurfaceConfig? =
+        if (SurfaceRegistry.descriptor(id) != null) SurfaceStore.config(id) else null
 }
 
 @Immutable
@@ -124,17 +124,11 @@ data class WallpaperScreenActions(
     val onPickSuperuserBackground: () -> Unit,
     val onPickModuleBackground: () -> Unit,
     val onPickSettingsBackground: () -> Unit,
-    val onToggleWorkCardBackground: (Boolean) -> Unit,
-    val onPickWorkCardImage: () -> Unit,
-    val onClearWorkCardImage: () -> Unit,
-    val onSetWorkCardOpacity: (Float) -> Unit,
-    val onSetWorkCardDim: (Float) -> Unit,
-    val onToggleWorkCardDualOpacity: (Boolean) -> Unit,
-    val onSetWorkCardDayOpacity: (Float) -> Unit,
-    val onSetWorkCardNightOpacity: (Float) -> Unit,
-    val onToggleWorkCardCheckHidden: (Boolean) -> Unit,
-    val onToggleWorkCardTextHidden: (Boolean) -> Unit,
-    val onToggleWorkCardModeHidden: (Boolean) -> Unit,
+    val onSetSurfaceToggle: (SurfaceId, SurfaceField, Boolean) -> Unit,
+    val onSetSurfaceFlag: (SurfaceId, SurfaceFlag, Boolean) -> Unit,
+    val onSetSurfaceScalar: (SurfaceId, SurfaceField, Float) -> Unit,
+    val onPickSurfaceImage: (SurfaceId) -> Unit,
+    val onClearSurfaceImage: (SurfaceId) -> Unit,
     val onExport: () -> Unit,
     val onImport: () -> Unit,
 )
@@ -149,8 +143,9 @@ fun WallpaperScreen() {
     var isSaving by remember { mutableStateOf(false) }
     var pendingCrop by remember { mutableStateOf<Uri?>(null) }
     var showCropDialog by remember { mutableStateOf(false) }
-    var pendingWorkCardCrop by remember { mutableStateOf<Uri?>(null) }
-    var showWorkCardCropDialog by remember { mutableStateOf(false) }
+    var pendingSurface by remember { mutableStateOf<SurfaceId?>(null) }
+    var pendingSurfaceCrop by remember { mutableStateOf<Uri?>(null) }
+    var showSurfaceCropDialog by remember { mutableStateOf(false) }
     var pendingPage by remember { mutableStateOf(NO_PAGE) }
     var pendingPageCrop by remember { mutableStateOf<Uri?>(null) }
     var showPageCropDialog by remember { mutableStateOf(false) }
@@ -166,16 +161,22 @@ fun WallpaperScreen() {
         }
     }
 
-    val persistWorkCard: (Uri) -> Unit = { picked ->
+    val persistSurface: (SurfaceId, Uri) -> Unit = { id, picked ->
         scope.launch {
             isSaving = true
-            val ok = WallpaperManager.saveWorkCardBackground(context, picked)
+            val ok = WallpaperManager.saveSurfaceImage(context, id, picked)
             isSaving = false
-            snackbarHost.showSnackbar(
-                context.getString(
-                    if (ok) R.string.wallpaper_work_card_saved else R.string.wallpaper_work_card_save_failed
-                )
-            )
+            val savedRes = if (id == SurfaceRegistry.GRID_WORK_CARD) {
+                R.string.wallpaper_work_card_saved
+            } else {
+                R.string.wallpaper_saved
+            }
+            val failedRes = if (id == SurfaceRegistry.GRID_WORK_CARD) {
+                R.string.wallpaper_work_card_save_failed
+            } else {
+                R.string.wallpaper_save_failed
+            }
+            snackbarHost.showSnackbar(context.getString(if (ok) savedRes else failedRes))
         }
     }
 
@@ -198,8 +199,8 @@ fun WallpaperScreen() {
         persistPage(pendingPage, cropped)
     }
 
-    val workCardCropLauncher = rememberSystemCropLauncher(cacheName = "work_card_crop_cache") { cropped ->
-        persistWorkCard(cropped)
+    val surfaceCropLauncher = rememberSystemCropLauncher(cacheName = "surface_crop_cache") { cropped ->
+        pendingSurface?.let { persistSurface(it, cropped) }
     }
 
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -209,10 +210,10 @@ fun WallpaperScreen() {
         }
     }
 
-    val pickWorkCardLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val pickSurfaceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
-            pendingWorkCardCrop = uri
-            showWorkCardCropDialog = true
+            pendingSurfaceCrop = uri
+            showSurfaceCropDialog = true
         }
     }
 
@@ -291,28 +292,29 @@ fun WallpaperScreen() {
         )
     }
 
-    if (showWorkCardCropDialog) {
-        val target = pendingWorkCardCrop
+    if (showSurfaceCropDialog) {
+        val target = pendingSurfaceCrop
+        val surfaceId = pendingSurface
         AlertDialog(
             onDismissRequest = {
-                showWorkCardCropDialog = false
-                pendingWorkCardCrop = null
+                showSurfaceCropDialog = false
+                pendingSurfaceCrop = null
             },
             title = { Text(stringResource(R.string.wallpaper_crop_title)) },
             text = { Text(stringResource(R.string.wallpaper_crop_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    showWorkCardCropDialog = false
-                    pendingWorkCardCrop = null
-                    if (target != null) {
-                        val launched = runCatching { workCardCropLauncher.launch(target) }.isSuccess
+                    showSurfaceCropDialog = false
+                    pendingSurfaceCrop = null
+                    if (target != null && surfaceId != null) {
+                        val launched = runCatching { surfaceCropLauncher.launch(target) }.isSuccess
                         if (!launched) {
                             scope.launch {
                                 snackbarHost.showSnackbar(
                                     context.getString(R.string.wallpaper_crop_unsupported)
                                 )
                             }
-                            persistWorkCard(target)
+                            persistSurface(surfaceId, target)
                         }
                     }
                 }) {
@@ -321,9 +323,9 @@ fun WallpaperScreen() {
             },
             dismissButton = {
                 TextButton(onClick = {
-                    showWorkCardCropDialog = false
-                    pendingWorkCardCrop = null
-                    if (target != null) persistWorkCard(target)
+                    showSurfaceCropDialog = false
+                    pendingSurfaceCrop = null
+                    if (target != null && surfaceId != null) persistSurface(surfaceId, target)
                 }) {
                     Text(stringResource(R.string.wallpaper_crop_direct))
                 }
@@ -388,7 +390,6 @@ fun WallpaperScreen() {
         superuserBackgroundSelected = !WallpaperConfig.superuserBackgroundUri.isNullOrEmpty(),
         moduleBackgroundSelected = !WallpaperConfig.moduleBackgroundUri.isNullOrEmpty(),
         settingsBackgroundSelected = !WallpaperConfig.settingsBackgroundUri.isNullOrEmpty(),
-        workCardSurface = WallpaperConfig.workCardSurface,
         isSaving = isSaving,
     )
 
@@ -454,46 +455,30 @@ fun WallpaperScreen() {
             pendingPage = WallpaperConfig.PAGE_SETTINGS
             pickPageLauncher.launch("image/*")
         },
-        onToggleWorkCardBackground = { enabled ->
-            WallpaperConfig.updateWorkCardBackgroundEnabled(enabled)
+        onSetSurfaceToggle = { id, field, value ->
+            SurfaceStore.update(id) { it.withToggle(field, value) }
             WallpaperConfig.save(context)
         },
-        onPickWorkCardImage = { pickWorkCardLauncher.launch("image/*") },
-        onClearWorkCardImage = {
-            WallpaperManager.clearWorkCardBackground(context)
-            scope.launch { snackbarHost.showSnackbar(context.getString(R.string.wallpaper_work_card_removed)) }
-        },
-        onSetWorkCardOpacity = {
-            WallpaperConfig.updateWorkCardOpacity(it)
+        onSetSurfaceFlag = { id, flag, value ->
+            SurfaceStore.update(id) { it.withFlag(flag, value) }
             WallpaperConfig.save(context)
         },
-        onSetWorkCardDim = {
-            WallpaperConfig.updateWorkCardDim(it)
+        onSetSurfaceScalar = { id, field, value ->
+            SurfaceStore.update(id) { it.withScalar(field, value.coerceIn(0f, 1f)) }
             WallpaperConfig.save(context)
         },
-        onToggleWorkCardDualOpacity = {
-            WallpaperConfig.updateWorkCardDualOpacityEnabled(it)
-            WallpaperConfig.save(context)
+        onPickSurfaceImage = { id ->
+            pendingSurface = id
+            pickSurfaceLauncher.launch("image/*")
         },
-        onSetWorkCardDayOpacity = {
-            WallpaperConfig.updateWorkCardDayOpacity(it)
-            WallpaperConfig.save(context)
-        },
-        onSetWorkCardNightOpacity = {
-            WallpaperConfig.updateWorkCardNightOpacity(it)
-            WallpaperConfig.save(context)
-        },
-        onToggleWorkCardCheckHidden = {
-            WallpaperConfig.updateWorkCardCheckHidden(it)
-            WallpaperConfig.save(context)
-        },
-        onToggleWorkCardTextHidden = {
-            WallpaperConfig.updateWorkCardTextHidden(it)
-            WallpaperConfig.save(context)
-        },
-        onToggleWorkCardModeHidden = {
-            WallpaperConfig.updateWorkCardModeHidden(it)
-            WallpaperConfig.save(context)
+        onClearSurfaceImage = { id ->
+            WallpaperManager.clearSurfaceImage(context, id)
+            val removedRes = if (id == SurfaceRegistry.GRID_WORK_CARD) {
+                R.string.wallpaper_work_card_removed
+            } else {
+                R.string.wallpaper_removed
+            }
+            scope.launch { snackbarHost.showSnackbar(context.getString(removedRes)) }
         },
         onExport = { exportLauncher.launch(FolkThemeIO.FILE_NAME) },
         onImport = { importLauncher.launch("*/*") },

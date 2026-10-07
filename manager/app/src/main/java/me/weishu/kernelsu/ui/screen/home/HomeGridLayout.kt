@@ -172,7 +172,7 @@ private fun GridStatusCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (backgroundUri != null) {
-                WorkCardBackgroundImage(uri = backgroundUri, surface = workCardSurface)
+                SurfaceBackgroundImage(uri = backgroundUri, surface = workCardSurface)
             }
             Column(
                 modifier = Modifier
@@ -214,46 +214,4 @@ private fun GridStatusCard(
     if (showWorkCardOptions) {
         WorkCardBackgroundDialog(onDismiss = { showWorkCardOptions = false })
     }
-}
-
-/**
- * The photo behind the grid work card, dimmed with a black scrim so the overlaid label stays
- * readable. Draws nothing until the stored bitmap is decoded.
- */
-@Composable
-private fun WorkCardBackgroundImage(uri: String, surface: SurfaceConfig) {
-    val isDark = isInDarkTheme()
-    val opacity = surface.effectiveOpacity(isDark)
-    val path = remember(uri) { Uri.parse(uri).path }
-    val file = remember(path) { path?.let { File(it) } }
-    if (file != null && isAnimatedImageFile(file)) {
-        // Animated images (GIF) play natively; everything else keeps the downsampled bitmap path.
-        AnimatedFileImage(
-            file = file,
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(opacity),
-        )
-    } else {
-        val image by produceState<ImageBitmap?>(initialValue = null, path) {
-            value = withContext(Dispatchers.IO) {
-                path?.let { WallpaperManager.decodeSampled(File(it), 1600)?.asImageBitmap() }
-            }
-        }
-        image?.let { bitmap ->
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(opacity),
-            )
-        }
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = surface.dim)),
-    )
 }

@@ -24,6 +24,10 @@ import kotlin.math.roundToInt
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.HomeMetrics
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceId
+import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
+import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
 
 /**
  * FocusUI: a board of tiles - status, manager, system facts and counts - that becomes a 2x2 grid on
@@ -39,16 +43,33 @@ internal fun FocusHomeContent(
     metrics: HomeMetrics,
 ) {
     val fullFeatured = Natives.isFullFeatured()
+    val focusStyle = SurfaceStore.config(SurfaceRegistry.FOCUS)
+    fun focusBackground(id: SurfaceId): SurfaceConfig? {
+        val card = SurfaceStore.config(id)
+        return if (card.hasImage) focusStyle.copy(imageUri = card.imageUri) else null
+    }
+
     if (!fullFeatured || !isWideLayout(withOrientation = true)) {
         Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
-            FocusStatusTile(state = state, actions = actions)
+            FocusStatusTile(
+                state = state,
+                actions = actions,
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_KERNEL),
+            )
             HomeFactsTile(
                 state = state,
                 title = stringResource(R.string.home_tile_manager),
                 icon = Icons.Outlined.AdminPanelSettings,
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_APP),
             )
-            FocusDeviceTile(metrics = metrics)
-            FocusStorageTile(metrics = metrics)
+            FocusDeviceTile(
+                metrics = metrics,
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_DEVICE),
+            )
+            FocusStorageTile(
+                metrics = metrics,
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_STORAGE),
+            )
         }
         return
     }
@@ -66,6 +87,7 @@ internal fun FocusHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_KERNEL),
             )
             HomeFactsTile(
                 state = state,
@@ -74,6 +96,7 @@ internal fun FocusHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_APP),
             )
         }
         Row(
@@ -87,12 +110,14 @@ internal fun FocusHomeContent(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_DEVICE),
             )
             FocusStorageTile(
                 metrics = metrics,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
+                background = focusBackground(SurfaceRegistry.FOCUS_CARD_STORAGE),
             )
         }
     }
@@ -106,6 +131,7 @@ private fun FocusStatusTile(
     state: HomeUiState,
     actions: HomeActions,
     modifier: Modifier = Modifier,
+    background: SurfaceConfig? = null,
 ) {
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
@@ -134,6 +160,7 @@ private fun FocusStatusTile(
         iconRes = R.drawable.ic_kernelsu_foreground,
         modifier = modifier.fillMaxWidth(),
         action = cardAction,
+        background = background,
     ) {
         HomeFactRow(
             label = stringResource(R.string.home_running_status),
@@ -158,6 +185,7 @@ private fun FocusStatusTile(
 private fun FocusDeviceTile(
     metrics: HomeMetrics,
     modifier: Modifier = Modifier,
+    background: SurfaceConfig? = null,
 ) {
     val device = metrics.device
     val cpuTemperature = device?.cpuTemperatureC
@@ -166,6 +194,7 @@ private fun FocusDeviceTile(
         title = stringResource(R.string.home_tile_device),
         icon = Icons.Outlined.Memory,
         modifier = modifier.fillMaxWidth(),
+        background = background,
     ) {
         Row(
             modifier = Modifier
@@ -201,6 +230,7 @@ private fun FocusDeviceTile(
 private fun FocusStorageTile(
     metrics: HomeMetrics,
     modifier: Modifier = Modifier,
+    background: SurfaceConfig? = null,
 ) {
     val storage = metrics.storage
 
@@ -208,6 +238,7 @@ private fun FocusStorageTile(
         title = stringResource(R.string.home_tile_storage),
         icon = Icons.Outlined.SdStorage,
         modifier = modifier.fillMaxWidth(),
+        background = background,
     ) {
         StorageBar(
             label = stringResource(R.string.home_metric_storage_internal),

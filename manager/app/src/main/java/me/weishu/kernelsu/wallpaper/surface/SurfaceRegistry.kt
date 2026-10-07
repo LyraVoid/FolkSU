@@ -266,7 +266,11 @@ object SurfaceRegistry {
         available = { false },
     )
 
-    /** A focus card that only stores its own image; the shared values live on [focus]. */
+    /**
+     * A focus card that stores its own image; the shared values live on [focus]. The image also
+     * carries the surface's Enabled bit so a card keeps its photo across a restart, and that bit is
+     * the same presence flag the wider ecosystem records as `has<Card>Bg`.
+     */
     private fun focusCard(
         id: SurfaceId,
         titleRes: Int,
@@ -279,11 +283,20 @@ object SurfaceRegistry {
         icon = icon,
         scope = SurfaceScope.Slot,
         layouts = setOf(HomeLayoutStyle.FOCUS),
-        fields = setOf(SurfaceField.Image),
+        fields = setOf(SurfaceField.Image, SurfaceField.Enabled),
+        rows = listOf(
+            SurfaceImageRow(
+                pickTitleRes = R.string.wallpaper_pick,
+                changeTitleRes = R.string.wallpaper_change,
+                clearTitleRes = R.string.wallpaper_clear,
+                pickIcon = Icons.Filled.Image,
+                clearIcon = Icons.Filled.Delete,
+            ),
+        ),
         storageStem = themeBase,
         themeBase = themeBase,
-        legacyThemeFields = mapOf(SurfaceField.Image to legacyKey),
-        available = { false },
+        legacyThemeFields = mapOf(SurfaceField.Enabled to legacyKey),
+        available = { layout -> layout == HomeLayoutStyle.FOCUS },
     )
 
     /** Reserved slot for the stats layout; the model is in place but exposes no controls yet. */
