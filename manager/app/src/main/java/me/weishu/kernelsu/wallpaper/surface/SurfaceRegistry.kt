@@ -291,6 +291,7 @@ object SurfaceRegistry {
                 clearTitleRes = R.string.wallpaper_clear,
                 pickIcon = Icons.Filled.Image,
                 clearIcon = Icons.Filled.Delete,
+                showWhenEnabled = false,
             ),
         ),
         storageStem = themeBase,
