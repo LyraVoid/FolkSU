@@ -290,8 +290,12 @@ private object FontAsset : ThemedAsset {
  * It is pure configuration with no payload file, so it only round-trips through `theme.json`. The
  * key `homeLayoutStyle` and the tokens (`kernelsu` for the grid UI, `circle` for the single column,
  * `focus`/`dashboard_ui`/`stats` for the tile layouts) are shared with the wider theme ecosystem, so
- * a theme exported elsewhere imports here. Tokens we cannot render are left untouched instead of
- * forcing a layout the user did not pick.
+ * a theme exported elsewhere imports here.
+ *
+ * The `default` (ListUI) and `sign` (SignUI) tokens of that ecosystem have no counterpart here;
+ * they are close enough to the circle layout that they are mapped onto it rather than dropped or
+ * reimplemented. Any other token is left untouched instead of forcing a layout the user did not
+ * pick.
  */
 private object HomeLayoutAsset : ThemedAsset {
     private const val KEY = "homeLayoutStyle"
@@ -311,7 +315,7 @@ private object HomeLayoutAsset : ThemedAsset {
             HomeLayoutStyle.FOCUS -> HomeLayoutStyle.FOCUS
             HomeLayoutStyle.DASHBOARD -> HomeLayoutStyle.DASHBOARD
             HomeLayoutStyle.STATS -> HomeLayoutStyle.STATS
-            HomeLayoutStyle.CIRCLE, "default" -> HomeLayoutStyle.CIRCLE
+            HomeLayoutStyle.CIRCLE, "default", "sign" -> HomeLayoutStyle.CIRCLE
             else -> return
         }
         SettingsRepositoryImpl().homeLayoutStyle = token
