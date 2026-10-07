@@ -24,9 +24,6 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.rounded.Block
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -64,7 +61,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /** The gap between the tiles of every multi-column home layout. */
-private val TileSpacing = 16.dp
+internal val TileSpacing = 16.dp
 
 /**
  * The width from which a home layout lays its tiles out in columns instead of one long stack.
@@ -75,7 +72,7 @@ private val TileSpacing = 16.dp
  * column where the available height is unbounded.
  */
 @Composable
-private fun isWideLayout(withOrientation: Boolean): Boolean {
+internal fun isWideLayout(withOrientation: Boolean): Boolean {
     val configuration = LocalConfiguration.current
     val width = configuration.screenWidthDp
     val height = configuration.screenHeightDp
@@ -156,57 +153,6 @@ internal fun FocusHomeContent(
 }
 
 /**
- * DashboardUI: one wide hero banner over the counters and the system facts.
- *
- * The facts card is the one every layout ends with, so the wide form only has to decide whether it
- * sits beside the counters or under them.
- */
-@Composable
-internal fun DashboardHomeContent(
-    state: HomeUiState,
-    actions: HomeActions,
-    superuserCount: Int,
-    moduleEnabledCount: Int,
-) {
-    val fullFeatured = Natives.isFullFeatured()
-    Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
-        DashboardHeroCard(state = state, actions = actions)
-        if (fullFeatured && isWideLayout(withOrientation = false)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(TileSpacing),
-            ) {
-                CountCardPair(
-                    superuserCount = superuserCount,
-                    moduleEnabledCount = moduleEnabledCount,
-                    onOpenSuperUser = actions.onOpenSuperUser,
-                    onOpenModule = actions.onOpenModule,
-                    layout = CountCardLayout.Vertical,
-                    modifier = Modifier.weight(1f),
-                    emphasis = CountCardEmphasis.Value,
-                )
-                InfoCard(
-                    systemInfo = state.systemInfo,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        } else {
-            if (fullFeatured) {
-                CountCardPair(
-                    superuserCount = superuserCount,
-                    moduleEnabledCount = moduleEnabledCount,
-                    onOpenSuperUser = actions.onOpenSuperUser,
-                    onOpenModule = actions.onOpenModule,
-                    layout = CountCardLayout.Horizontal,
-                    emphasis = CountCardEmphasis.Value,
-                )
-            }
-            InfoCard(systemInfo = state.systemInfo)
-        }
-    }
-}
-
-/**
  * StatsUI: the status card over the two counters read as figures, then the system facts.
  *
  * The monitoring charts this layout was modelled on are not part of this batch, so the counters are
@@ -261,130 +207,6 @@ internal fun StatsHomeContent(
             state = state,
             title = stringResource(R.string.home_tile_system),
             icon = Icons.Outlined.Info,
-        )
-    }
-}
-
-/**
- * The Dashboard banner: the state icon and title over the three facts the hero was built to carry
- * (the working version, the kernel and SELinux).
- *
- * It is a plain card, exactly like the ones under it: the state is read from the icon and the
- * wording, so the surface never has to switch to an accent role.
- */
-@Composable
-private fun DashboardHeroCard(
-    state: HomeUiState,
-    actions: HomeActions,
-    modifier: Modifier = Modifier,
-) {
-    val ksuActive = state.ksuVersion != null
-    val notInstalled = !ksuActive && state.kernelVersion.isGKI()
-
-    val statusIcon = when {
-        ksuActive -> Icons.Rounded.CheckCircle
-        notInstalled -> Icons.Rounded.Warning
-        else -> Icons.Rounded.Block
-    }
-    val statusTitle = when {
-        ksuActive -> stringResource(R.string.home_working)
-        notInstalled -> stringResource(R.string.home_not_installed)
-        else -> stringResource(R.string.home_unsupported)
-    }
-    val statusSummary = when {
-        ksuActive -> stringResource(R.string.home_working_version, "${state.ksuVersion}-${state.kernelUAPIVersion}")
-        notInstalled -> stringResource(R.string.home_click_to_install)
-        else -> stringResource(R.string.home_unsupported_reason)
-    }
-    val workingMode = workingModeLabel(state)
-
-    HomeCard(
-        modifier = modifier.fillMaxWidth(),
-        onClick = {
-            if (!state.isLateLoadMode) {
-                actions.onInstallClick()
-            }
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = statusTitle,
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = statusTitle, style = FolkType.Title)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = statusSummary,
-                        style = FolkType.Summary,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (workingMode.isNotEmpty()) {
-                    Spacer(Modifier.width(16.dp))
-                    StatusTag(
-                        label = workingMode,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        backgroundColor = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                HeroFact(
-                    label = stringResource(R.string.module_version),
-                    value = if (ksuActive) "${state.ksuVersion}-${state.kernelUAPIVersion}" else "—",
-                    modifier = Modifier.weight(1f),
-                )
-                HeroFact(
-                    label = stringResource(R.string.home_kernel),
-                    value = state.systemInfo.kernelVersion,
-                    modifier = Modifier.weight(1f),
-                )
-                HeroFact(
-                    label = stringResource(R.string.home_selinux_status),
-                    value = selinuxDisplayName(state.systemInfo.selinuxStatus),
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-/** One label over its value, the column unit of the hero banner. */
-@Composable
-private fun HeroFact(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = FolkType.Caption,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = value,
-            style = FolkType.Summary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -948,7 +770,7 @@ private fun formatFrequency(khz: Long): String = when {
 }
 
 /** The LKM/GKI working mode, or an empty string while the module is not loaded. */
-private fun workingModeLabel(state: HomeUiState): String = when {
+internal fun workingModeLabel(state: HomeUiState): String = when {
     state.ksuVersion == null -> ""
     state.lkmMode == true -> "LKM"
     state.lkmMode == false -> "GKI"
