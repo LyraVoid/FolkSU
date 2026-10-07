@@ -92,7 +92,8 @@ data class HomeMetrics(
  * - battery: the sticky `ACTION_BATTERY_CHANGED` broadcast;
  * - CPU temperature: the first `cpu*` thermal zone under `/sys/class/thermal`;
  * - CPU clocks: the `cpufreq` node of every core under `/sys/devices/system/cpu`;
- * - memory: `MemTotal`/`MemAvailable` in `/proc/meminfo`, plus `/proc/swaps` for zram and swap;
+ * - memory: `MemTotal`/`MemAvailable` in `/proc/meminfo`; zram and swap stay unset because the
+ *   platform does not expose `/proc/swaps` to apps;
  * - internal storage: `statvfs` on the data partition.
  */
 object SystemMetricsCollector {
@@ -102,26 +103,25 @@ object SystemMetricsCollector {
     private const val CPU_DIR_PREFIX_LENGTH = 3
     private val CPU_DIR_PATTERN = Regex("cpu\\d+")
 
-    fun collectDeviceStatus(context: Context): DeviceStatus = DeviceStatus(
-        batteryLevelPercent = readBatteryLevelPercent(context),
-        batteryTemperatureC = readBatteryTemperatureC(context),
-        cpuTemperatureC = readCpuTemperatureC(),
-        cpuFrequencies = readCpuFrequencies(),
-    )
+    fun collectDeviceStatus(context: Context): DeviceStatus {
+        // One sticky broadcast, read once and shared by both parsers.
+        val battery = batteryIntent(context)
+        return DeviceStatus(
+            batteryLevelPercent = battery?.let { readBatteryLevelPercent(it) },
+            batteryTemperatureC = battery?.let { readBatteryTemperatureC(it) },
+            cpuTemperatureC = readCpuTemperatureC(),
+            cpuFrequencies = readCpuFrequencies(),
+        )
+    }
 
     fun collectStorageStatus(): StorageStatus {
         val data = readDataUsage()
         val memory = readMemoryUsage()
-        val swaps = readSwapUsage()
         return StorageStatus(
             dataUsedBytes = data.first,
             dataTotalBytes = data.second,
             ramUsedBytes = memory.first,
             ramTotalBytes = memory.second,
-            zramUsedBytes = swaps.zramUsed,
-            zramTotalBytes = swaps.zramTotal,
-            swapUsedBytes = swaps.swapUsed,
-            swapTotalBytes = swaps.swapTotal,
         )
     }
 
@@ -129,16 +129,14 @@ object SystemMetricsCollector {
         context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     }.getOrNull()
 
-    private fun readBatteryLevelPercent(context: Context): Int? {
-        val intent = batteryIntent(context) ?: return null
+    private fun readBatteryLevelPercent(intent: Intent): Int? {
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
         if (level < 0 || scale <= 0) return null
         return (level * 100 / scale).coerceIn(0, 100)
     }
 
-    private fun readBatteryTemperatureC(context: Context): Float? {
-        val intent = batteryIntent(context) ?: return null
+    private fun readBatteryTemperatureC(intent: Intent): Float? {
         val tenths = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
         if (tenths == Int.MIN_VALUE) return null
         return tenths / 10f
@@ -225,40 +223,4 @@ object SystemMetricsCollector {
         }.takeIf { it.isNotEmpty() }
     }.getOrNull()
 
-    private data class SwapUsage(
-        val zramUsed: Long?,
-        val zramTotal: Long?,
-        val swapUsed: Long?,
-        val swapTotal: Long?,
-    )
-
-    /** Splits `/proc/swaps` rows into zram vs. real swap; each is null when absent. */
-    private fun readSwapUsage(): SwapUsage {
-        var zramUsed = 0L
-        var zramTotal = 0L
-        var swapUsed = 0L
-        var swapTotal = 0L
-        runCatching {
-            File("/proc/swaps").forEachLine { line ->
-                val parts = line.trim().split(' ').filter { it.isNotEmpty() }
-                // Header row starts with "Filename"; a data row is: name type size used priority.
-                if (parts.size < 4 || parts.first().startsWith("Filename")) return@forEachLine
-                val sizeKb = parts[2].toLongOrNull() ?: return@forEachLine
-                val usedKb = parts[3].toLongOrNull() ?: return@forEachLine
-                if (parts.first().contains("zram")) {
-                    zramTotal += sizeKb * KILOBYTE
-                    zramUsed += usedKb * KILOBYTE
-                } else {
-                    swapTotal += sizeKb * KILOBYTE
-                    swapUsed += usedKb * KILOBYTE
-                }
-            }
-        }
-        return SwapUsage(
-            zramUsed = zramUsed.takeIf { zramTotal > 0L },
-            zramTotal = zramTotal.takeIf { it > 0L },
-            swapUsed = swapUsed.takeIf { swapTotal > 0L },
-            swapTotal = swapTotal.takeIf { it > 0L },
-        )
-    }
 }
