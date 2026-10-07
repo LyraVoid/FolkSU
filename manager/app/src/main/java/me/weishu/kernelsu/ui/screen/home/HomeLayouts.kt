@@ -24,7 +24,6 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -53,8 +52,6 @@ import me.weishu.kernelsu.data.HomeMetrics
 import me.weishu.kernelsu.ui.component.chart.ModulePieChart
 import me.weishu.kernelsu.ui.component.chart.PieSlice
 import me.weishu.kernelsu.ui.component.chart.WaveChart
-import me.weishu.kernelsu.ui.component.material.FolkButton
-import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 import java.util.Locale
@@ -227,8 +224,7 @@ private fun FocusCard(
     wallpaperRole: WallpaperSurfaceRole? =
         if (containerColor == MaterialTheme.colorScheme.surfaceBright) WallpaperSurfaceRole.Group else null,
     iconTint: Color = MaterialTheme.colorScheme.primary,
-    actionText: String? = null,
-    onActionClick: () -> Unit = {},
+    action: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     HomeCard(
@@ -264,13 +260,8 @@ private fun FocusCard(
                     style = MaterialTheme.typography.titleLargeEmphasized,
                     modifier = Modifier.weight(1f),
                 )
-                if (actionText != null) {
-                    FolkButton(
-                        onClick = onActionClick,
-                        contentPadding = ButtonDefaults.MediumContentPadding,
-                    ) {
-                        Text(text = actionText)
-                    }
+                if (action != null) {
+                    action()
                 }
             }
             HorizontalDivider(
@@ -295,21 +286,31 @@ private fun FocusStatusTile(
 ) {
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
+    val jailbreak = notInstalled && state.isSELinuxPermissive
 
     val statusTitle = when {
         ksuActive -> stringResource(R.string.home_working)
         notInstalled -> stringResource(R.string.home_not_installed)
         else -> stringResource(R.string.home_unsupported)
     }
-    val workingMode = workingModeLabel(state)
-    val lateLoad = ksuActive && state.isLateLoadMode
+
+    val cardAction: (@Composable () -> Unit)? = when {
+        jailbreak -> {
+            { StatusJailbreakButton(onClick = actions.onJailbreakClick) }
+        }
+
+        notInstalled -> {
+            { StatusInstallButton(onClick = actions.onInstallClick) }
+        }
+
+        else -> null
+    }
 
     FocusCard(
-        title = if (lateLoad) stringResource(R.string.jailbreak_mode) else stringResource(R.string.home_tile_status),
+        title = stringResource(R.string.home_tile_status),
         iconRes = R.drawable.ic_kernelsu_foreground,
         modifier = modifier.fillMaxWidth(),
-        actionText = if (notInstalled) stringResource(R.string.install) else null,
-        onActionClick = actions.onInstallClick,
+        action = cardAction,
     ) {
         FocusInfoRow(
             label = stringResource(R.string.home_running_status),
@@ -323,11 +324,8 @@ private fun FocusStatusTile(
                 stringResource(R.string.home_not_installed)
             },
         )
-        if (workingMode.isNotEmpty()) {
-            FocusInfoRow(
-                label = stringResource(R.string.home_running_mode),
-                value = workingMode,
-            )
+        statusStateTexts(state).forEach { (label, value) ->
+            FocusInfoRow(label = label, value = value)
         }
     }
 }

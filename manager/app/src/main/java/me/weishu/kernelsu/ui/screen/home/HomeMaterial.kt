@@ -47,7 +47,6 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Warning
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -89,7 +88,6 @@ import me.weishu.kernelsu.ui.component.WarningLevel
 import me.weishu.kernelsu.ui.component.WorkCardBackgroundDialog
 import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
-import me.weishu.kernelsu.ui.component.material.FolkButton
 import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
 import me.weishu.kernelsu.ui.component.material.folkPressScale
@@ -382,15 +380,7 @@ private fun GridStatusCard(
                         )
                     }
                 } else if (notInstalled && state.isSELinuxPermissive) {
-                    FolkButton(
-                        onClick = actions.onJailbreakClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        )
-                    ) {
-                        Text(stringResource(R.string.home_jailbreak))
-                    }
+                    StatusJailbreakButton(onClick = actions.onJailbreakClick)
                 }
             }
             if (!WallpaperConfig.workCardCheckHidden) {
@@ -566,15 +556,7 @@ internal fun StatusCard(
         }
     } else if (notInstalled && state.isSELinuxPermissive) {
         {
-            FolkButton(
-                onClick = actions.onJailbreakClick,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                )
-            ) {
-                Text(stringResource(R.string.home_jailbreak))
-            }
+            StatusJailbreakButton(onClick = actions.onJailbreakClick)
         }
     } else null
 

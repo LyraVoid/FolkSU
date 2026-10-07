@@ -23,6 +23,7 @@
     <string name="home_version">版本</string>
     <string name="home_running_mode">執行模式</string>
     <string name="home_running_status">執行狀態</string>
+    <string name="home_state_on">已開啟</string>
     <string name="home_working_version">KernelSU 版本：%s</string>
     <string name="home_lkm_update_available">有可用的內嵌 LKM 更新，按一下更新</string>
     <string name="home_lkm_custom">自訂</string>

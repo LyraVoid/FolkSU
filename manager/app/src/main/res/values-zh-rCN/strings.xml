@@ -23,6 +23,7 @@
     <string name="home_version">版本</string>
     <string name="home_running_mode">运行模式</string>
     <string name="home_running_status">运行状态</string>
+    <string name="home_state_on">已开启</string>
     <string name="home_working_version">版本：%s</string>
     <string name="home_lkm_update_available">内嵌 LKM 有可用更新，点击更新</string>
     <string name="home_lkm_custom">自定义</string>

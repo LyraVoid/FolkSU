@@ -24,7 +24,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkType
 
 /**
@@ -109,7 +108,7 @@ private fun DashboardHeroCard(
         notInstalled -> stringResource(R.string.home_click_to_install)
         else -> stringResource(R.string.home_unsupported_reason)
     }
-    val workingMode = workingModeLabel(state)
+    val jailbreak = notInstalled && state.isSELinuxPermissive
 
     HomeCard(
         modifier = modifier.fillMaxWidth(),
@@ -144,14 +143,18 @@ private fun DashboardHeroCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (workingMode.isNotEmpty()) {
+                if (jailbreak) {
                     Spacer(Modifier.width(16.dp))
-                    StatusTag(
-                        label = workingMode,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        backgroundColor = MaterialTheme.colorScheme.primary,
-                    )
+                    StatusJailbreakButton(onClick = actions.onJailbreakClick)
                 }
+            }
+            val stateTexts = statusStateTexts(state)
+            if (stateTexts.isNotEmpty()) {
+                Text(
+                    text = stateTexts.joinToString(" · ") { (label, value) -> "${label}: $value" },
+                    style = FolkType.Caption,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
