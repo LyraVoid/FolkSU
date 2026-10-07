@@ -3,6 +3,8 @@ package me.weishu.kernelsu.wallpaper
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
+import me.weishu.kernelsu.ui.component.bottombar.BottomBarIconConfig
 import me.weishu.kernelsu.ui.theme.FontConfig
 import me.weishu.kernelsu.ui.theme.FontMode
 import kotlinx.coroutines.withContext
@@ -38,6 +40,25 @@ internal interface ThemedAsset {
     fun writeConfig(json: JSONObject)
 
     suspend fun apply(context: Context, json: JSONObject, file: File?)
+}
+
+/**
+ * A themed asset that owns several files at once — one per bottom-bar destination, for example.
+ *
+ * Registered alongside the single-file [ThemedAsset]s in [FolkThemeIO.groups]. A group decides
+ * which zip entries it owns by reading its own `theme.json` metadata, so its file names are free.
+ */
+internal interface ThemedAssetGroup {
+    fun writeConfig(json: JSONObject)
+
+    /** The zip entries to write on export, keyed by entry name (e.g. `nav_icon_Home.png`). */
+    fun currentFiles(context: Context): Map<String, File>
+
+    /**
+     * Apply this group from an imported theme. [imported] maps every zip entry name to the file
+     * that was extracted for it.
+     */
+    suspend fun apply(context: Context, json: JSONObject, imported: Map<String, File>)
 }
 
 /**
@@ -262,6 +283,75 @@ private object FontAsset : ThemedAsset {
 }
 
 /**
+ * The user's custom bottom-navigation icons.
+ *
+ * Stored using the FolkPatch ecosystem keys: `navIconCustomEnabled` plus a `navIcons` object that
+ * maps a canonical destination name to its zip file name (`nav_icon_<themeKey>.png`). The
+ * canonical names are mapped onto our own [BottomBarDestination]s, so a theme exported by either
+ * app can be imported by the other.
+ */
+private object NavIconsAsset : ThemedAssetGroup {
+    private const val KEY_ENABLED = "navIconCustomEnabled"
+    private const val KEY_ICONS = "navIcons"
+
+    private fun entryName(destination: BottomBarDestination) =
+        "nav_icon_${destination.themeKey}.png"
+
+    override fun writeConfig(json: JSONObject) {
+        json.put(KEY_ENABLED, BottomBarIconConfig.isEnabled)
+        if (!BottomBarIconConfig.isEnabled) return
+        val icons = JSONObject()
+        BottomBarDestination.entries.forEach { destination ->
+            if (BottomBarIconConfig.iconFile(destination.name).exists()) {
+                icons.put(destination.themeKey, entryName(destination))
+            }
+        }
+        if (icons.length() > 0) json.put(KEY_ICONS, icons)
+    }
+
+    override fun currentFiles(context: Context): Map<String, File> {
+        if (!BottomBarIconConfig.isEnabled) return emptyMap()
+        return buildMap {
+            BottomBarDestination.entries.forEach { destination ->
+                val file = BottomBarIconConfig.iconFile(destination.name)
+                if (file.exists() && file.length() > 0L) put(entryName(destination), file)
+            }
+        }
+    }
+
+    override suspend fun apply(context: Context, json: JSONObject, imported: Map<String, File>) {
+        val enabled = json.optBoolean(KEY_ENABLED, false) ||
+            json.optBoolean(BottomBarIconConfig.ENABLED_KEY, false)
+        val icons = json.optJSONObject(KEY_ICONS)
+
+        BottomBarDestination.entries.forEach { destination ->
+            val name = icons?.optString(destination.themeKey).orEmpty()
+            val source = if (enabled) findImported(imported, name) else null
+            val target = BottomBarIconConfig.iconFile(destination.name)
+            if (source != null) {
+                target.parentFile?.mkdirs()
+                source.copyTo(target, overwrite = true)
+                BottomBarIconConfig.setCustomIconUri(destination.name, Uri.fromFile(target).toString())
+            } else {
+                BottomBarIconConfig.clearCustomIcon(destination.name)
+            }
+        }
+        BottomBarIconConfig.isEnabled = enabled
+        BottomBarIconConfig.notifyChanged()
+    }
+
+    private fun findImported(imported: Map<String, File>, name: String): File? {
+        if (name.isEmpty()) return null
+        return imported[name]
+            ?: imported.entries.firstOrNull { zipStem(it.key) == name.substringBefore('.') }?.value
+    }
+}
+
+/** The file-name stem of a zip entry: `nav_icon_Home.png` -> `nav_icon_Home`. */
+private fun zipStem(entryName: String): String =
+    entryName.substringBefore('.').substringAfterLast('/')
+
+/**
  * Reads and writes the `.fpt` background theme container.
  *
  * The container is `[16-byte IV][AES/CBC/PKCS5Padding(ZIP)]`; the zip holds `theme.json` plus one
@@ -286,20 +376,36 @@ object FolkThemeIO {
         FontAsset,
     )
 
+    /** Multi-file themed assets, registered alongside the single-file [assets]. */
+    private val groups: List<ThemedAssetGroup> = listOf(NavIconsAsset)
+
     suspend fun exportBackground(context: Context, target: Uri, name: String): Boolean =
         withContext(Dispatchers.IO) {
             runCatching {
-                val files = assets.map { it to it.currentFile(context) }
+                val entries = buildList {
+                    assets.forEach { asset ->
+                        asset.currentFile(context)?.let { file ->
+                            val extension = WallpaperManager.resolveFileExtension(file).removePrefix(".")
+                            add("${asset.base}.$extension" to file)
+                        }
+                    }
+                    groups.forEach { group ->
+                        group.currentFiles(context).forEach { (entryName, file) ->
+                            add(entryName to file)
+                        }
+                    }
+                }
                 // Nothing to export only when every asset is absent; a lone work card is enough.
-                if (files.all { it.second == null }) return@runCatching false
+                if (entries.isEmpty()) return@runCatching false
 
                 val config = JSONObject().apply {
                     assets.forEach { it.writeConfig(this) }
+                    groups.forEach { it.writeConfig(this) }
                     put("meta_name", name)
                     put("meta_type", "background")
                     put("meta_version", 1)
                 }
-                val zipped = zip(config.toString().toByteArray(Charsets.UTF_8), files)
+                val zipped = zip(config.toString().toByteArray(Charsets.UTF_8), entries)
                 val encrypted = encrypt(zipped)
                 context.contentResolver.openOutputStream(target)?.use { it.write(encrypted) }
                     ?: return@runCatching false
@@ -332,8 +438,7 @@ object FolkThemeIO {
                             if (entry.name == ENTRY_CONFIG) {
                                 config = JSONObject(outFile.readText())
                             } else {
-                                val stem = entry.name.substringBefore('.').substringAfterLast('/')
-                                assets.firstOrNull { it.base == stem }?.let { imported[it.base] = outFile }
+                                imported[entry.name] = outFile
                             }
                         }
                         zip.closeEntry()
@@ -341,7 +446,11 @@ object FolkThemeIO {
                     }
                 }
                 val json = config ?: return@runCatching false
-                assets.forEach { it.apply(context, json, imported[it.base]) }
+                assets.forEach { asset ->
+                    val file = imported.entries.firstOrNull { zipStem(it.key) == asset.base }?.value
+                    asset.apply(context, json, file)
+                }
+                groups.forEach { it.apply(context, json, imported) }
                 WallpaperConfig.save(context)
                 true
             } finally {
@@ -350,19 +459,16 @@ object FolkThemeIO {
         }.getOrDefault(false)
     }
 
-    private fun zip(config: ByteArray, files: List<Pair<ThemedAsset, File?>>): ByteArray {
+    private fun zip(config: ByteArray, entries: List<Pair<String, File>>): ByteArray {
         val bytes = ByteArrayOutputStream()
         ZipOutputStream(bytes).use { zip ->
             zip.putNextEntry(ZipEntry(ENTRY_CONFIG))
             zip.write(config)
             zip.closeEntry()
-            files.forEach { (asset, file) ->
-                if (file != null) {
-                    val extension = WallpaperManager.resolveFileExtension(file).removePrefix(".")
-                    zip.putNextEntry(ZipEntry("${asset.base}.$extension"))
-                    file.inputStream().use { it.copyTo(zip) }
-                    zip.closeEntry()
-                }
+            entries.forEach { (name, file) ->
+                zip.putNextEntry(ZipEntry(name))
+                file.inputStream().use { it.copyTo(zip) }
+                zip.closeEntry()
             }
         }
         return bytes.toByteArray()

@@ -98,6 +98,29 @@ import me.weishu.kernelsu.ui.component.material.folkPressScale
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.keyColorOptions
 import me.weishu.kernelsu.ui.theme.rememberKernelSUColorScheme
+import android.graphics.Bitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
+import me.weishu.kernelsu.ui.component.bottombar.BottomBarIconConfig
+import me.weishu.kernelsu.ui.component.material.FolkIconButton
+import me.weishu.kernelsu.ui.component.material.SegmentedListItem
+import me.weishu.kernelsu.ui.component.material.SnackBarHost
 import kotlin.math.roundToInt
 
 @Composable
@@ -112,6 +135,22 @@ fun ColorPaletteScreenMaterial(
     val colorStyle = state.currentPaletteStyle
     val colorSpec = state.currentColorSpec
     val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var iconPickTarget by remember { mutableStateOf<BottomBarDestination?>(null) }
+    val iconPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val destination = iconPickTarget
+        iconPickTarget = null
+        if (uri != null && destination != null) {
+            val saved = BottomBarIconConfig.saveCustomIcon(context, destination.name, uri)
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    context.getString(if (saved) R.string.nav_icon_set else R.string.nav_icon_set_failed)
+                )
+            }
+        }
+    }
 
     ExpressiveScaffold(
         topBar = {
@@ -125,6 +164,7 @@ fun ColorPaletteScreenMaterial(
                 scrollBehavior = scrollBehavior
             )
         },
+        snackbarHost = { SnackBarHost(hostState = snackbarHostState) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { paddingValues ->
         val navBars = WindowInsets.navigationBars.asPaddingValues()
@@ -305,6 +345,43 @@ fun ColorPaletteScreenMaterial(
                         )
                     )
                 }
+            }
+
+            item {
+                val revision by BottomBarIconConfig.revision.collectAsState()
+                val customEnabled = remember(revision) { BottomBarIconConfig.isEnabled }
+
+                SegmentedColumn(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    content = buildList<@Composable () -> Unit> {
+                        add {
+                            SegmentedSwitchItem(
+                                icon = Icons.Rounded.Apps,
+                                title = stringResource(R.string.settings_nav_custom_icons),
+                                summary = stringResource(R.string.settings_nav_custom_icons_summary),
+                                checked = customEnabled,
+                                onCheckedChange = { BottomBarIconConfig.isEnabled = it },
+                            )
+                        }
+                        if (customEnabled) {
+                            BottomBarDestination.entries.forEach { destination ->
+                                add {
+                                    NavIconItemRow(
+                                        destination = destination,
+                                        revision = revision,
+                                        onPick = {
+                                            iconPickTarget = destination
+                                            iconPicker.launch("image/*")
+                                        },
+                                        onClear = {
+                                            BottomBarIconConfig.clearCustomIcon(destination.name)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                )
             }
 
             item {
@@ -648,4 +725,64 @@ private fun ColorButtonMaterial(
             }
         }
     }
+}
+
+@Composable
+private fun NavIconItemRow(
+    destination: BottomBarDestination,
+    revision: Int,
+    onPick: () -> Unit,
+    onClear: () -> Unit,
+) {
+    val uri = remember(revision, destination.name) {
+        BottomBarIconConfig.getCustomIconUri(destination.name)
+    }
+    val bitmap by produceState<Bitmap?>(initialValue = null, uri) {
+        value = if (uri != null) {
+            withContext(Dispatchers.IO) { BottomBarIconConfig.loadIconBitmap(uri) }
+        } else {
+            null
+        }
+    }
+
+    SegmentedListItem(
+        onClick = onPick,
+        headlineContent = { Text(stringResource(destination.label)) },
+        supportingContent = {
+            Text(
+                stringResource(
+                    if (uri != null) R.string.nav_icon_custom_selected else R.string.nav_icon_default
+                )
+            )
+        },
+        leadingContent = {
+            val loaded = bitmap
+            if (loaded != null) {
+                Image(
+                    bitmap = loaded.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier.size(36.dp),
+                    contentScale = ContentScale.Fit,
+                )
+            } else {
+                Icon(
+                    imageVector = destination.iconSelected,
+                    contentDescription = null,
+                    modifier = Modifier.size(36.dp),
+                )
+            }
+        },
+        trailingContent = if (uri != null) {
+            {
+                FolkIconButton(onClick = onClear) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(R.string.nav_icon_clear),
+                    )
+                }
+            }
+        } else {
+            null
+        },
+    )
 }

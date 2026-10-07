@@ -351,6 +351,13 @@
     <string name="nav_rail_collapse">收起导航栏</string>
     <string name="settings_navigation_badge">导航栏角标</string>
     <string name="settings_navigation_badge_summary">在导航栏显示已授权应用和已启用模块数量</string>
+    <string name="settings_nav_custom_icons">自定义底部导航图标</string>
+    <string name="settings_nav_custom_icons_summary">用你自己的图片替换底部导航图标</string>
+    <string name="nav_icon_default">默认图标</string>
+    <string name="nav_icon_custom_selected">自定义图标</string>
+    <string name="nav_icon_set">图标已更新</string>
+    <string name="nav_icon_set_failed">无法加载该图片</string>
+    <string name="nav_icon_clear">恢复默认图标</string>
     <string name="settings_wallpaper_summary">为应用设置背景图片</string>
     <string name="wallpaper_title">壁纸</string>
     <string name="wallpaper_enable">启用壁纸</string>

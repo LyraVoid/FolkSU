@@ -3,10 +3,14 @@ package me.weishu.kernelsu.ui.component.bottombar
 import androidx.annotation.StringRes
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Cottage
-import androidx.compose.material.icons.rounded.Extension
-import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.outlined.Extension
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -92,12 +96,18 @@ data class NavigationBadgeState(
 
 enum class BottomBarDestination(
     @get:StringRes val label: Int,
-    val icon: ImageVector,
+    val iconSelected: ImageVector,
+    val iconNotSelected: ImageVector,
+    /**
+     * Canonical destination name used inside `.fpt` theme packages. Kept aligned with the
+     * FolkPatch ecosystem so bottom-bar icons can round-trip between both apps.
+     */
+    val themeKey: String,
 ) {
-    Home(R.string.home, Icons.Rounded.Cottage),
-    SuperUser(R.string.superuser, Icons.Rounded.Security),
-    Module(R.string.module, Icons.Rounded.Extension),
-    Setting(R.string.settings, Icons.Rounded.Settings)
+    Home(R.string.home, Icons.Filled.Home, Icons.Outlined.Home, "Home"),
+    SuperUser(R.string.superuser, Icons.Filled.Shield, Icons.Outlined.Shield, "SuperUser"),
+    Module(R.string.module, Icons.Filled.Extension, Icons.Outlined.Extension, "AModule"),
+    Setting(R.string.settings, Icons.Filled.Settings, Icons.Outlined.Settings, "Settings")
 }
 
 internal enum class BadgeTone { Alert, Accent }

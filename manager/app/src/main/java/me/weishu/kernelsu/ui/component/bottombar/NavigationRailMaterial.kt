@@ -11,15 +11,7 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuOpen
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.Extension
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,13 +43,6 @@ fun NavigationRailMaterial(
     if (!fullFeatured) return
 
     val mainPagerState = LocalMainPagerState.current
-
-    val items = listOf(
-        Triple(R.string.home, Icons.Filled.Home, Icons.Outlined.Home),
-        Triple(R.string.superuser, Icons.Filled.Shield, Icons.Outlined.Shield),
-        Triple(R.string.module, Icons.Filled.Extension, Icons.Outlined.Extension),
-        Triple(R.string.settings, Icons.Filled.Settings, Icons.Outlined.Settings)
-    )
 
     val settingsRepo = remember { SettingsRepositoryImpl() }
     val state = rememberWideNavigationRailState(
@@ -103,7 +88,7 @@ fun NavigationRailMaterial(
             }
         },
     ) {
-        items.forEachIndexed { index, (label, selectedIcon, unselectedIcon) ->
+        BottomBarDestination.entries.forEachIndexed { index, destination ->
             val selected = mainPagerState.selectedPage == index
             WideNavigationRailItem(
                 railExpanded = expanded,
@@ -115,12 +100,12 @@ fun NavigationRailMaterial(
                 },
                 icon = {
                     NavigationIconWithBadge(
-                        icon = if (selected) selectedIcon else unselectedIcon,
-                        contentDescription = stringResource(label),
+                        destination = destination,
+                        selected = selected,
                         badge = badgeFor(index, navigationBadge),
                     )
                 },
-                label = { Text(stringResource(label)) }
+                label = { Text(stringResource(destination.label)) }
             )
         }
     }

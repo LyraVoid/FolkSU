@@ -6,29 +6,17 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.Extension
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import me.weishu.kernelsu.Natives
-import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.LocalMainPagerState
 import me.weishu.kernelsu.ui.component.material.ChromeEdge
 import me.weishu.kernelsu.ui.component.material.WallpaperChromeZone
@@ -40,13 +28,6 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
 
     val mainPagerState = LocalMainPagerState.current
 
-    val items = listOf(
-        Triple(R.string.home, Icons.Filled.Home, Icons.Outlined.Home),
-        Triple(R.string.superuser, Icons.Filled.Shield, Icons.Outlined.Shield),
-        Triple(R.string.module, Icons.Filled.Extension, Icons.Outlined.Extension),
-        Triple(R.string.settings, Icons.Filled.Settings, Icons.Outlined.Settings)
-    )
-
     val barStyle = BottomBarControl.style(BottomBarLayout.Docked)
     WallpaperChromeZone(edge = ChromeEdge.Bottom, material = barStyle.scrim) {
         ShortNavigationBar(
@@ -55,7 +36,7 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
                 WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
             )
         ) {
-            items.forEachIndexed { index, (label, selectedIcon, unselectedIcon) ->
+            BottomBarDestination.entries.forEachIndexed { index, destination ->
                 val selected = mainPagerState.selectedPage == index
                 ShortNavigationBarItem(
                     selected = selected,
@@ -66,14 +47,14 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
                     },
                     icon = {
                         NavigationIconWithBadge(
-                            icon = if (selected) selectedIcon else unselectedIcon,
-                            contentDescription = stringResource(label),
+                            destination = destination,
+                            selected = selected,
                             badge = badgeFor(index, navigationBadge),
                         )
                     },
                     label = {
                         Text(
-                            stringResource(label),
+                            stringResource(destination.label),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -89,8 +70,8 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
 
 @Composable
 internal fun NavigationIconWithBadge(
-    icon: ImageVector,
-    contentDescription: String?,
+    destination: BottomBarDestination,
+    selected: Boolean,
     badge: NavBadge?,
 ) {
     if (badge != null) {
@@ -110,9 +91,9 @@ internal fun NavigationIconWithBadge(
                 }
             }
         ) {
-            Icon(icon, contentDescription)
+            NavBarIcon(destination, selected)
         }
     } else {
-        Icon(icon, contentDescription)
+        NavBarIcon(destination, selected)
     }
 }

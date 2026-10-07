@@ -312,4 +312,11 @@
     <string name="module_shortcut_scheme_copied">已複製 URL scheme</string>
     <string name="settings_navigation_badge">底部欄標記</string>
     <string name="settings_navigation_badge_summary">在底部欄顯示已授權 App 及已啟用模組數量</string>
+    <string name="settings_nav_custom_icons">自訂底部欄圖示</string>
+    <string name="settings_nav_custom_icons_summary">以你自己的圖片取代底部欄圖示</string>
+    <string name="nav_icon_default">預設圖示</string>
+    <string name="nav_icon_custom_selected">自訂圖示</string>
+    <string name="nav_icon_set">圖示已更新</string>
+    <string name="nav_icon_set_failed">無法載入該圖片</string>
+    <string name="nav_icon_clear">還原預設圖示</string>
 </resources>
