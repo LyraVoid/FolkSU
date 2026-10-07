@@ -103,7 +103,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.RoundedCorner
+import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -118,6 +121,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarIconConfig
+import me.weishu.kernelsu.ui.component.bottombar.FloatingBarConfig
 import me.weishu.kernelsu.ui.component.material.FolkIconButton
 import me.weishu.kernelsu.ui.component.material.SegmentedListItem
 import me.weishu.kernelsu.ui.component.material.SnackBarHost
@@ -378,6 +382,62 @@ fun ColorPaletteScreenMaterial(
                                         },
                                     )
                                 }
+                            }
+                        }
+                    }
+                )
+            }
+
+            item {
+                val floatingRevision by FloatingBarConfig.revision.collectAsState()
+                val floatingEnabled = remember(floatingRevision) { FloatingBarConfig.enabled }
+                val floatingStyle = remember(floatingRevision) { FloatingBarConfig.style }
+                val floatingCompact = remember(floatingRevision) { FloatingBarConfig.compact }
+                val floatingGlass = remember(floatingRevision) { FloatingBarConfig.glass }
+                val styles = FloatingBarConfig.Style.entries
+                val styleLabels = listOf(
+                    stringResource(R.string.settings_floating_bar_style_standard),
+                    stringResource(R.string.settings_floating_bar_style_drawer),
+                )
+
+                SegmentedColumn(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    content = buildList<@Composable () -> Unit> {
+                        add {
+                            SegmentedSwitchItem(
+                                icon = Icons.Rounded.ViewCarousel,
+                                title = stringResource(R.string.settings_floating_bar),
+                                summary = stringResource(R.string.settings_floating_bar_summary),
+                                checked = floatingEnabled,
+                                onCheckedChange = { FloatingBarConfig.enabled = it },
+                            )
+                        }
+                        if (floatingEnabled) {
+                            add {
+                                SegmentedDropdownItem(
+                                    icon = Icons.Rounded.Style,
+                                    title = stringResource(R.string.settings_floating_bar_style),
+                                    items = styleLabels,
+                                    selectedIndex = styles.indexOf(floatingStyle).coerceAtLeast(0),
+                                    onItemSelected = { FloatingBarConfig.style = styles[it] },
+                                )
+                            }
+                            add {
+                                SegmentedSwitchItem(
+                                    icon = Icons.Rounded.RoundedCorner,
+                                    title = stringResource(R.string.settings_floating_bar_compact),
+                                    checked = floatingCompact,
+                                    onCheckedChange = { FloatingBarConfig.compact = it },
+                                )
+                            }
+                            add {
+                                SegmentedSwitchItem(
+                                    icon = Icons.Rounded.BlurOn,
+                                    title = stringResource(R.string.settings_floating_bar_glass),
+                                    summary = stringResource(R.string.settings_floating_bar_glass_summary),
+                                    checked = floatingGlass,
+                                    onCheckedChange = { FloatingBarConfig.glass = it },
+                                )
                             }
                         }
                     }

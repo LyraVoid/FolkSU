@@ -25,6 +25,7 @@ commons-compress = "1.28.0"
 xz = "1.12"
 junit = "4.13.2"
 json = "20250517"
+liquid = "1.1.1"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
@@ -83,6 +84,7 @@ okhttp-bom = { module = "com.squareup.okhttp3:okhttp-bom", version.ref = "okhttp
 hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", version.ref = "hiddenapibypass" }
 
 material-kolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
+liquid-android = { group = "io.github.fletchmckee.liquid", name = "liquid-android", version.ref = "liquid" }
 
 appiconloader = { module = "me.zhanghai.android.appiconloader:appiconloader", version.ref = "appiconloader" }
 

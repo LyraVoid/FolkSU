@@ -12,6 +12,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -38,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -60,10 +62,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ui.component.bottombar.BottomBar
+import me.weishu.kernelsu.ui.component.bottombar.FloatingBar
+import me.weishu.kernelsu.ui.component.bottombar.FloatingBarConfig
 import me.weishu.kernelsu.ui.component.bottombar.MainPagerState
 import me.weishu.kernelsu.ui.component.bottombar.NavigationBadgeState
 import me.weishu.kernelsu.ui.component.bottombar.SideRail
+import me.weishu.kernelsu.ui.component.bottombar.floatingBarReservedHeight
+import me.weishu.kernelsu.ui.component.bottombar.isRealTimeBlurAvailable
+import me.weishu.kernelsu.ui.component.bottombar.navBarLiquefiable
 import me.weishu.kernelsu.ui.component.bottombar.rememberMainPagerState
+import me.weishu.kernelsu.ui.component.bottombar.rememberNavBarGlassLiquidState
 import me.weishu.kernelsu.ui.component.bottombar.useNavigationRail
 import me.weishu.kernelsu.ui.navigation3.IntentDispatcher
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
@@ -338,8 +346,18 @@ fun MainScreen(
         LocalMainPagerState provides mainPagerState
     ) {
         val contentReady = rememberContentReady()
+        val floatingBarRevision = FloatingBarConfig.revision.collectAsStateWithLifecycle().value
+        val floatingBarEnabled = remember(floatingBarRevision, useNavigationRail) {
+            !useNavigationRail && FloatingBarConfig.enabled
+        }
+        val floatingBarStyle = remember(floatingBarRevision) { FloatingBarConfig.style }
+        val floatingBarCompact = remember(floatingBarRevision) { FloatingBarConfig.compact }
+        val floatingBarGlassEnabled = floatingBarEnabled &&
+            remember(floatingBarRevision) { FloatingBarConfig.glass } &&
+            isRealTimeBlurAvailable()
+        val floatingLiquidState = if (floatingBarGlassEnabled) rememberNavBarGlassLiquidState() else null
         val pagerContent = @Composable { bottomInnerPadding: Dp ->
-            Box(modifier = Modifier) {
+            Box(modifier = Modifier.navBarLiquefiable(floatingLiquidState)) {
                 HorizontalPager(
                     state = mainPagerState.pagerState,
                     beyondViewportPageCount = if (contentReady) 3 else 0,
@@ -388,6 +406,18 @@ fun MainScreen(
                         pagerContent(navBarBottomPadding)
                     }
                 }
+            }
+        } else if (floatingBarEnabled) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                pagerContent(
+                    floatingBarReservedHeight(floatingBarCompact, floatingBarStyle) +
+                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                )
+                FloatingBar(
+                    navigationBadge = navigationBadge,
+                    liquidState = floatingLiquidState,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
         } else {
             val bottomBar = @Composable {

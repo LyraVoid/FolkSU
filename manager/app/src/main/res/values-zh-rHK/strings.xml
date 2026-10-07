@@ -314,6 +314,14 @@
     <string name="settings_navigation_badge_summary">在底部欄顯示已授權 App 及已啟用模組數量</string>
     <string name="settings_nav_custom_icons">自訂底部欄圖示</string>
     <string name="settings_nav_custom_icons_summary">以你自己的圖片取代底部欄圖示</string>
+    <string name="settings_floating_bar">懸浮導航欄</string>
+    <string name="settings_floating_bar_summary">將底部欄分離為懸浮膠囊</string>
+    <string name="settings_floating_bar_style">樣式</string>
+    <string name="settings_floating_bar_style_standard">標準</string>
+    <string name="settings_floating_bar_style_drawer">抽屜</string>
+    <string name="settings_floating_bar_compact">緊湊圓角</string>
+    <string name="settings_floating_bar_glass">毛玻璃效果</string>
+    <string name="settings_floating_bar_glass_summary">懸浮欄背後的實時模糊（Android 13+）</string>
     <string name="nav_icon_default">預設圖示</string>
     <string name="nav_icon_custom_selected">自訂圖示</string>
     <string name="nav_icon_set">圖示已更新</string>

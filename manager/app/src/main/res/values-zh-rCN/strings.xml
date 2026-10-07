@@ -353,6 +353,14 @@
     <string name="settings_navigation_badge_summary">在导航栏显示已授权应用和已启用模块数量</string>
     <string name="settings_nav_custom_icons">自定义底部导航图标</string>
     <string name="settings_nav_custom_icons_summary">用你自己的图片替换底部导航图标</string>
+    <string name="settings_floating_bar">悬浮导航栏</string>
+    <string name="settings_floating_bar_summary">将底部栏分离为悬浮胶囊</string>
+    <string name="settings_floating_bar_style">样式</string>
+    <string name="settings_floating_bar_style_standard">标准</string>
+    <string name="settings_floating_bar_style_drawer">抽屉</string>
+    <string name="settings_floating_bar_compact">紧凑圆角</string>
+    <string name="settings_floating_bar_glass">毛玻璃效果</string>
+    <string name="settings_floating_bar_glass_summary">悬浮栏背后的实时模糊（Android 13+）</string>
     <string name="nav_icon_default">默认图标</string>
     <string name="nav_icon_custom_selected">自定义图标</string>
     <string name="nav_icon_set">图标已更新</string>

@@ -234,6 +234,8 @@ dependencies {
 
     implementation(libs.material.kolor)
 
+    implementation(libs.liquid.android)
+
     implementation(libs.appiconloader)
 
     implementation(libs.commons.compress)

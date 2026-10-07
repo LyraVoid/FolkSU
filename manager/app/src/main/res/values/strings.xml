@@ -359,6 +359,14 @@
     <string name="settings_navigation_badge_summary">Show granted app and enabled module counts on the navigation bar</string>
     <string name="settings_nav_custom_icons">Custom navigation icons</string>
     <string name="settings_nav_custom_icons_summary">Use your own images for the bottom navigation icons</string>
+    <string name="settings_floating_bar">Floating navigation bar</string>
+    <string name="settings_floating_bar_summary">Detach the bottom bar into a floating pill</string>
+    <string name="settings_floating_bar_style">Style</string>
+    <string name="settings_floating_bar_style_standard">Standard</string>
+    <string name="settings_floating_bar_style_drawer">Drawer</string>
+    <string name="settings_floating_bar_compact">Compact rounded corners</string>
+    <string name="settings_floating_bar_glass">Glass effect</string>
+    <string name="settings_floating_bar_glass_summary">Real-time blur behind the floating bar (Android 13+)</string>
     <string name="nav_icon_default">Default icon</string>
     <string name="nav_icon_custom_selected">Custom icon</string>
     <string name="nav_icon_set">Icon updated</string>
