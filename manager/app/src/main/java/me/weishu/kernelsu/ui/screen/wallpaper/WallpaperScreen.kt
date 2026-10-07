@@ -11,16 +11,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.BlurOn
+import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
@@ -41,7 +46,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -632,6 +639,7 @@ fun WallpaperScreenMaterial(
                             color = MaterialTheme.colorScheme.primary,
                         )
                         SliderSetting(
+                            icon = Icons.Filled.Opacity,
                             title = stringResource(R.string.wallpaper_opacity),
                             summary = stringResource(R.string.wallpaper_opacity_summary),
                             value = state.opacity,
@@ -639,6 +647,7 @@ fun WallpaperScreenMaterial(
                             onValueChange = actions.onSetOpacity,
                         )
                         SliderSetting(
+                            icon = Icons.Filled.BlurOn,
                             title = stringResource(R.string.wallpaper_blur),
                             summary = stringResource(R.string.wallpaper_blur_summary),
                             value = state.blur,
@@ -648,12 +657,14 @@ fun WallpaperScreenMaterial(
                         )
                         if (state.dualDimEnabled) {
                             SliderSetting(
+                                icon = Icons.Filled.Contrast,
                                 title = stringResource(R.string.wallpaper_day_dim),
                                 value = state.dayDim,
                                 range = 0f..1f,
                                 onValueChange = actions.onSetDayDim,
                             )
                             SliderSetting(
+                                icon = Icons.Filled.Contrast,
                                 title = stringResource(R.string.wallpaper_night_dim),
                                 value = state.nightDim,
                                 range = 0f..1f,
@@ -661,6 +672,7 @@ fun WallpaperScreenMaterial(
                             )
                         } else {
                             SliderSetting(
+                                icon = Icons.Filled.Brightness6,
                                 title = stringResource(R.string.wallpaper_dim),
                                 summary = stringResource(R.string.wallpaper_dim_summary),
                                 value = state.dim,
@@ -732,6 +744,7 @@ private fun SliderSetting(
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     onValueChange: (Float) -> Unit,
+    icon: ImageVector? = null,
     summary: String? = null,
     format: (Float) -> String = { "${(it * 100).roundToInt()}%" },
 ) {
@@ -739,9 +752,22 @@ private fun SliderSetting(
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(16.dp))
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
             Text(
                 text = format(sliderState.value),
                 style = MaterialTheme.typography.bodyMedium,
