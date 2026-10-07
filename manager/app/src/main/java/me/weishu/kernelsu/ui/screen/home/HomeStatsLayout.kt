@@ -181,8 +181,8 @@ private fun StatsModuleTile(
     val moduleLabel = stringResource(R.string.module)
     val superuserLabel = stringResource(R.string.superuser)
     val slices = listOf(
-        PieSlice(label = moduleLabel, value = moduleEnabledCount, color = colors.primary),
-        PieSlice(label = superuserLabel, value = superuserCount, color = colors.tertiary),
+        PieSlice(value = moduleEnabledCount, color = colors.primary),
+        PieSlice(value = superuserCount, color = colors.tertiary),
     )
 
     HomeTileCard(

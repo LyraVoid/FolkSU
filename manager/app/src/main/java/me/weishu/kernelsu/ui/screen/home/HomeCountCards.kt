@@ -71,8 +71,6 @@ internal fun CountCardPair(
     modifier: Modifier = Modifier,
     pairSpacing: Dp = CountCardDefaults.PairSpacing,
     contentPadding: PaddingValues = CountCardDefaults.ContentPadding,
-    iconSize: Dp = CountCardDefaults.IconSize,
-    iconTextSpacing: Dp = CountCardDefaults.IconTextSpacing,
     emphasis: CountCardEmphasis = CountCardEmphasis.Label,
 ) {
     @Composable
@@ -84,8 +82,6 @@ internal fun CountCardPair(
             onClick = onClick,
             modifier = modifier,
             contentPadding = contentPadding,
-            iconSize = iconSize,
-            iconTextSpacing = iconTextSpacing,
             emphasis = emphasis,
         )
     }
@@ -121,8 +117,6 @@ internal fun CountCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = CountCardDefaults.ContentPadding,
-    iconSize: Dp = CountCardDefaults.IconSize,
-    iconTextSpacing: Dp = CountCardDefaults.IconTextSpacing,
     emphasis: CountCardEmphasis = CountCardEmphasis.Label,
 ) {
     val labelStyle = when (emphasis) {
@@ -153,10 +147,10 @@ internal fun CountCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(iconSize),
+                    modifier = Modifier.size(CountCardDefaults.IconSize),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.width(iconTextSpacing))
+                Spacer(Modifier.width(CountCardDefaults.IconTextSpacing))
                 Column {
                     Text(
                         text = label,

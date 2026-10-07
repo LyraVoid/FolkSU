@@ -12,9 +12,6 @@ import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 enum class HomeWorkCardLayout {
     Circle,
     Grid,
-    Focus,
-    Dashboard,
-    Stats,
 }
 
 /**
@@ -50,11 +47,7 @@ object HomeWorkCardControl {
         layout: HomeWorkCardLayout,
         working: Boolean,
     ): HomeWorkCardStyle = when (layout) {
-        HomeWorkCardLayout.Circle,
-        HomeWorkCardLayout.Focus,
-        HomeWorkCardLayout.Dashboard,
-        HomeWorkCardLayout.Stats,
-        -> circleStyle(working)
+        HomeWorkCardLayout.Circle -> circleStyle(working)
 
         HomeWorkCardLayout.Grid -> gridStyle(working)
     }

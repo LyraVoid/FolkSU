@@ -22,10 +22,9 @@ private val PieStrokeWidth = 20.dp
 /** The gap left between two neighbouring slices, in degrees. */
 private const val SliceGapDegrees = 2f
 
-/** One count in the pie: what it is, how many, and the theme colour that carries it. */
+/** One count in the pie: how many it is, and the theme colour that carries it. */
 @Immutable
 data class PieSlice(
-    val label: String,
     val value: Int,
     val color: Color,
 )

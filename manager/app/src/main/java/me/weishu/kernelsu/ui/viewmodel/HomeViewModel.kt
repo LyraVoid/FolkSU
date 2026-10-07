@@ -48,13 +48,11 @@ class HomeViewModel(
     val metrics: StateFlow<HomeMetrics> = flow {
         val cpuTemperature = ArrayDeque<Float>()
         val memoryUsage = ArrayDeque<Float>()
-        val batteryLevel = ArrayDeque<Float>()
         while (true) {
             val storage = SystemMetricsCollector.collectStorageStatus()
             val device = SystemMetricsCollector.collectDeviceStatus(ksuApp)
             device.cpuTemperatureC?.let { cpuTemperature.record(it) }
             if (storage.ramTotalBytes > 0L) memoryUsage.record(storage.ramUsedFraction * 100f)
-            device.batteryLevelPercent?.let { batteryLevel.record(it.toFloat()) }
             emit(
                 HomeMetrics(
                     device = device,
@@ -62,7 +60,6 @@ class HomeViewModel(
                     history = MetricsHistory(
                         cpuTemperature = cpuTemperature.toList(),
                         memoryUsage = memoryUsage.toList(),
-                        batteryLevel = batteryLevel.toList(),
                     ),
                 )
             )

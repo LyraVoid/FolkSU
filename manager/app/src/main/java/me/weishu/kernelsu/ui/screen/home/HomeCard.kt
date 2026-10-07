@@ -63,20 +63,10 @@ internal fun HomeTileCard(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     iconRes: Int? = null,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceBright,
-    contentColor: Color = contentColorFor(containerColor),
-    wallpaperRole: WallpaperSurfaceRole? =
-        if (containerColor == MaterialTheme.colorScheme.surfaceBright) WallpaperSurfaceRole.Group else null,
-    iconTint: Color = MaterialTheme.colorScheme.primary,
     action: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    HomeCard(
-        modifier = modifier,
-        containerColor = containerColor,
-        contentColor = contentColor,
-        wallpaperRole = wallpaperRole,
-    ) {
+    HomeCard(modifier = modifier) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -88,14 +78,14 @@ internal fun HomeTileCard(
                         painter = painterResource(iconRes),
                         contentDescription = null,
                         modifier = headerIconModifier,
-                        tint = iconTint,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
 
                     icon != null -> Icon(
                         imageVector = icon,
                         contentDescription = null,
                         modifier = headerIconModifier,
-                        tint = iconTint,
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
                 Spacer(Modifier.width(16.dp))

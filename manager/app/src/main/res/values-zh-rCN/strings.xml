@@ -13,7 +13,6 @@
     <string name="home_tile_stats">统计</string>
     <string name="home_metric_battery_level">电量</string>
     <string name="home_metric_battery_temperature">电池温度</string>
-    <string name="home_metric_cpu_load">CPU 负载</string>
     <string name="home_metric_cpu_temperature">CPU 温度</string>
     <string name="home_metric_cpu_frequency">CPU 频率</string>
     <string name="home_metric_storage_internal">内部存储</string>

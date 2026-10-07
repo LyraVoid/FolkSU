@@ -34,11 +34,7 @@ data class CpuFrequency(
     val coreIndex: Int,
     val currentFreqKHz: Long,
     val maxFreqKHz: Long,
-) {
-    /** How far the core currently sits towards its own ceiling, in `0f..1f`. */
-    val usedFraction: Float
-        get() = if (maxFreqKHz > 0L) (currentFreqKHz.toFloat() / maxFreqKHz).coerceIn(0f, 1f) else 0f
-}
+)
 
 /**
  * Internal storage and memory usage, including zram/swap when the device has them.
@@ -80,7 +76,6 @@ data class StorageStatus(
 data class MetricsHistory(
     val cpuTemperature: List<Float> = emptyList(),
     val memoryUsage: List<Float> = emptyList(),
-    val batteryLevel: List<Float> = emptyList(),
 )
 
 /** The live metrics the home screen renders; either half may be absent. */
