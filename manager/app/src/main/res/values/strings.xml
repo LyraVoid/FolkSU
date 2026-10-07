@@ -367,6 +367,10 @@
     <string name="settings_floating_bar_compact">Compact rounded corners</string>
     <string name="settings_floating_bar_glass">Glass effect</string>
     <string name="settings_floating_bar_glass_summary">Real-time blur behind the floating bar (Android 13+)</string>
+    <string name="settings_floating_auto_hide">Auto-hide Floating Bar</string>
+    <string name="settings_floating_auto_hide_summary">Automatically hide the floating bar after 3 seconds of inactivity</string>
+    <string name="settings_floating_swipe_hide">Swipe to Hide Floating Bar</string>
+    <string name="settings_floating_swipe_hide_summary">Hide the floating bar when scrolling down, show when scrolling up</string>
     <string name="settings_nav_mode">Navigation Bar Mode</string>
     <string name="settings_nav_mode_summary">Choose how the navigation bar is displayed</string>
     <string name="settings_nav_mode_auto">Auto Traditional</string>

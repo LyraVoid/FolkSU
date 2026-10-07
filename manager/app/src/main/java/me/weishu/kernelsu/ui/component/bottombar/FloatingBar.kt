@@ -45,6 +45,7 @@ internal fun FloatingBar(
     navigationBadge: NavigationBadgeState,
     liquidState: LiquidState?,
     modifier: Modifier = Modifier,
+    onUserInteraction: () -> Unit = {},
 ) {
     if (!Natives.isFullFeatured()) return
     val mainPagerState = LocalMainPagerState.current
@@ -97,14 +98,20 @@ internal fun FloatingBar(
                         destinations = destinations,
                         selectedIndex = selectedIndex,
                         badge = { badgeFor(it.ordinal, navigationBadge) },
-                        onSelect = { mainPagerState.animateToPage(it.ordinal) },
+                        onSelect = {
+                            onUserInteraction()
+                            mainPagerState.animateToPage(it.ordinal)
+                        },
                     )
                 } else {
                     FloatingBarStandard(
                         destinations = destinations,
                         selectedIndex = selectedIndex,
                         badge = { badgeFor(it.ordinal, navigationBadge) },
-                        onSelect = { mainPagerState.animateToPage(it.ordinal) },
+                        onSelect = {
+                            onUserInteraction()
+                            mainPagerState.animateToPage(it.ordinal)
+                        },
                     )
                 }
             }

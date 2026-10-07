@@ -361,6 +361,10 @@
     <string name="settings_floating_bar_compact">紧凑圆角</string>
     <string name="settings_floating_bar_glass">毛玻璃效果</string>
     <string name="settings_floating_bar_glass_summary">悬浮栏背后的实时模糊（Android 13+）</string>
+    <string name="settings_floating_auto_hide">自动隐藏悬浮底栏</string>
+    <string name="settings_floating_auto_hide_summary">无操作3秒后自动隐藏悬浮底栏</string>
+    <string name="settings_floating_swipe_hide">滑动隐藏悬浮底栏</string>
+    <string name="settings_floating_swipe_hide_summary">向下滑动时隐藏底栏，向上滑动时显示底栏</string>
     <string name="settings_nav_mode">导航栏模式</string>
     <string name="settings_nav_mode_summary">选择导航栏的显示方式</string>
     <string name="settings_nav_mode_auto">自动传统导航栏</string>

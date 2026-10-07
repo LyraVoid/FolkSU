@@ -19,6 +19,8 @@ object FloatingBarConfig {
     private const val KEY_STYLE = "floating_bar_style"
     private const val KEY_COMPACT = "floating_bar_compact"
     private const val KEY_GLASS = "floating_bar_glass"
+    private const val KEY_AUTO_HIDE = "floating_auto_hide"
+    private const val KEY_SWIPE_HIDE = "floating_swipe_hide"
 
     private const val STYLE_STANDARD = "standard"
     private const val STYLE_DRAWER = "drawer"
@@ -56,6 +58,22 @@ object FloatingBarConfig {
         get() = prefs.getBoolean(KEY_GLASS, false)
         set(value) {
             prefs.edit { putBoolean(KEY_GLASS, value) }
+            notifyChanged()
+        }
+
+    /** Hide the bar three seconds after the last interaction, until the user touches it again. */
+    var autoHide: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_HIDE, true)
+        set(value) {
+            prefs.edit { putBoolean(KEY_AUTO_HIDE, value) }
+            notifyChanged()
+        }
+
+    /** Hide the bar while the content scrolls down and reveal it while it scrolls up. */
+    var swipeHide: Boolean
+        get() = prefs.getBoolean(KEY_SWIPE_HIDE, true)
+        set(value) {
+            prefs.edit { putBoolean(KEY_SWIPE_HIDE, value) }
             notifyChanged()
         }
 }

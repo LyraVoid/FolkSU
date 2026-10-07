@@ -107,6 +107,8 @@ import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.RoundedCorner
 import androidx.compose.material.icons.rounded.SpaceDashboard
+import androidx.compose.material.icons.rounded.SwipeUp
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
@@ -397,6 +399,8 @@ fun ColorPaletteScreenMaterial(
                 val floatingStyle = remember(floatingRevision) { FloatingBarConfig.style }
                 val floatingCompact = remember(floatingRevision) { FloatingBarConfig.compact }
                 val floatingGlass = remember(floatingRevision) { FloatingBarConfig.glass }
+                val floatingAutoHide = remember(floatingRevision) { FloatingBarConfig.autoHide }
+                val floatingSwipeHide = remember(floatingRevision) { FloatingBarConfig.swipeHide }
                 val navModes = NavMode.entries
                 val navModeLabels = listOf(
                     stringResource(R.string.settings_nav_mode_auto),
@@ -448,6 +452,24 @@ fun ColorPaletteScreenMaterial(
                                     summary = stringResource(R.string.settings_floating_bar_glass_summary),
                                     checked = floatingGlass,
                                     onCheckedChange = { FloatingBarConfig.glass = it },
+                                )
+                            }
+                            add {
+                                SegmentedSwitchItem(
+                                    icon = Icons.Rounded.VisibilityOff,
+                                    title = stringResource(R.string.settings_floating_auto_hide),
+                                    summary = stringResource(R.string.settings_floating_auto_hide_summary),
+                                    checked = floatingAutoHide,
+                                    onCheckedChange = { FloatingBarConfig.autoHide = it },
+                                )
+                            }
+                            add {
+                                SegmentedSwitchItem(
+                                    icon = Icons.Rounded.SwipeUp,
+                                    title = stringResource(R.string.settings_floating_swipe_hide),
+                                    summary = stringResource(R.string.settings_floating_swipe_hide_summary),
+                                    checked = floatingSwipeHide,
+                                    onCheckedChange = { FloatingBarConfig.swipeHide = it },
                                 )
                             }
                         }

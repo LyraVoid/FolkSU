@@ -8,6 +8,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -42,6 +47,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -72,6 +78,7 @@ import me.weishu.kernelsu.ui.component.bottombar.SideRail
 import me.weishu.kernelsu.ui.component.bottombar.floatingBarReservedHeight
 import me.weishu.kernelsu.ui.component.bottombar.isRealTimeBlurAvailable
 import me.weishu.kernelsu.ui.component.bottombar.navBarLiquefiable
+import me.weishu.kernelsu.ui.component.bottombar.rememberFloatingBarVisibilityState
 import me.weishu.kernelsu.ui.component.bottombar.rememberMainPagerState
 import me.weishu.kernelsu.ui.component.bottombar.rememberNavBarGlassLiquidState
 import me.weishu.kernelsu.ui.component.bottombar.useNavigationRail
@@ -358,6 +365,13 @@ fun MainScreen(
             remember(floatingBarRevision) { FloatingBarConfig.glass } &&
             isRealTimeBlurAvailable()
         val floatingLiquidState = if (floatingBarGlassEnabled) rememberNavBarGlassLiquidState() else null
+        val floatingAutoHide = remember(floatingBarRevision) { FloatingBarConfig.autoHide }
+        val floatingSwipeHide = remember(floatingBarRevision) { FloatingBarConfig.swipeHide }
+        val floatingBarVisibility = rememberFloatingBarVisibilityState(
+            enabled = floatingBarEnabled,
+            autoHide = floatingAutoHide,
+            swipeHide = floatingSwipeHide,
+        )
         val pagerContent = @Composable { bottomInnerPadding: Dp ->
             Box(modifier = Modifier.navBarLiquefiable(floatingLiquidState)) {
                 HorizontalPager(
@@ -412,16 +426,33 @@ fun MainScreen(
                 }
             }
         } else if (floatingBarEnabled) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            val floatingBarVisible = when {
+                !floatingAutoHide && !floatingSwipeHide -> true
+                !floatingAutoHide -> !floatingBarVisibility.isScrollingDown
+                !floatingSwipeHide -> floatingBarVisibility.visible
+                else -> floatingBarVisibility.visible && !floatingBarVisibility.isScrollingDown
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(floatingBarVisibility.connection)
+            ) {
                 pagerContent(
                     floatingBarReservedHeight(floatingBarCompact, floatingBarStyle) +
                         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                 )
-                FloatingBar(
-                    navigationBadge = navigationBadge,
-                    liquidState = floatingLiquidState,
+                AnimatedVisibility(
+                    visible = floatingBarVisible,
                     modifier = Modifier.align(Alignment.BottomCenter),
-                )
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                ) {
+                    FloatingBar(
+                        navigationBadge = navigationBadge,
+                        liquidState = floatingLiquidState,
+                        onUserInteraction = { floatingBarVisibility.onUserInteraction() },
+                    )
+                }
             }
         } else {
             val bottomBar = @Composable {
