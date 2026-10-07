@@ -3,6 +3,8 @@ package me.weishu.kernelsu.wallpaper
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import me.weishu.kernelsu.data.model.HomeLayoutStyle
+import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
 import me.weishu.kernelsu.ui.component.bottombar.BottomBarIconConfig
 import me.weishu.kernelsu.ui.theme.FontConfig
@@ -283,6 +285,37 @@ private object FontAsset : ThemedAsset {
 }
 
 /**
+ * The home layout style (the token persisted under `home_layout_style`).
+ *
+ * It is pure configuration with no payload file, so it only round-trips through `theme.json`. The
+ * key `homeLayoutStyle` and the tokens (`kernelsu` for the grid UI, `circle` for the single column)
+ * are shared with the wider theme ecosystem, so a theme exported elsewhere imports here. Tokens we
+ * cannot render (e.g. FolkPatch's `focus`/`stats`/`dashboard_ui`) are left untouched instead of
+ * forcing a layout the user did not pick.
+ */
+private object HomeLayoutAsset : ThemedAsset {
+    private const val KEY = "homeLayoutStyle"
+
+    override val base = "home_layout"
+
+    override fun currentFile(context: Context): File? = null
+
+    override fun writeConfig(json: JSONObject) {
+        json.put(KEY, SettingsRepositoryImpl().homeLayoutStyle)
+    }
+
+    override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        if (!json.has(KEY)) return
+        val token = when (json.optString(KEY)) {
+            HomeLayoutStyle.GRID -> HomeLayoutStyle.GRID
+            HomeLayoutStyle.CIRCLE, "default" -> HomeLayoutStyle.CIRCLE
+            else -> return
+        }
+        SettingsRepositoryImpl().homeLayoutStyle = token
+    }
+}
+
+/**
  * The user's custom bottom-navigation icons.
  *
  * Stored using the FolkPatch ecosystem keys: `navIconCustomEnabled` plus a `navIcons` object that
@@ -374,6 +407,7 @@ object FolkThemeIO {
         ModuleBackgroundAsset,
         SettingsBackgroundAsset,
         FontAsset,
+        HomeLayoutAsset,
     )
 
     /** Multi-file themed assets, registered alongside the single-file [assets]. */
