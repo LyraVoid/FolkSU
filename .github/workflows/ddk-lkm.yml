@@ -39,6 +39,10 @@ jobs:
     steps:
     - name: Checkout source code
       uses: actions/checkout@v7
+      with:
+        # The version stamp below counts commits, so a shallow clone would
+        # report one commit instead of the real history.
+        fetch-depth: 0
 
     - name: Build kernelsu.ko
       env:
@@ -46,7 +50,10 @@ jobs:
         EXPECTED_HASH2: ${{ inputs.expected_hash2 }}
         SECOND_SIGNATURE_RELEASE: ${{ inputs.second_signature_release }}
       run: |
-        git config --global --add safe.directory /__w/KernelSU/KernelSU
+        # The container runs as a different user than the workspace owner, so git
+        # refuses to read the repository until this path is marked safe. It has to
+        # be the actual workspace path, which differs per repository.
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
         cd kernel
 
