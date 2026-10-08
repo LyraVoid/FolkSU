@@ -52,12 +52,7 @@ internal fun FocusHomeContent(
         return if (card.hasImage) focusStyle.copy(imageUri = card.imageUri) else null
     }
     var optionsSurface by remember { mutableStateOf<SurfaceId?>(null) }
-    fun cardLongClick(id: SurfaceId): (() -> Unit)? =
-        if (SurfaceStore.config(id).enabled) {
-            { optionsSurface = id }
-        } else {
-            null
-        }
+    fun cardLongClick(id: SurfaceId): () -> Unit = { optionsSurface = id }
 
     if (!fullFeatured || !isWideLayout(withOrientation = true)) {
         Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {

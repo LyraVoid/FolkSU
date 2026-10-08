@@ -142,11 +142,7 @@ private fun DashboardHeroCard(
                 actions.onInstallClick()
             }
         },
-        onLongClick = if (surface.enabled) {
-            { showOptions = true }
-        } else {
-            null
-        },
+        onLongClick = { showOptions = true },
     ) {
         Box {
             if (backgroundUri != null) {

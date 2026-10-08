@@ -153,7 +153,6 @@ private fun GridStatusCard(
     } else ""
 
     var showWorkCardOptions by remember { mutableStateOf(false) }
-    val longPressEnabled = ksuActive && workCardSurface.enabled
 
     HomeCard(
         modifier = modifier,
@@ -165,11 +164,7 @@ private fun GridStatusCard(
                 actions.onInstallClick()
             }
         },
-        onLongClick = if (longPressEnabled) {
-            { showWorkCardOptions = true }
-        } else {
-            null
-        },
+        onLongClick = { showWorkCardOptions = true },
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (backgroundUri != null) {
