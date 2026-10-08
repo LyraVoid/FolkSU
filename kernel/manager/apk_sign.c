@@ -20,8 +20,71 @@
 #endif
 
 #include "manager/apk_sign.h"
+#include "manager/dynamic_manager.h"
 #include "uapi/app_profile.h"
 #include "klog.h" // IWYU pragma: keep
+
+typedef struct {
+    unsigned size;
+    const char *sha256;
+    unsigned flags;
+    const char *name;
+} apk_sign_key_t;
+
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+/*
+ * Only FolkSU's own release key is trusted by default. Every third-party
+ * manager below is recognized but never auto-authorized: the user has to opt
+ * each candidate in through the dynamic manager interface.
+ */
+#ifndef FOLKSU_TRUSTED_SIZE
+#define FOLKSU_TRUSTED_SIZE EXPECTED_SIZE
+#endif
+#ifndef FOLKSU_TRUSTED_HASH
+#define FOLKSU_TRUSTED_HASH EXPECTED_HASH
+#endif
+
+/* Bit i selects the i-th preset row (0xff keeps all of them). */
+#ifndef KSU_PRESET_MANAGER_MASK
+#define KSU_PRESET_MANAGER_MASK 0xff
+#endif
+
+static apk_sign_key_t apk_sign_keys[] = {
+    { FOLKSU_TRUSTED_SIZE, FOLKSU_TRUSTED_HASH, APK_SIGN_FLAG_TRUSTED, "FolkSU" },
+#if (KSU_PRESET_MANAGER_MASK & 0x01)
+    { 0x033b, "c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6", 0, "KernelSU" },
+#endif
+#if (KSU_PRESET_MANAGER_MASK & 0x02)
+    { 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588", 0, "KowSU" },
+#endif
+#if (KSU_PRESET_MANAGER_MASK & 0x04)
+    { 0x3e6, "79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7", 0, "KernelSU-Next" },
+#endif
+#if (KSU_PRESET_MANAGER_MASK & 0x08)
+    { 0x377, "d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64", 0, "ReSukiSU" },
+#endif
+#if (KSU_PRESET_MANAGER_MASK & 0x10)
+    { 0x35c, "947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef", 0, "SukiSU" },
+#endif
+#if (KSU_PRESET_MANAGER_MASK & 0x20)
+    { 0x180, "7e0c6d7278a3bb8e364e0fcba95afaf3666cf5ff3c245a3b63c8833bd0445cc4", 0, "MKSU" },
+#endif
+#if (KSU_PRESET_MANAGER_MASK & 0x40)
+    { 0x396, "f415f4ed9435427e1fdf7f1fccd4dbc07b3d6b8751e4dbcec6f19671f427870b", 0, "RKSU" },
+#endif
+#if (KSU_PRESET_MANAGER_MASK & 0x80)
+    { 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549", 0, "xxKSU" },
+#endif
+};
+#else
+/* Dynamic manager disabled: preserve the classic two fixed trusted slots. */
+static apk_sign_key_t apk_sign_keys[] = {
+    { EXPECTED_SIZE, EXPECTED_HASH, APK_SIGN_FLAG_TRUSTED, "KernelSU" },
+#ifdef EXPECTED_SIZE2
+    { EXPECTED_SIZE2, EXPECTED_HASH2, APK_SIGN_FLAG_TRUSTED, "FolkSU" },
+#endif
+};
+#endif
 
 struct sdesc {
     struct shash_desc shash;
@@ -94,8 +157,7 @@ static bool read_length_prefixed_end(struct file *fp, loff_t *pos, loff_t contai
     return true;
 }
 
-static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, unsigned expected_size,
-                        const char *expected_sha256)
+static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, struct apk_sign_match *match)
 {
     loff_t signers_end, signer_end, signed_data_end, digests_end, certificates_end;
     u32 certificate_size;
@@ -116,9 +178,6 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, unsigned
         return false;
 
 #define CERT_MAX_LENGTH 1024
-    if (certificate_size != expected_size)
-        return false;
-
     if (certificate_size > CERT_MAX_LENGTH) {
         pr_info("cert length overlimit\n");
         return false;
@@ -138,11 +197,46 @@ static bool check_block(struct file *fp, loff_t *pos, loff_t block_end, unsigned
     hash_str[SHA256_DIGEST_SIZE * 2] = '\0';
 
     bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
-    pr_info("sha256: %s, expected: %s\n", hash_str, expected_sha256);
-    return strcmp(expected_sha256, hash_str) == 0;
+    pr_info("sha256: %s\n", hash_str);
+
+    int i;
+    for (i = 0; i < ARRAY_SIZE(apk_sign_keys); i++) {
+        apk_sign_key_t key = apk_sign_keys[i];
+        if (certificate_size != key.size)
+            continue;
+        if (strcmp(key.sha256, hash_str) != 0)
+            continue;
+        if (match) {
+            match->index = i;
+            match->trusted = (key.flags & APK_SIGN_FLAG_TRUSTED) != 0;
+            match->preset = !match->trusted;
+            match->dynamic = false;
+            match->size = certificate_size;
+            match->name = key.name;
+            strscpy(match->hash, hash_str, sizeof(match->hash));
+        }
+        return true;
+    }
+
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    if (ksu_dynamic_manager_is_trusted_sign(certificate_size, hash_str)) {
+        if (match) {
+            match->index = -1;
+            match->trusted = true;
+            match->preset = false;
+            match->dynamic = true;
+            match->size = certificate_size;
+            match->name = "dynamic";
+            strscpy(match->hash, hash_str, sizeof(match->hash));
+        }
+        return true;
+    }
+#endif
+
+    return false;
 }
 
-static __always_inline bool check_v2_signature(char *path, unsigned expected_size, const char *expected_sha256)
+static __always_inline bool check_v2_signature(char *path, struct apk_sign_match *match)
 {
     unsigned char buffer[0x10] = { 0 };
     u32 cd_offset, cd_size;
@@ -246,7 +340,7 @@ static __always_inline bool check_v2_signature(char *path, unsigned expected_siz
 
         if (id == 0x7109871au) {
             v2_signing_blocks++;
-            v2_signing_valid = check_block(fp, &pos, pair_end, expected_size, expected_sha256);
+            v2_signing_valid = check_block(fp, &pos, pair_end, match);
         } else if (id != 0x42726577u) { // APK verity padding
             // https://cs.android.com/android/platform/superproject/+/android-latest-release:tools/apksig/src/main/java/com/android/apksig/internal/apk/ApkSigningBlockUtils.java;l=102;drc=ebe4dfd4fd6550c949a6c7c2427484bf5e96500b
 #ifdef CONFIG_KSU_DEBUG
@@ -336,6 +430,21 @@ int get_pkg_from_apk_path(char *pkg, const char *path)
     return 0;
 }
 
+bool match_apk_signature(char *path, struct apk_sign_match *match)
+{
+    if (match) {
+        match->index = -1;
+        match->trusted = false;
+        match->preset = false;
+        match->dynamic = false;
+        match->size = 0;
+        match->name = NULL;
+        match->hash[0] = '\0';
+    }
+
+    return check_v2_signature(path, match);
+}
+
 bool is_manager_apk(char *path)
 {
 #ifdef KSU_MANAGER_PACKAGE
@@ -350,12 +459,7 @@ bool is_manager_apk(char *path)
         return false;
     }
 #endif
-    if (check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)) {
-        return true;
-    }
-#ifdef EXPECTED_SIZE2
-    return check_v2_signature(path, EXPECTED_SIZE2, EXPECTED_HASH2);
-#else
-    return false;
-#endif
+
+    struct apk_sign_match match = { .index = -1 };
+    return match_apk_signature(path, &match) && match.trusted;
 }

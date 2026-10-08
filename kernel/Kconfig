@@ -26,6 +26,15 @@ config KSU_DISABLE_MANAGER
 	  Disable manager APK detection and manager-specific handling.
 	  Root will be used in place of manager-only functionality.
 
+config KSU_DYNAMIC_MANAGER
+	bool "Enable KernelSU dynamic manager support"
+	depends on KSU && !KSU_DISABLE_MANAGER
+	default y
+	help
+	  Track manager candidates discovered by signature verification and let
+	  the user explicitly authorize them as dynamic managers. Preset
+	  signatures are recognized but never authorized automatically.
+
 config KSU_DISABLE_POLICY
 	bool "Disable KernelSU policy profiles"
 	depends on KSU

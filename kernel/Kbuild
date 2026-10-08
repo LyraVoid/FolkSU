@@ -30,6 +30,7 @@ ifneq ($(CONFIG_KSU_DISABLE_MANAGER),y)
 kernelsu-objs += manager/apk_sign.o
 kernelsu-objs += manager/pkg_observer.o
 kernelsu-objs += manager/throne_tracker.o
+kernelsu-objs += manager/dynamic_manager.o
 endif
 
 kernelsu-objs += policy/allowlist.o
@@ -57,6 +58,9 @@ kernelsu-objs += feature/selinux_hide.o
 ifdef KBUILD_EXTMOD
 ifeq ($(CONFIG_KSU_DISABLE_MANAGER),y)
 ccflags-y += -DCONFIG_KSU_DISABLE_MANAGER=1
+endif
+ifneq ($(CONFIG_KSU_DYNAMIC_MANAGER),n)
+ccflags-y += -DCONFIG_KSU_DYNAMIC_MANAGER=1
 endif
 ifeq ($(CONFIG_KSU_DISABLE_POLICY),y)
 ccflags-y += -DCONFIG_KSU_DISABLE_POLICY=1
@@ -165,6 +169,28 @@ endif
 $(info -- KernelSU Manager signature size2: $(KSU_EXPECTED_SIZE2))
 $(info -- KernelSU Manager signature hash2: $(KSU_EXPECTED_HASH2))
 endif
+
+# Trusted FolkSU manager slot: prefer the release slot2 when present, else slot1.
+ifndef FOLKSU_TRUSTED_SIZE
+ifeq ($(KSU_SECOND_SIGNATURE_RELEASE),1)
+ifdef KSU_EXPECTED_SIZE2
+FOLKSU_TRUSTED_SIZE := $(KSU_EXPECTED_SIZE2)
+FOLKSU_TRUSTED_HASH := $(KSU_EXPECTED_HASH2)
+endif
+endif
+endif
+ifndef FOLKSU_TRUSTED_SIZE
+FOLKSU_TRUSTED_SIZE := $(KSU_EXPECTED_SIZE)
+FOLKSU_TRUSTED_HASH := $(KSU_EXPECTED_HASH)
+endif
+ccflags-y += -DFOLKSU_TRUSTED_SIZE=$(FOLKSU_TRUSTED_SIZE)
+ccflags-y += -DFOLKSU_TRUSTED_HASH=\"$(FOLKSU_TRUSTED_HASH)\"
+
+# Recognition-only preset managers; bit mask selects which rows are compiled in.
+ifndef KSU_PRESET_MANAGER_MASK
+KSU_PRESET_MANAGER_MASK := 0xff
+endif
+ccflags-y += -DKSU_PRESET_MANAGER_MASK=$(KSU_PRESET_MANAGER_MASK)
 
 ccflags-y += -DKSU_NEW_DCACHE_FLUSH=$(KSU_NEW_DCACHE_FLUSH)
 

@@ -7,6 +7,11 @@
 #define KSU_INVALID_APPID -1
 #define KSU_PER_USER_RANGE 100000
 
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+bool ksu_is_dynamic_manager_uid(uid_t uid);
+bool ksu_is_preset_manager_uid(uid_t uid);
+#endif
+
 #ifdef CONFIG_KSU_DISABLE_MANAGER
 static inline bool ksu_is_manager_appid_valid()
 {
@@ -21,6 +26,12 @@ static inline bool is_manager()
 static inline bool is_uid_manager(uid_t uid)
 {
     return uid == 0;
+}
+
+static inline bool ksu_is_uid_preset_manager(uid_t uid)
+{
+    (void)uid;
+    return false;
 }
 
 static inline uid_t ksu_get_manager_appid()
@@ -46,12 +57,34 @@ static inline bool ksu_is_manager_appid_valid()
 
 static inline bool is_manager()
 {
-    return unlikely(ksu_manager_appid == current_uid().val % KSU_PER_USER_RANGE);
+    if (unlikely(ksu_manager_appid == current_uid().val % KSU_PER_USER_RANGE))
+        return true;
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    return ksu_is_dynamic_manager_uid(current_uid().val);
+#else
+    return false;
+#endif
 }
 
 static inline bool is_uid_manager(uid_t uid)
 {
-    return unlikely(ksu_manager_appid == uid % KSU_PER_USER_RANGE);
+    if (unlikely(ksu_manager_appid == uid % KSU_PER_USER_RANGE))
+        return true;
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    return ksu_is_dynamic_manager_uid(uid);
+#else
+    return false;
+#endif
+}
+
+static inline bool ksu_is_uid_preset_manager(uid_t uid)
+{
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    return ksu_is_preset_manager_uid(uid);
+#else
+    (void)uid;
+    return false;
+#endif
 }
 
 static inline uid_t ksu_get_manager_appid()

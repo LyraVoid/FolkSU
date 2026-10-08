@@ -13,7 +13,9 @@
 #include "ksu.h"
 #include "runtime/ksud_boot.h"
 #include "feature/kernel_umount.h"
+#include "manager/dynamic_manager.h"
 #include "manager/manager_identity.h"
+#include "manager/throne_tracker.h"
 #include "selinux/selinux.h"
 #include "infra/file_wrapper.h"
 #include "hook/tp_marker.h"
@@ -707,6 +709,77 @@ static int do_disable_escape_to_root(void __user *arg)
     return 0;
 }
 
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+static int do_set_dynamic_managers(void __user *arg)
+{
+    struct ksu_dynamic_manager_cmd cmd;
+    struct ksu_dynamic_manager_sign *signs = NULL;
+    bool need_rescan = false;
+    int ret;
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd)))
+        return -EFAULT;
+
+    if (cmd.count > KSU_DYNAMIC_MANAGER_MAX_SIGNS)
+        return -EINVAL;
+
+    if (cmd.count) {
+        size_t size = sizeof(*signs) * cmd.count;
+        signs = kzalloc(size, GFP_KERNEL);
+        if (!signs)
+            return -ENOMEM;
+        if (copy_from_user(signs, (void __user *)(unsigned long)cmd.signs, size)) {
+            kfree(signs);
+            return -EFAULT;
+        }
+    }
+
+    ret = ksu_dynamic_manager_set(signs, cmd.count, &need_rescan);
+    kfree(signs);
+
+    if (ret == 0 && need_rescan)
+        track_throne_force();
+
+    return ret;
+}
+
+static int do_get_dynamic_managers(void __user *arg)
+{
+    struct ksu_get_dynamic_managers_cmd cmd;
+    struct ksu_dynamic_manager_app *apps = NULL;
+    u32 count;
+    int ret = 0;
+
+    if (copy_from_user(&cmd, arg, sizeof(cmd)))
+        return -EFAULT;
+
+    if (cmd.count > KSU_DYNAMIC_MANAGER_MAX_APPS)
+        cmd.count = KSU_DYNAMIC_MANAGER_MAX_APPS;
+
+    if (cmd.count) {
+        apps = kzalloc(sizeof(*apps) * cmd.count, GFP_KERNEL);
+        if (!apps)
+            return -ENOMEM;
+    }
+
+    count = ksu_dynamic_manager_get_apps(apps, cmd.count, &cmd.total_count);
+    cmd.count = count;
+
+    if (count && copy_to_user((void __user *)(unsigned long)cmd.apps, apps, sizeof(*apps) * count))
+        ret = -EFAULT;
+
+    kfree(apps);
+
+    if (ret)
+        return ret;
+
+    if (copy_to_user(arg, &cmd, sizeof(cmd)))
+        return -EFAULT;
+
+    return 0;
+}
+#endif // CONFIG_KSU_DYNAMIC_MANAGER
+
 // IOCTL handlers mapping table
 // clang-format off
 static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
@@ -856,6 +929,20 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .perm_check = only_root,
         .allow_su_session = true
     },
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    {
+        .cmd = KSU_IOCTL_SET_DYNAMIC_MANAGERS,
+        .name = "SET_DYNAMIC_MANAGERS",
+        .handler = do_set_dynamic_managers,
+        .perm_check = only_root
+    },
+    {
+        .cmd = KSU_IOCTL_GET_DYNAMIC_MANAGERS,
+        .name = "GET_DYNAMIC_MANAGERS",
+        .handler = do_get_dynamic_managers,
+        .perm_check = manager_or_root
+    },
+#endif
     {
         .cmd = 0,
         .name = NULL,

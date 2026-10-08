@@ -11,6 +11,7 @@
 #include "policy/app_profile.h"
 #include "policy/feature.h"
 #include "klog.h" // IWYU pragma: keep
+#include "manager/dynamic_manager.h"
 #include "manager/manager_observer.h"
 #include "manager/throne_tracker.h"
 #include "hook/syscall_hook_manager.h"
@@ -161,6 +162,9 @@ int __init kernelsu_init(void)
         ksu_syscall_hook_manager_init();
 
         ksu_throne_tracker_init();
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+        ksu_dynamic_manager_init();
+#endif
         ksu_observer_init();
         ksu_file_wrapper_init();
 
@@ -178,6 +182,10 @@ int __init kernelsu_init(void)
         ksu_allowlist_init();
 
         ksu_throne_tracker_init();
+
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+        ksu_dynamic_manager_init();
+#endif
 
         ksu_ksud_init();
 
@@ -209,6 +217,10 @@ void __exit kernelsu_exit(void)
     ksu_observer_exit();
 
     ksu_throne_tracker_exit();
+
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    ksu_dynamic_manager_exit();
+#endif
 
     ksu_allowlist_exit();
 

@@ -12,6 +12,7 @@
 #include "policy/allowlist.h"
 #include "manager/apk_sign.h"
 #include "klog.h" // IWYU pragma: keep
+#include "manager/dynamic_manager.h"
 #include "manager/manager_identity.h"
 #include "manager/throne_tracker.h"
 
@@ -47,6 +48,29 @@ static void crown_manager(const char *apk, struct list_head *uid_data)
     }
 }
 
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+static void note_candidate_manager(const char *apk, struct list_head *uid_data, const struct apk_sign_match *match)
+{
+    char pkg[KSU_MAX_PACKAGE_NAME];
+    if (get_pkg_from_apk_path(pkg, apk) < 0) {
+        pr_err("Failed to get package name from apk path: %s\n", apk);
+        return;
+    }
+
+    struct list_head *list = (struct list_head *)uid_data;
+    struct uid_data *np;
+
+    list_for_each_entry (np, list, list) {
+        if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0) {
+            pr_info("Noting dynamic manager candidate: %s(uid=%d), name=%s\n", pkg, np->uid,
+                    match->name ? match->name : "unknown");
+            ksu_dynamic_manager_note_scanned(np->uid, match);
+            break;
+        }
+    }
+}
+#endif // CONFIG_KSU_DYNAMIC_MANAGER
+
 #define DATA_PATH_LEN 384 // 384 is enough for /data/app/<package>/base.apk
 
 struct data_path {
@@ -62,6 +86,7 @@ struct apk_path_hash {
 };
 
 static struct list_head apk_path_hash_list = LIST_HEAD_INIT(apk_path_hash_list);
+static bool ksu_force_manager_scan;
 
 struct my_dir_context {
     struct dir_context ctx;
@@ -133,11 +158,12 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name, int name
                 }
             }
 
-            bool is_manager = is_manager_apk(dirpath);
-            pr_info("Found new base.apk at path: %s, is_manager: %d\n", dirpath, is_manager);
-            if (is_manager) {
+            struct apk_sign_match match = { .index = -1 };
+            bool matched = match_apk_signature(dirpath, &match);
+            pr_info("Found new base.apk at path: %s, matched: %d, trusted: %d\n", dirpath, matched,
+                    matched && match.trusted);
+            if (matched && match.trusted && match.index >= 0) {
                 crown_manager(dirpath, my_ctx->private_data);
-                *my_ctx->stop = 1;
 
                 // Manager found, clear APK cache list
                 list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
@@ -145,6 +171,11 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name, int name
                     kfree(pos);
                 }
             } else {
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+                if (matched) {
+                    note_candidate_manager(dirpath, my_ctx->private_data, &match);
+                }
+#endif // CONFIG_KSU_DYNAMIC_MANAGER
                 struct apk_path_hash *apk_data = kzalloc(sizeof(struct apk_path_hash), GFP_KERNEL);
                 if (!apk_data) {
                     pr_err("Failed to allocate apk_path_hash for %s\n", dirpath);
@@ -334,7 +365,12 @@ void track_throne(bool prune_only)
         pr_info("Searching manager...\n");
         search_manager("/data/app", 2, &uid_list);
         pr_info("Search manager finished\n");
+    } else if (ksu_force_manager_scan) {
+        pr_info("Forcing manager search...\n");
+        search_manager("/data/app", 2, &uid_list);
+        pr_info("Search manager finished\n");
     }
+    ksu_force_manager_scan = false;
 
 prune:
     // then prune the allowlist
@@ -347,6 +383,12 @@ out:
     }
 out_revert_cred:
     revert_creds(old_cred);
+}
+
+void track_throne_force(void)
+{
+    ksu_force_manager_scan = true;
+    track_throne(false);
 }
 
 void __init ksu_throne_tracker_init()
