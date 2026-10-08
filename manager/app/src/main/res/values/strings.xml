@@ -447,6 +447,8 @@
     <string name="wallpaper_dual_dim_summary">Use different scrim values in light and dark mode</string>
     <string name="wallpaper_day_dim">Day scrim</string>
     <string name="wallpaper_night_dim">Night scrim</string>
+    <string name="wallpaper_surface_enable">Card background</string>
+    <string name="wallpaper_surface_enable_summary">Show a custom image behind the card</string>
     <string name="wallpaper_use_color">Colors from wallpaper</string>
     <string name="wallpaper_use_color_summary">Derive the accent color from the wallpaper</string>
     <string name="wallpaper_section_interop">Theme package</string>

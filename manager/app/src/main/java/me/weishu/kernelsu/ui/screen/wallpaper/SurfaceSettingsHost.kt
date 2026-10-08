@@ -14,8 +14,8 @@ import me.weishu.kernelsu.wallpaper.surface.SurfaceField
 import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
 import me.weishu.kernelsu.wallpaper.surface.SurfaceImageRow
 import me.weishu.kernelsu.wallpaper.surface.SurfaceId
-import me.weishu.kernelsu.wallpaper.surface.SurfaceOpacityRow
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
+import me.weishu.kernelsu.wallpaper.surface.SurfaceScalarRow
 import me.weishu.kernelsu.wallpaper.surface.SurfaceSliderRow
 import me.weishu.kernelsu.wallpaper.surface.SurfaceToggleRow
 import kotlin.math.roundToInt
@@ -98,26 +98,26 @@ fun surfaceRows(
                 )
             }
 
-            is SurfaceOpacityRow -> {
-                if (config.dualOpacity) {
+            is SurfaceScalarRow -> {
+                if (config.toggle(row.dualField)) {
                     add {
                         SegmentedSliderItem(
                             icon = row.dayNightIcon,
                             title = stringResource(row.dayTitleRes),
-                            value = config.dayOpacity,
+                            value = config.scalar(row.dayField),
                             valueRange = 0f..1f,
                             valueText = percentText,
-                            onValueChangeFinished = { callbacks.onSlider(SurfaceField.DayOpacity, it) },
+                            onValueChangeFinished = { callbacks.onSlider(row.dayField, it) },
                         )
                     }
                     add {
                         SegmentedSliderItem(
                             icon = row.dayNightIcon,
                             title = stringResource(row.nightTitleRes),
-                            value = config.nightOpacity,
+                            value = config.scalar(row.nightField),
                             valueRange = 0f..1f,
                             valueText = percentText,
-                            onValueChangeFinished = { callbacks.onSlider(SurfaceField.NightOpacity, it) },
+                            onValueChangeFinished = { callbacks.onSlider(row.nightField, it) },
                         )
                     }
                 } else {
@@ -125,10 +125,10 @@ fun surfaceRows(
                         SegmentedSliderItem(
                             icon = row.singleIcon,
                             title = stringResource(row.singleTitleRes),
-                            value = config.opacity,
+                            value = config.scalar(row.singleField),
                             valueRange = 0f..1f,
                             valueText = percentText,
-                            onValueChangeFinished = { callbacks.onSlider(SurfaceField.Opacity, it) },
+                            onValueChangeFinished = { callbacks.onSlider(row.singleField, it) },
                         )
                     }
                 }

@@ -33,13 +33,18 @@ data class SurfaceSliderRow(
 ) : SurfaceRow
 
 /**
- * The opacity block: one slider bound to [SurfaceField.Opacity], or a day and a night slider when
- * [SurfaceField.DualOpacity] is on. The dual toggle itself is a separate [SurfaceToggleRow].
+ * A scalar block: one slider bound to [singleField], or a day and a night slider when [dualField]
+ * is on. Covers both the opacity family and the scrim family. The dual toggle itself is a separate
+ * [SurfaceToggleRow].
  */
-data class SurfaceOpacityRow(
+data class SurfaceScalarRow(
     val singleTitleRes: Int,
     val dayTitleRes: Int,
     val nightTitleRes: Int,
+    val singleField: SurfaceField,
+    val dayField: SurfaceField,
+    val nightField: SurfaceField,
+    val dualField: SurfaceField,
     val singleIcon: ImageVector,
     val dayNightIcon: ImageVector,
     override val showWhenEnabled: Boolean = true,

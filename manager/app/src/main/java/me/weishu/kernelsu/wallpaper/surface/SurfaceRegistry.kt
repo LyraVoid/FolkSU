@@ -59,10 +59,11 @@ data class SurfaceDescriptor(
 /**
  * The registry of every configurable wallpaper surface.
  *
- * The grid work card is the only live surface today. The focus and dashboard surfaces are fully
- * described — fields, aliases and file/entry stems — but stay unavailable, so they render nothing
- * and their settings never leak; their values still round-trip through the theme container. Flipping
- * [SurfaceDescriptor.available] on is what turns one into a live surface once its rendering exists.
+ * The grid work card, the focus cards and the dashboard hero are live surfaces: each renders its
+ * stored image and exposes its rows for its own layout. The stats top card is described but stays
+ * unavailable, so it renders nothing and its settings never leak; its values still round-trip
+ * through the theme container. Flipping [SurfaceDescriptor.available] on is what turns one into a
+ * live surface once its rendering exists.
  */
 object SurfaceRegistry {
 
@@ -110,10 +111,14 @@ object SurfaceRegistry {
                 field = SurfaceField.DualOpacity,
                 showWhenEnabled = true,
             ),
-            SurfaceOpacityRow(
+            SurfaceScalarRow(
                 singleTitleRes = R.string.wallpaper_work_card_opacity,
                 dayTitleRes = R.string.wallpaper_work_card_day_opacity,
                 nightTitleRes = R.string.wallpaper_work_card_night_opacity,
+                singleField = SurfaceField.Opacity,
+                dayField = SurfaceField.DayOpacity,
+                nightField = SurfaceField.NightOpacity,
+                dualField = SurfaceField.DualOpacity,
                 singleIcon = Icons.Filled.Opacity,
                 dayNightIcon = Icons.Filled.Contrast,
             ),
@@ -249,6 +254,55 @@ object SurfaceRegistry {
             SurfaceField.DayDim,
             SurfaceField.NightDim,
         ),
+        rows = listOf(
+            SurfaceToggleRow(
+                titleRes = R.string.wallpaper_surface_enable,
+                icon = Icons.Filled.Wallpaper,
+                field = SurfaceField.Enabled,
+                summaryRes = R.string.wallpaper_surface_enable_summary,
+            ),
+            SurfaceToggleRow(
+                titleRes = R.string.wallpaper_work_card_dual_opacity,
+                icon = Icons.Filled.Contrast,
+                field = SurfaceField.DualOpacity,
+                showWhenEnabled = true,
+            ),
+            SurfaceScalarRow(
+                singleTitleRes = R.string.wallpaper_work_card_opacity,
+                dayTitleRes = R.string.wallpaper_work_card_day_opacity,
+                nightTitleRes = R.string.wallpaper_work_card_night_opacity,
+                singleField = SurfaceField.Opacity,
+                dayField = SurfaceField.DayOpacity,
+                nightField = SurfaceField.NightOpacity,
+                dualField = SurfaceField.DualOpacity,
+                singleIcon = Icons.Filled.Opacity,
+                dayNightIcon = Icons.Filled.Contrast,
+            ),
+            SurfaceToggleRow(
+                titleRes = R.string.wallpaper_dual_dim,
+                icon = Icons.Filled.Brightness6,
+                field = SurfaceField.DualDim,
+                showWhenEnabled = true,
+            ),
+            SurfaceScalarRow(
+                singleTitleRes = R.string.wallpaper_work_card_dim,
+                dayTitleRes = R.string.wallpaper_day_dim,
+                nightTitleRes = R.string.wallpaper_night_dim,
+                singleField = SurfaceField.Dim,
+                dayField = SurfaceField.DayDim,
+                nightField = SurfaceField.NightDim,
+                dualField = SurfaceField.DualDim,
+                singleIcon = Icons.Filled.Brightness6,
+                dayNightIcon = Icons.Filled.Contrast,
+            ),
+            SurfaceImageRow(
+                pickTitleRes = R.string.wallpaper_pick,
+                changeTitleRes = R.string.wallpaper_change,
+                clearTitleRes = R.string.wallpaper_clear,
+                pickIcon = Icons.Filled.Image,
+                clearIcon = Icons.Filled.Delete,
+            ),
+        ),
         storageStem = "dashboard_card_bg",
         themeBase = "dashboard_card_bg",
         legacyThemeFields = mapOf(
@@ -263,7 +317,7 @@ object SurfaceRegistry {
             SurfaceField.DayOpacity to "dashboardCardBgDayOpacity",
             SurfaceField.NightOpacity to "dashboardCardBgNightOpacity",
         ),
-        available = { false },
+        available = { layout -> layout == HomeLayoutStyle.DASHBOARD },
     )
 
     /**

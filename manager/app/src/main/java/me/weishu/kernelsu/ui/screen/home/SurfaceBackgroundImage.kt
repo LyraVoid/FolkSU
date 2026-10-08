@@ -73,6 +73,6 @@ internal fun SurfaceBackgroundImage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = surface.dim)),
+            .background(Color.Black.copy(alpha = surface.effectiveDim(isDark))),
     )
 }

@@ -1,6 +1,7 @@
 package me.weishu.kernelsu.ui.screen.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,15 +17,22 @@ import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.FolkType
+import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
+import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
 
 /**
  * DashboardUI: one wide hero banner over the counters and the system facts.
@@ -40,8 +48,9 @@ internal fun DashboardHomeContent(
     moduleEnabledCount: Int,
 ) {
     val fullFeatured = Natives.isFullFeatured()
+    val heroBackground = SurfaceStore.config(SurfaceRegistry.DASHBOARD_HERO).takeIf { it.hasImage }
     Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
-        DashboardHeroCard(state = state, actions = actions)
+        DashboardHeroCard(state = state, actions = actions, background = heroBackground)
         if (fullFeatured && isWideLayout(withOrientation = false)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -89,6 +98,7 @@ private fun DashboardHeroCard(
     state: HomeUiState,
     actions: HomeActions,
     modifier: Modifier = Modifier,
+    background: SurfaceConfig? = null,
 ) {
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
@@ -109,72 +119,85 @@ private fun DashboardHeroCard(
         else -> stringResource(R.string.home_unsupported_reason)
     }
     val jailbreak = notInstalled && state.isSELinuxPermissive
+    val backgroundUri = background?.imageUri?.takeIf { it.isNotEmpty() }
+    val overImage = backgroundUri != null
+    val subColor = if (overImage) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
 
     HomeCard(
         modifier = modifier.fillMaxWidth(),
+        containerColor = if (overImage) Color.Transparent else MaterialTheme.colorScheme.surfaceBright,
+        contentColor = if (overImage) Color.White else contentColorFor(MaterialTheme.colorScheme.surfaceBright),
+        wallpaperRole = if (overImage) null else WallpaperSurfaceRole.Group,
         onClick = {
             if (!state.isLateLoadMode) {
                 actions.onInstallClick()
             }
         },
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = statusTitle,
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = statusTitle, style = FolkType.Title)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = statusSummary,
-                        style = FolkType.Summary,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (jailbreak) {
-                    Spacer(Modifier.width(16.dp))
-                    StatusJailbreakButton(onClick = actions.onJailbreakClick)
-                }
+        Box {
+            if (background != null && backgroundUri != null) {
+                SurfaceBackgroundImage(uri = backgroundUri, surface = background)
             }
-            val stateTexts = statusStateTexts(state)
-            if (stateTexts.isNotEmpty()) {
-                Text(
-                    text = stateTexts.joinToString(" · ") { (label, value) -> "${label}: $value" },
-                    style = FolkType.Caption,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                HeroFact(
-                    label = stringResource(R.string.module_version),
-                    value = if (ksuActive) "${state.ksuVersion}-${state.kernelUAPIVersion}" else "—",
-                    modifier = Modifier.weight(1f),
-                )
-                HeroFact(
-                    label = stringResource(R.string.home_kernel),
-                    value = state.systemInfo.kernelVersion,
-                    modifier = Modifier.weight(1f),
-                )
-                HeroFact(
-                    label = stringResource(R.string.home_selinux_status),
-                    value = selinuxDisplayName(state.systemInfo.selinuxStatus),
-                    modifier = Modifier.weight(1f),
-                )
+            CompositionLocalProvider(LocalHomeTileCardOverImage provides overImage) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = statusIcon,
+                            contentDescription = statusTitle,
+                            modifier = Modifier.size(36.dp),
+                            tint = if (overImage) Color.White else MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = statusTitle, style = FolkType.Title)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = statusSummary,
+                                style = FolkType.Summary,
+                                color = subColor,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (jailbreak) {
+                            Spacer(Modifier.width(16.dp))
+                            StatusJailbreakButton(onClick = actions.onJailbreakClick)
+                        }
+                    }
+                    val stateTexts = statusStateTexts(state)
+                    if (stateTexts.isNotEmpty()) {
+                        Text(
+                            text = stateTexts.joinToString(" · ") { (label, value) -> "${label}: $value" },
+                            style = FolkType.Caption,
+                            color = subColor,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        HeroFact(
+                            label = stringResource(R.string.module_version),
+                            value = if (ksuActive) "${state.ksuVersion}-${state.kernelUAPIVersion}" else "—",
+                            modifier = Modifier.weight(1f),
+                        )
+                        HeroFact(
+                            label = stringResource(R.string.home_kernel),
+                            value = state.systemInfo.kernelVersion,
+                            modifier = Modifier.weight(1f),
+                        )
+                        HeroFact(
+                            label = stringResource(R.string.home_selinux_status),
+                            value = selinuxDisplayName(state.systemInfo.selinuxStatus),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
         }
     }
@@ -191,7 +214,11 @@ private fun HeroFact(
         Text(
             text = label,
             style = FolkType.Caption,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (LocalHomeTileCardOverImage.current) {
+                Color.White.copy(alpha = 0.8f)
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
