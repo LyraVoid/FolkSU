@@ -16,6 +16,18 @@ import androidx.core.content.FileProvider
 import java.io.File
 
 /**
+ * One crop request: the picked image plus the frame the platform cropper should lock to.
+ *
+ * [aspectX]/[aspectY] of 0 keep the crop free-form; [outputSize] of 0 keeps the source resolution.
+ */
+data class CropRequest(
+    val uri: Uri,
+    val aspectX: Int = 0,
+    val aspectY: Int = 0,
+    val outputSize: Int = 0,
+)
+
+/**
  * Thin wrapper over the platform `com.android.camera.action.CROP` intent.
  *
  * The picked image is copied into the app cache and shared through the app's FileProvider, then
@@ -26,25 +38,22 @@ import java.io.File
 private class SystemCropContract(
     private val appContext: Context,
     private val cacheName: String,
-    private val aspectX: Int,
-    private val aspectY: Int,
-    private val outputSize: Int,
-) : ActivityResultContract<Uri, Uri?>() {
+) : ActivityResultContract<CropRequest, Uri?>() {
 
     private fun outputFile(): File = File(File(appContext.cacheDir, cacheName), "output.jpg")
 
-    override fun createIntent(context: Context, input: Uri): Intent {
+    override fun createIntent(context: Context, input: CropRequest): Intent {
         val root = File(appContext.cacheDir, cacheName).apply {
             if (exists()) deleteRecursively()
             mkdirs()
         }
         val extension = when {
-            context.contentResolver.getType(input)?.contains("png", true) == true -> ".png"
-            context.contentResolver.getType(input)?.contains("webp", true) == true -> ".webp"
+            context.contentResolver.getType(input.uri)?.contains("png", true) == true -> ".png"
+            context.contentResolver.getType(input.uri)?.contains("webp", true) == true -> ".webp"
             else -> ".jpg"
         }
         val source = File(root, "input$extension")
-        context.contentResolver.openInputStream(input)?.use { stream ->
+        context.contentResolver.openInputStream(input.uri)?.use { stream ->
             source.outputStream().use { stream.copyTo(it, DEFAULT_BUFFER_SIZE) }
         }
         val authority = "${appContext.packageName}.fileprovider"
@@ -55,13 +64,13 @@ private class SystemCropContract(
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             putExtra("crop", "true")
             putExtra("noFaceDetection", true)
-            if (aspectX > 0 && aspectY > 0) {
-                putExtra("aspectX", aspectX)
-                putExtra("aspectY", aspectY)
+            if (input.aspectX > 0 && input.aspectY > 0) {
+                putExtra("aspectX", input.aspectX)
+                putExtra("aspectY", input.aspectY)
             }
-            if (outputSize > 0) {
-                putExtra("outputX", outputSize)
-                putExtra("outputY", outputSize)
+            if (input.outputSize > 0) {
+                putExtra("outputX", input.outputSize)
+                putExtra("outputY", input.outputSize)
             }
             putExtra("return-data", false)
             putExtra(MediaStore.EXTRA_OUTPUT, outputUri)
@@ -80,14 +89,11 @@ private class SystemCropContract(
 @Composable
 fun rememberSystemCropLauncher(
     cacheName: String = "wallpaper_crop_cache",
-    aspectX: Int = 0,
-    aspectY: Int = 0,
-    outputSize: Int = 0,
     onCropped: (Uri) -> Unit,
-): ManagedActivityResultLauncher<Uri, Uri?> {
+): ManagedActivityResultLauncher<CropRequest, Uri?> {
     val appContext = LocalContext.current.applicationContext
-    val contract = remember(cacheName, aspectX, aspectY, outputSize) {
-        SystemCropContract(appContext, cacheName, aspectX, aspectY, outputSize)
+    val contract = remember(cacheName) {
+        SystemCropContract(appContext, cacheName)
     }
     return rememberLauncherForActivityResult(contract) { result ->
         if (result != null) onCropped(result)

@@ -36,7 +36,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import java.io.File
@@ -52,6 +52,7 @@ import me.weishu.kernelsu.wallpaper.AnimatedFileImage
 import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
+import me.weishu.kernelsu.wallpaper.surface.SurfaceBounds
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
@@ -166,12 +167,15 @@ private fun GridStatusCard(
         },
         onLongClick = { showWorkCardOptions = true },
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { SurfaceBounds.report(SurfaceRegistry.GRID_WORK_CARD, it.width, it.height) },
+        ) {
             if (backgroundUri != null) {
                 SurfaceBackgroundImage(
                     uri = backgroundUri,
                     surface = workCardSurface,
-                    contentScale = ContentScale.FillWidth,
                     modifier = Modifier.matchParentSize(),
                 )
             }

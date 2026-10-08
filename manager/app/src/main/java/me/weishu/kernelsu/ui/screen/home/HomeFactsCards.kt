@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceId
 
 /** The manager build and the policy it runs under, or the system facts the stats board closes with. */
 @Composable
@@ -41,6 +42,7 @@ internal fun HomeFactsTile(
     modifier: Modifier = Modifier,
     background: SurfaceConfig? = null,
     onLongClick: (() -> Unit)? = null,
+    surfaceId: SurfaceId? = null,
 ) {
     HomeTileCard(
         title = title,
@@ -48,6 +50,7 @@ internal fun HomeFactsTile(
         modifier = modifier.fillMaxWidth(),
         background = background,
         onLongClick = onLongClick,
+        surfaceId = surfaceId,
     ) {
         HomeFactRow(
             label = stringResource(R.string.home_manager_version),

@@ -1,11 +1,9 @@
 package me.weishu.kernelsu.ui.screen.home
 
-import android.net.Uri
 import android.widget.ImageView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -16,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.core.net.toUri
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,17 +33,18 @@ import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
 internal fun SurfaceBackgroundImage(
     uri: String,
     surface: SurfaceConfig,
+    modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
-    modifier: Modifier = Modifier.fillMaxSize(),
 ) {
     val isDark = isInDarkTheme()
     val opacity = surface.effectiveOpacity(isDark)
-    val path = remember(uri) { Uri.parse(uri).path }
+    val path = remember(uri) { uri.toUri().path }
     val file = remember(path) { path?.let { File(it) } }
     if (file != null && isAnimatedImageFile(file)) {
         // Animated images (GIF) play natively; everything else keeps the downsampled bitmap path.
         AnimatedFileImage(
             file = file,
+            revision = uri,
             modifier = modifier
                 .alpha(opacity),
             scaleType = if (contentScale == ContentScale.FillWidth) {
@@ -54,7 +54,8 @@ internal fun SurfaceBackgroundImage(
             },
         )
     } else {
-        val image by produceState<ImageBitmap?>(initialValue = null, path) {
+        val image by produceState<ImageBitmap?>(initialValue = null, uri) {
+            value = null
             value = withContext(Dispatchers.IO) {
                 path?.let { WallpaperManager.decodeSampled(File(it), 1600)?.asImageBitmap() }
             }

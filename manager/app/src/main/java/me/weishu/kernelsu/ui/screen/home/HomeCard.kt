@@ -25,12 +25,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.theme.FolkShape
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+import me.weishu.kernelsu.wallpaper.surface.SurfaceBounds
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceId
 
 /** A full-width tonal surface, the one shape every card on the home screen shares. */
 @Composable
@@ -77,6 +80,7 @@ internal fun HomeTileCard(
     action: (@Composable () -> Unit)? = null,
     background: SurfaceConfig? = null,
     onLongClick: (() -> Unit)? = null,
+    surfaceId: SurfaceId? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backgroundUri = background?.imageUri?.takeIf { it.isNotEmpty() }
@@ -89,7 +93,13 @@ internal fun HomeTileCard(
         wallpaperRole = if (overImage) null else WallpaperSurfaceRole.Group,
         onLongClick = onLongClick,
     ) {
-        Box {
+        Box(
+            modifier = if (surfaceId != null) {
+                Modifier.onSizeChanged { SurfaceBounds.report(surfaceId, it.width, it.height) }
+            } else {
+                Modifier
+            },
+        ) {
             if (background != null && backgroundUri != null) {
                 SurfaceBackgroundImage(
                     uri = backgroundUri,

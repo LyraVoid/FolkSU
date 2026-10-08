@@ -6,13 +6,20 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.net.toUri
 import com.materialkolor.ktx.themeColorOrNull
 import me.weishu.kernelsu.wallpaper.surface.SurfaceId
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * File storage and derived-color extraction for the custom wallpaper.
@@ -29,6 +36,8 @@ object WallpaperManager {
     private const val PAGE_MODULE_FILENAME_BASE = "wallpaper_module"
     private const val PAGE_SETTINGS_FILENAME_BASE = "wallpaper_settings"
     private val KNOWN_EXTENSIONS = listOf(".jpg", ".jpeg", ".png", ".webp", ".gif")
+
+    private val surfaceLocks = ConcurrentHashMap<SurfaceId, Mutex>()
 
     /** Copies the picked image into app storage, extracts its color/luminance and enables it. */
     suspend fun save(context: Context, source: Uri): Boolean = withContext(Dispatchers.IO) {
@@ -67,36 +76,59 @@ object WallpaperManager {
         saveSurfaceImage(context, SurfaceRegistry.GRID_WORK_CARD, source)
 
     /** Deletes the stored work-card image and turns the feature off, keeping the user's slider values. */
-    fun clearWorkCardBackground(context: Context) =
+    suspend fun clearWorkCardBackground(context: Context) =
         clearSurfaceImage(context, SurfaceRegistry.GRID_WORK_CARD)
 
     /** Copies the picked image into app storage and points surface [id] at it. */
     suspend fun saveSurfaceImage(context: Context, id: SurfaceId, source: Uri): Boolean =
         withContext(Dispatchers.IO) {
             val stem = surfaceStem(id) ?: return@withContext false
-            runCatching {
-                val ext = resolveExtension(context, source)
-                clearSurfaceFiles(context, stem)
-                val target = File(context.filesDir, "$stem$ext")
-                if (!copyToFile(context, source, target)) return@runCatching false
-                val stamped = "${Uri.fromFile(target)}?t=${System.currentTimeMillis()}"
-                SurfaceStore.update(id) { it.copy(imageUri = stamped, enabled = true) }
-                WallpaperConfig.save(context)
-                true
-            }.getOrDefault(false)
+            surfaceLocks.getOrPut(id) { Mutex() }.withLock {
+                try {
+                    val ext = resolveExtension(context, source)
+                    val target = replaceSurfaceImage(context.filesDir, stem, ext) {
+                        if (!copyToFile(context, source, it)) {
+                            false
+                        } else {
+                            val probe = decodeSampled(it, 64)
+                            val valid = probe != null
+                            probe?.recycle()
+                            valid
+                        }
+                    }
+                    // Once the file is replaced, publish even if the initiating UI is disposed.
+                    withContext(NonCancellable + Dispatchers.Main.immediate) {
+                        val stamped = "${Uri.fromFile(target)}?revision=${UUID.randomUUID()}"
+                        SurfaceStore.update(id) { it.copy(imageUri = stamped, enabled = true) }
+                        WallpaperConfig.save(context)
+                    }
+                    clearSurfaceFiles(context, stem, except = target)
+                    true
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    false
+                }
+            }
         }
 
-    /** Deletes surface [id]'s stored image and turns it off, keeping the user's slider values. */
-    fun clearSurfaceImage(context: Context, id: SurfaceId) {
+    /** Serializes removal with replacement, keeping the user's slider values. */
+    suspend fun clearSurfaceImage(context: Context, id: SurfaceId) {
         val stem = surfaceStem(id) ?: return
-        clearSurfaceFiles(context, stem)
-        SurfaceStore.update(id) { it.copy(imageUri = null, enabled = false) }
-        WallpaperConfig.save(context)
+        surfaceLocks.getOrPut(id) { Mutex() }.withLock {
+            withContext(Dispatchers.IO) {
+                clearSurfaceFiles(context, stem)
+                withContext(NonCancellable + Dispatchers.Main.immediate) {
+                    SurfaceStore.update(id) { it.copy(imageUri = null, enabled = false) }
+                    WallpaperConfig.save(context)
+                }
+            }
+        }
     }
 
     /** The currently stored image file for surface [id], if any. */
     fun currentSurfaceFile(context: Context, id: SurfaceId): File? {
-        val path = SurfaceStore.config(id).imageUri?.let { Uri.parse(it).path } ?: return null
+        val path = SurfaceStore.config(id).imageUri?.let { it.toUri().path } ?: return null
         val file = File(path)
         return if (file.exists() && file.length() > 0L) file else null
     }
@@ -106,10 +138,10 @@ object WallpaperManager {
         SurfaceRegistry.descriptor(id)?.storageStem
 
     /** Deletes every stored file variant for a surface background. */
-    private fun clearSurfaceFiles(context: Context, stem: String) {
+    private fun clearSurfaceFiles(context: Context, stem: String, except: File? = null) {
         KNOWN_EXTENSIONS.forEach { ext ->
             val file = File(context.filesDir, "$stem$ext")
-            if (file.exists()) file.delete()
+            if (file != except && file.exists()) file.delete()
         }
     }
 
@@ -194,7 +226,7 @@ object WallpaperManager {
 
     /** Backfills color/luminance for a wallpaper that was restored without derived values. */
     fun refreshDerivedIfMissing(context: Context) {
-        val path = WallpaperConfig.uri?.let { Uri.parse(it).path } ?: return
+        val path = WallpaperConfig.uri?.let { it.toUri().path } ?: return
         val file = File(path)
         if (!file.exists() || file.length() == 0L) return
         var changed = false
@@ -219,7 +251,7 @@ object WallpaperManager {
 
     /** The currently stored wallpaper file, if any. */
     fun currentFile(context: Context): File? {
-        val path = WallpaperConfig.uri?.let { Uri.parse(it).path } ?: return null
+        val path = WallpaperConfig.uri?.let { it.toUri().path } ?: return null
         val file = File(path)
         return if (file.exists() && file.length() > 0L) file else null
     }
@@ -365,7 +397,10 @@ object WallpaperManager {
             target.outputStream().use { output -> input.copyTo(output, DEFAULT_BUFFER_SIZE) }
             target.length() > 0L
         } ?: false
-    } catch (_: Throwable) {
+    } catch (e: CancellationException) {
+        target.delete()
+        throw e
+    } catch (_: Exception) {
         target.delete()
         false
     }

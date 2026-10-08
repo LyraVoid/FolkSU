@@ -38,8 +38,10 @@ fun AnimatedFileImage(
     blurRadiusPx: Float = 0f,
     contentDescription: String? = null,
     scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP,
+    revision: String = file.lastModified().toString(),
 ) {
-    val drawable by produceState<Drawable?>(initialValue = null, file.path, file.lastModified()) {
+    val drawable by produceState<Drawable?>(initialValue = null, file.path, revision) {
+        value = null
         value = withContext(Dispatchers.IO) {
             runCatching {
                 ImageDecoder.decodeDrawable(ImageDecoder.createSource(file))
@@ -63,6 +65,8 @@ fun AnimatedFileImage(
             }
         },
         update = { view ->
+            view.scaleType = scaleType
+            view.contentDescription = contentDescription
             view.setImageDrawable(current)
             view.setRenderEffect(
                 if (blurRadiusPx > 0f) {

@@ -45,6 +45,12 @@ data class SurfaceDescriptor(
     val rows: List<SurfaceRow> = emptyList(),
     val pickIcon: ImageVector = Icons.Filled.Image,
     val clearIcon: ImageVector = Icons.Filled.Delete,
+    /**
+     * Aspect ratio (width / height) of the surface's on-screen box. The crop frame is locked to it
+     * so the stored image matches the card one-to-one; [SurfaceBounds] overrides it with the box
+     * actually measured on screen.
+     */
+    val aspect: Float = 1.6f,
     /** File-name stem of the stored image; null when the surface owns no file. */
     val storageStem: String? = null,
     /** Zip-entry stem used by the theme container; null when the surface is not exported. */
@@ -152,6 +158,7 @@ object SurfaceRegistry {
         ),
         storageStem = "work_card_background",
         themeBase = "grid_working_card_background",
+        aspect = 1.0f,
         legacyThemeFields = mapOf(
             SurfaceField.Enabled to "isGridWorkingCardBackgroundEnabled",
             SurfaceField.Opacity to "gridWorkingCardBackgroundOpacity",
@@ -305,6 +312,7 @@ object SurfaceRegistry {
         ),
         storageStem = "dashboard_card_bg",
         themeBase = "dashboard_card_bg",
+        aspect = 2.0f,
         legacyThemeFields = mapOf(
             SurfaceField.Image to "hasDashboardCardBg",
             SurfaceField.Enabled to "isDashboardCardBackgroundEnabled",
@@ -350,6 +358,7 @@ object SurfaceRegistry {
         ),
         storageStem = themeBase,
         themeBase = themeBase,
+        aspect = 1.4f,
         legacyThemeFields = mapOf(SurfaceField.Enabled to legacyKey),
         available = { layout -> layout == HomeLayoutStyle.FOCUS },
     )

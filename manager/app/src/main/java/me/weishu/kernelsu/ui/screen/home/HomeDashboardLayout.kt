@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,6 +36,7 @@ import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.SurfaceOptionsDialog
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
+import me.weishu.kernelsu.wallpaper.surface.SurfaceBounds
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
@@ -144,7 +146,11 @@ private fun DashboardHeroCard(
         },
         onLongClick = { showOptions = true },
     ) {
-        Box {
+        Box(
+            modifier = Modifier.onSizeChanged {
+                SurfaceBounds.report(SurfaceRegistry.DASHBOARD_HERO, it.width, it.height)
+            },
+        ) {
             if (backgroundUri != null) {
                 SurfaceBackgroundImage(
                     uri = backgroundUri,

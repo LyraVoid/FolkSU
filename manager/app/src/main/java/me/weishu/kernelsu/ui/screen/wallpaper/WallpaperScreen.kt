@@ -42,6 +42,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,12 +52,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.dropUnlessResumed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.CropRequest
+import me.weishu.kernelsu.ui.component.SurfaceImagePickerHost
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.FolkWallpaperSurface
 import me.weishu.kernelsu.ui.component.material.SegmentedColumn
@@ -137,6 +141,7 @@ data class WallpaperScreenActions(
 fun WallpaperScreen() {
     val navigator = LocalNavigator.current
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val snackbarHost = remember { SnackbarHostState() }
 
@@ -144,9 +149,7 @@ fun WallpaperScreen() {
     var pendingCrop by remember { mutableStateOf<Uri?>(null) }
     var showCropDialog by remember { mutableStateOf(false) }
     var pendingSurface by remember { mutableStateOf<SurfaceId?>(null) }
-    var pendingSurfaceCrop by remember { mutableStateOf<Uri?>(null) }
-    var showSurfaceCropDialog by remember { mutableStateOf(false) }
-    var pendingPage by remember { mutableStateOf(NO_PAGE) }
+    var pendingPage by remember { mutableIntStateOf(NO_PAGE) }
     var pendingPageCrop by remember { mutableStateOf<Uri?>(null) }
     var showPageCropDialog by remember { mutableStateOf(false) }
 
@@ -156,7 +159,7 @@ fun WallpaperScreen() {
             val ok = WallpaperManager.save(context, picked)
             isSaving = false
             snackbarHost.showSnackbar(
-                context.getString(if (ok) R.string.wallpaper_saved else R.string.wallpaper_save_failed)
+                resources.getString(if (ok) R.string.wallpaper_saved else R.string.wallpaper_save_failed)
             )
         }
     }
@@ -176,7 +179,7 @@ fun WallpaperScreen() {
             } else {
                 R.string.wallpaper_save_failed
             }
-            snackbarHost.showSnackbar(context.getString(if (ok) savedRes else failedRes))
+            snackbarHost.showSnackbar(resources.getString(if (ok) savedRes else failedRes))
         }
     }
 
@@ -186,7 +189,7 @@ fun WallpaperScreen() {
             val ok = WallpaperManager.savePageBackground(context, page, picked)
             isSaving = false
             snackbarHost.showSnackbar(
-                context.getString(if (ok) R.string.wallpaper_saved else R.string.wallpaper_save_failed)
+                resources.getString(if (ok) R.string.wallpaper_saved else R.string.wallpaper_save_failed)
             )
         }
     }
@@ -199,21 +202,10 @@ fun WallpaperScreen() {
         persistPage(pendingPage, cropped)
     }
 
-    val surfaceCropLauncher = rememberSystemCropLauncher(cacheName = "surface_crop_cache") { cropped ->
-        pendingSurface?.let { persistSurface(it, cropped) }
-    }
-
     val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             pendingCrop = uri
             showCropDialog = true
-        }
-    }
-
-    val pickSurfaceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            pendingSurfaceCrop = uri
-            showSurfaceCropDialog = true
         }
     }
 
@@ -231,7 +223,7 @@ fun WallpaperScreen() {
             scope.launch {
                 val ok = FolkThemeIO.exportBackground(context, uri, FolkThemeIO.FILE_NAME)
                 snackbarHost.showSnackbar(
-                    context.getString(
+                    resources.getString(
                         if (ok) R.string.wallpaper_export_success else R.string.wallpaper_export_failed
                     )
                 )
@@ -244,7 +236,7 @@ fun WallpaperScreen() {
             scope.launch {
                 val ok = FolkThemeIO.importBackground(context, uri)
                 snackbarHost.showSnackbar(
-                    context.getString(
+                    resources.getString(
                         if (ok) R.string.wallpaper_import_success else R.string.wallpaper_import_failed
                     )
                 )
@@ -266,11 +258,11 @@ fun WallpaperScreen() {
                     showCropDialog = false
                     pendingCrop = null
                     if (target != null) {
-                        val launched = runCatching { cropLauncher.launch(target) }.isSuccess
+                        val launched = runCatching { cropLauncher.launch(CropRequest(target)) }.isSuccess
                         if (!launched) {
                             scope.launch {
                                 snackbarHost.showSnackbar(
-                                    context.getString(R.string.wallpaper_crop_unsupported)
+                                    resources.getString(R.string.wallpaper_crop_unsupported)
                                 )
                             }
                             persist(target)
@@ -292,46 +284,14 @@ fun WallpaperScreen() {
         )
     }
 
-    if (showSurfaceCropDialog) {
-        val target = pendingSurfaceCrop
-        val surfaceId = pendingSurface
-        AlertDialog(
-            onDismissRequest = {
-                showSurfaceCropDialog = false
-                pendingSurfaceCrop = null
-            },
-            title = { Text(stringResource(R.string.wallpaper_crop_title)) },
-            text = { Text(stringResource(R.string.wallpaper_crop_message)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showSurfaceCropDialog = false
-                    pendingSurfaceCrop = null
-                    if (target != null && surfaceId != null) {
-                        val launched = runCatching { surfaceCropLauncher.launch(target) }.isSuccess
-                        if (!launched) {
-                            scope.launch {
-                                snackbarHost.showSnackbar(
-                                    context.getString(R.string.wallpaper_crop_unsupported)
-                                )
-                            }
-                            persistSurface(surfaceId, target)
-                        }
-                    }
-                }) {
-                    Text(stringResource(R.string.wallpaper_crop_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showSurfaceCropDialog = false
-                    pendingSurfaceCrop = null
-                    if (target != null && surfaceId != null) persistSurface(surfaceId, target)
-                }) {
-                    Text(stringResource(R.string.wallpaper_crop_direct))
-                }
-            },
-        )
-    }
+    SurfaceImagePickerHost(
+        request = pendingSurface,
+        onDismissRequest = { pendingSurface = null },
+        onPicked = { id, uri ->
+            pendingSurface = null
+            persistSurface(id, uri)
+        },
+    )
 
     if (showPageCropDialog) {
         val target = pendingPageCrop
@@ -348,11 +308,11 @@ fun WallpaperScreen() {
                     showPageCropDialog = false
                     pendingPageCrop = null
                     if (target != null) {
-                        val launched = runCatching { pageCropLauncher.launch(target) }.isSuccess
+                        val launched = runCatching { pageCropLauncher.launch(CropRequest(target)) }.isSuccess
                         if (!launched) {
                             scope.launch {
                                 snackbarHost.showSnackbar(
-                                    context.getString(R.string.wallpaper_crop_unsupported)
+                                    resources.getString(R.string.wallpaper_crop_unsupported)
                                 )
                             }
                             persistPage(pendingPage, target)
@@ -402,7 +362,7 @@ fun WallpaperScreen() {
         onPickImage = { pickImageLauncher.launch("image/*") },
         onClear = {
             WallpaperManager.clear(context)
-            scope.launch { snackbarHost.showSnackbar(context.getString(R.string.wallpaper_removed)) }
+            scope.launch { snackbarHost.showSnackbar(resources.getString(R.string.wallpaper_removed)) }
         },
         onSetOpacity = {
             WallpaperConfig.updateOpacity(it)
@@ -469,16 +429,17 @@ fun WallpaperScreen() {
         },
         onPickSurfaceImage = { id ->
             pendingSurface = id
-            pickSurfaceLauncher.launch("image/*")
         },
         onClearSurfaceImage = { id ->
-            WallpaperManager.clearSurfaceImage(context, id)
             val removedRes = if (id == SurfaceRegistry.GRID_WORK_CARD) {
                 R.string.wallpaper_work_card_removed
             } else {
                 R.string.wallpaper_removed
             }
-            scope.launch { snackbarHost.showSnackbar(context.getString(removedRes)) }
+            scope.launch {
+                WallpaperManager.clearSurfaceImage(context, id)
+                snackbarHost.showSnackbar(resources.getString(removedRes))
+            }
         },
         onExport = { exportLauncher.launch(FolkThemeIO.FILE_NAME) },
         onImport = { importLauncher.launch("*/*") },

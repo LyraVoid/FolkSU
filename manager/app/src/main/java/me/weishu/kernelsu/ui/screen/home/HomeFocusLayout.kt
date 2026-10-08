@@ -61,6 +61,7 @@ internal fun FocusHomeContent(
                 actions = actions,
                 background = focusBackground(SurfaceRegistry.FOCUS_CARD_KERNEL),
                 onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_KERNEL),
+                surfaceId = SurfaceRegistry.FOCUS_CARD_KERNEL,
             )
             HomeFactsTile(
                 state = state,
@@ -68,16 +69,19 @@ internal fun FocusHomeContent(
                 icon = Icons.Outlined.AdminPanelSettings,
                 background = focusBackground(SurfaceRegistry.FOCUS_CARD_APP),
                 onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_APP),
+                surfaceId = SurfaceRegistry.FOCUS_CARD_APP,
             )
             FocusDeviceTile(
                 metrics = metrics,
                 background = focusBackground(SurfaceRegistry.FOCUS_CARD_DEVICE),
                 onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_DEVICE),
+                surfaceId = SurfaceRegistry.FOCUS_CARD_DEVICE,
             )
             FocusStorageTile(
                 metrics = metrics,
                 background = focusBackground(SurfaceRegistry.FOCUS_CARD_STORAGE),
                 onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_STORAGE),
+                surfaceId = SurfaceRegistry.FOCUS_CARD_STORAGE,
             )
         }
     } else {
@@ -96,6 +100,7 @@ internal fun FocusHomeContent(
                         .fillMaxHeight(),
                     background = focusBackground(SurfaceRegistry.FOCUS_CARD_KERNEL),
                     onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_KERNEL),
+                    surfaceId = SurfaceRegistry.FOCUS_CARD_KERNEL,
                 )
                 HomeFactsTile(
                     state = state,
@@ -106,6 +111,7 @@ internal fun FocusHomeContent(
                         .fillMaxHeight(),
                     background = focusBackground(SurfaceRegistry.FOCUS_CARD_APP),
                     onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_APP),
+                    surfaceId = SurfaceRegistry.FOCUS_CARD_APP,
                 )
             }
             Row(
@@ -121,6 +127,7 @@ internal fun FocusHomeContent(
                         .fillMaxHeight(),
                     background = focusBackground(SurfaceRegistry.FOCUS_CARD_DEVICE),
                     onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_DEVICE),
+                    surfaceId = SurfaceRegistry.FOCUS_CARD_DEVICE,
                 )
                 FocusStorageTile(
                     metrics = metrics,
@@ -129,6 +136,7 @@ internal fun FocusHomeContent(
                         .fillMaxHeight(),
                     background = focusBackground(SurfaceRegistry.FOCUS_CARD_STORAGE),
                     onLongClick = cardLongClick(SurfaceRegistry.FOCUS_CARD_STORAGE),
+                    surfaceId = SurfaceRegistry.FOCUS_CARD_STORAGE,
                 )
             }
         }
@@ -149,6 +157,7 @@ private fun FocusStatusTile(
     modifier: Modifier = Modifier,
     background: SurfaceConfig? = null,
     onLongClick: (() -> Unit)? = null,
+    surfaceId: SurfaceId? = null,
 ) {
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
@@ -179,6 +188,7 @@ private fun FocusStatusTile(
         action = cardAction,
         background = background,
         onLongClick = onLongClick,
+        surfaceId = surfaceId,
     ) {
         HomeFactRow(
             label = stringResource(R.string.home_running_status),
@@ -205,6 +215,7 @@ private fun FocusDeviceTile(
     modifier: Modifier = Modifier,
     background: SurfaceConfig? = null,
     onLongClick: (() -> Unit)? = null,
+    surfaceId: SurfaceId? = null,
 ) {
     val device = metrics.device
     val cpuTemperature = device?.cpuTemperatureC
@@ -215,6 +226,7 @@ private fun FocusDeviceTile(
         modifier = modifier.fillMaxWidth(),
         background = background,
         onLongClick = onLongClick,
+        surfaceId = surfaceId,
     ) {
         Row(
             modifier = Modifier
@@ -252,6 +264,7 @@ private fun FocusStorageTile(
     modifier: Modifier = Modifier,
     background: SurfaceConfig? = null,
     onLongClick: (() -> Unit)? = null,
+    surfaceId: SurfaceId? = null,
 ) {
     val storage = metrics.storage
 
@@ -261,6 +274,7 @@ private fun FocusStorageTile(
         modifier = modifier.fillMaxWidth(),
         background = background,
         onLongClick = onLongClick,
+        surfaceId = surfaceId,
     ) {
         StorageBar(
             label = stringResource(R.string.home_metric_storage_internal),
