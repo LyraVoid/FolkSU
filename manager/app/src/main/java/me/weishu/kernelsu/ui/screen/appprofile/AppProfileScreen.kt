@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -16,8 +17,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.ui.navigation3.Route
+import me.weishu.kernelsu.ui.util.KsuCli
 import me.weishu.kernelsu.ui.util.forceStopApp
 import me.weishu.kernelsu.ui.util.getSepolicy
 import me.weishu.kernelsu.ui.util.launchApp
@@ -66,9 +69,40 @@ fun AppProfileScreen(uid: Int) {
         mutableStateOf(initialProfile)
     }
 
+    // Dynamic manager (§5): flags come from the kernel, the switch is gated by the
+    // capability probe (§6.1) plus the advanced "allow any app" preference.
+    val settingsRepo = remember { SettingsRepositoryImpl() }
+    val dynamicManagerAvailable = remember(uid) { Natives.isDynamicManagerEnabled() }
+    val allowAnyDynamicManager = remember(uid) { settingsRepo.allowAnyDynamicManager }
+    var dynamicManagerFlags by rememberSaveable(uid) { mutableIntStateOf(0) }
+    var dynamicManagerChecked by rememberSaveable(uid) { mutableStateOf(false) }
+    var dynamicManagerBusy by rememberSaveable(uid) { mutableStateOf(false) }
+    var dynamicManagerSignature by remember(uid) {
+        mutableStateOf<KsuCli.DynamicManagerSignature?>(null)
+    }
+
+    LaunchedEffect(uid) {
+        val flags = KsuCli.getDynamicManagerFlagsForUid(uid)
+        dynamicManagerFlags = flags
+        val trusted = flags and Natives.DYNAMIC_MANAGER_FLAG_TRUSTED != 0
+        dynamicManagerChecked = trusted
+        dynamicManagerSignature = if (trusted) {
+            KsuCli.getDynamicManagerSignatureForUid(uid)
+        } else {
+            null
+        }
+    }
+
+    val isPresetManager = dynamicManagerFlags and Natives.DYNAMIC_MANAGER_FLAG_PRESET != 0
+    val showDynamicManagerSwitch = dynamicManagerAvailable && !primaryAppInfo.special &&
+            (allowAnyDynamicManager || dynamicManagerChecked || isPresetManager)
+
     val failToUpdateAppProfile = stringResource(R.string.failed_to_update_app_profile).format(primaryAppInfo.label)
     val failToUpdateSepolicy = stringResource(R.string.failed_to_update_sepolicy).format(primaryAppInfo.label)
     val suNotAllowed = stringResource(R.string.su_not_allowed).format(primaryAppInfo.label)
+    val failedToSetDynamicManager = stringResource(R.string.dynamic_manager_set_failed).format(primaryAppInfo.label)
+    val failedToDelDynamicManager = stringResource(R.string.dynamic_manager_del_failed).format(primaryAppInfo.label)
+    val dynamicManagerSignatureUnavailable = stringResource(R.string.dynamic_manager_signature_unavailable).format(primaryAppInfo.label)
 
     fun showMessage(message: String) {
         scope.launch {
@@ -82,6 +116,9 @@ fun AppProfileScreen(uid: Int) {
         profile = profile,
         appGroup = appGroup,
         sharedUserId = sharedUserId,
+        isDynamicManager = dynamicManagerChecked,
+        showDynamicManagerSwitch = showDynamicManagerSwitch,
+        dynamicManagerEnabled = !dynamicManagerBusy,
     )
 
     val actions = AppProfileActions(
@@ -123,6 +160,38 @@ fun AppProfileScreen(uid: Int) {
                 } else {
                     profile = profileToSave
                     viewModel.loadAppList()
+                }
+            }
+        },
+        onDynamicManagerChange = { checked ->
+            scope.launch {
+                dynamicManagerBusy = true
+                try {
+                    if (checked) {
+                        if (KsuCli.setDynamicManagerUid(uid)) {
+                            dynamicManagerSignature = KsuCli.getDynamicManagerSignatureForUid(uid)
+                            dynamicManagerChecked = true
+                            viewModel.loadAppList(force = true)
+                        } else {
+                            showMessage(failedToSetDynamicManager)
+                        }
+                    } else {
+                        val signature = dynamicManagerSignature
+                            ?: KsuCli.getDynamicManagerSignatureForUid(uid)
+                        if (signature == null) {
+                            showMessage(dynamicManagerSignatureUnavailable)
+                            return@launch
+                        }
+                        if (KsuCli.deleteDynamicManager(signature)) {
+                            dynamicManagerSignature = signature
+                            dynamicManagerChecked = false
+                            viewModel.loadAppList(force = true)
+                        } else {
+                            showMessage(failedToDelDynamicManager)
+                        }
+                    }
+                } finally {
+                    dynamicManagerBusy = false
                 }
             }
         },

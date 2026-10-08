@@ -148,6 +148,15 @@
     <string name="profile_selinux_context">SELinux context</string>
     <string name="profile_umount_modules">Umount modules</string>
     <string name="failed_to_update_app_profile">Failed to update App Profile for %s</string>
+    <string name="set_as_dynamic_manager">Set as dynamic manager</string>
+    <string name="set_as_dynamic_manager_summary">Persist this app signature and trust it as a dynamic manager</string>
+    <string name="dynamic_manager_set_failed">Failed to set %s as dynamic manager</string>
+    <string name="dynamic_manager_del_failed">Failed to remove %s from dynamic managers</string>
+    <string name="dynamic_manager_signature_unavailable">Unable to extract dynamic manager signature for %s</string>
+    <string name="allow_any_dynamic_manager">Allow any app as dynamic manager</string>
+    <string name="allow_any_dynamic_manager_summary">Experimental. Show the dynamic manager switch for every app instead of only preset manager signatures.</string>
+    <string name="dynamic_manager_badge">DYNAMIC KSU</string>
+    <string name="dynamic_manager_preset_badge">KSU</string>
     <string name="require_manager_version">Manager update required</string>
     <string name="require_kernel_version">Kernel update required. Tap to install.</string>
     <string name="require_kernel_version_gki">Kernel update required</string>

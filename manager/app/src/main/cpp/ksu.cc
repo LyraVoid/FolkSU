@@ -117,6 +117,19 @@ bool get_allow_list(struct ksu_new_get_allow_list_cmd *cmd) {
     return ksuctl(KSU_IOCTL_NEW_GET_ALLOW_LIST, cmd) == 0;
 }
 
+uint32_t get_dynamic_managers(struct ksu_dynamic_manager_app *apps, uint32_t max_count,
+                              uint32_t *total_count) {
+    struct ksu_get_dynamic_managers_cmd cmd = {};
+    cmd.count = max_count;
+    cmd.apps = (uintptr_t) apps;
+    if (ksuctl(KSU_IOCTL_GET_DYNAMIC_MANAGERS, &cmd) == 0) {
+        if (total_count) *total_count = cmd.total_count;
+        return cmd.count;
+    }
+    if (total_count) *total_count = 0;
+    return 0;
+}
+
 bool is_safe_mode() {
     struct ksu_check_safemode_cmd cmd = {};
     ksuctl(KSU_IOCTL_CHECK_SAFEMODE, &cmd);
@@ -251,4 +264,20 @@ bool is_selinux_hide_enabled() {
         return false;
     }
     return value != 0;
+}
+
+// §6.1 compatibility mode: never trust a mismatched UAPI blindly for the
+// dynamic-manager commands. When the kernel UAPI matches the manager's the
+// commands are guaranteed; otherwise require the kernel to advertise
+// KSU_FEATURE_DYNAMIC_MANAGER before enabling the UI.
+bool is_dynamic_manager_enabled() {
+    if (get_kernel_uapi_version() == KERNEL_SU_UAPI_VERSION) {
+        return true;
+    }
+    uint64_t value = 0;
+    bool supported = false;
+    if (!get_feature(KSU_FEATURE_DYNAMIC_MANAGER, &value, &supported)) {
+        return false;
+    }
+    return supported;
 }

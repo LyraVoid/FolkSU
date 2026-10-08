@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Security
@@ -137,6 +138,10 @@ fun AppProfileScreenMaterial(
             onViewTemplate = actions.onViewTemplate,
             onManageTemplate = actions.onManageTemplate,
             onProfileChange = actions.onProfileChange,
+            isDynamicManager = state.isDynamicManager,
+            showDynamicManagerSwitch = state.showDynamicManagerSwitch,
+            dynamicManagerEnabled = state.dynamicManagerEnabled,
+            onDynamicManagerChange = actions.onDynamicManagerChange,
         )
     }
 }
@@ -158,6 +163,10 @@ private fun AppProfileInner(
     onViewTemplate: (id: String) -> Unit = {},
     onManageTemplate: () -> Unit = {},
     onProfileChange: (Natives.Profile) -> Unit,
+    isDynamicManager: Boolean = false,
+    showDynamicManagerSwitch: Boolean = false,
+    dynamicManagerEnabled: Boolean = true,
+    onDynamicManagerChange: (Boolean) -> Unit = {},
 ) {
     val isRootGranted = !isSpecialApp && profile.allowSu
     val userId = appUid / 100000
@@ -234,6 +243,16 @@ private fun AppProfileInner(
                         title = stringResource(id = R.string.superuser),
                         checked = isRootGranted,
                         onCheckedChange = { onProfileChange(profile.copy(allowSu = it)) },
+                    )
+                }
+                if (showDynamicManagerSwitch) add {
+                    SegmentedSwitchItem(
+                        icon = Icons.Filled.AdminPanelSettings,
+                        title = stringResource(id = R.string.set_as_dynamic_manager),
+                        summary = stringResource(id = R.string.set_as_dynamic_manager_summary),
+                        checked = isDynamicManager,
+                        enabled = dynamicManagerEnabled,
+                        onCheckedChange = onDynamicManagerChange,
                     )
                 }
                 add {

@@ -76,6 +76,21 @@ class SuperUserRepositoryImpl : SuperUserRepository {
                 }
 
                 val packages = slice.list
+
+                // Kernel-verified dynamic-manager candidates (preset + user-claimed),
+                // keyed by app id so we can merge them onto each app below.
+                val dynamicManagerFlags = runCatching { Natives.getDynamicManagers() }
+                    .getOrDefault(IntArray(0))
+                    .let { items ->
+                        buildMap {
+                            var index = 0
+                            while (index + 1 < items.size) {
+                                put(items[index], items[index + 1])
+                                index += 2
+                            }
+                        }
+                    }
+
                 val newApps = packages.filter {
                     val ai = it.applicationInfo ?: return@filter false
                     ai.uid != WEBVIEW_ZYGOTE_UID &&
@@ -87,6 +102,7 @@ class SuperUserRepositoryImpl : SuperUserRepository {
                         label = appInfo.loadLabel(pm).toString(),
                         packageInfo = it,
                         profile = profile,
+                        dynamicManagerFlags = dynamicManagerFlags[appInfo.uid % 100000] ?: 0,
                     )
                 }.toMutableList()
 

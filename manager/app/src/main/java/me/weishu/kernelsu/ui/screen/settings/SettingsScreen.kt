@@ -58,6 +58,7 @@ fun SettingPager(
         onSetHomeLayoutStyle = viewModel::setHomeLayoutStyle,
         onSetAutoJailbreak = viewModel::setAutoJailbreak,
         onSetUseSoftReboot = viewModel::setUseSoftReboot,
+        onSetAllowAnyDynamicManager = viewModel::setAllowAnyDynamicManager,
         onOpenAbout = { navigator.push(Route.About) },
     )
 

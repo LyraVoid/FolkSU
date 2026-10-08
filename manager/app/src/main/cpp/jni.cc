@@ -81,6 +81,37 @@ Java_me_weishu_kernelsu_Natives_isPrBuild(JNIEnv *env, jclass clazz) {
     return is_pr_build();
 }
 
+extern "C"
+JNIEXPORT jintArray JNICALL
+Java_me_weishu_kernelsu_Natives_getDynamicManagers(JNIEnv *env, jobject) {
+    struct ksu_dynamic_manager_app apps[KSU_DYNAMIC_MANAGER_MAX_APPS] = {};
+    uint32_t count = get_dynamic_managers(apps, KSU_DYNAMIC_MANAGER_MAX_APPS, nullptr);
+    if (count > KSU_DYNAMIC_MANAGER_MAX_APPS) {
+        count = KSU_DYNAMIC_MANAGER_MAX_APPS;
+    }
+
+    jsize arraySize = (jsize) (count * 2);
+    jintArray array = env->NewIntArray(arraySize);
+    if (array == nullptr || count == 0) {
+        // Empty array on failure / no candidates.
+        return array;
+    }
+
+    jint flattened[KSU_DYNAMIC_MANAGER_MAX_APPS * 2] = {};
+    for (uint32_t i = 0; i < count; i++) {
+        flattened[i * 2] = (jint) apps[i].appid;
+        flattened[i * 2 + 1] = (jint) apps[i].flags;
+    }
+    env->SetIntArrayRegion(array, 0, arraySize, flattened);
+    return array;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_me_weishu_kernelsu_Natives_isDynamicManagerEnabled(JNIEnv *env, jobject) {
+    return is_dynamic_manager_enabled();
+}
+
 static void fillIntArray(JNIEnv *env, jobject list, int *data, int count) {
     auto cls = env->GetObjectClass(list);
     auto add = env->GetMethodID(cls, "add", "(Ljava/lang/Object;)Z");

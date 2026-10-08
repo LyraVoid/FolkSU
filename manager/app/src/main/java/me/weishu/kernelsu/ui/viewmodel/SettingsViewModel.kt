@@ -67,6 +67,8 @@ class SettingsViewModel(
             val isDefaultUmountModules = repo.isDefaultUmountModules()
             val autoJailbreak = repo.autoJailbreak
             val useSoftReboot = repo.useSoftReboot
+            val allowAnyDynamicManager = repo.allowAnyDynamicManager
+            val isDynamicManagerAvailable = Natives.isDynamicManagerEnabled()
             val isLateLoadMode = Natives.isLateLoadMode
 
             val folkMountResult = repo.getFolkMountStatus()
@@ -100,6 +102,8 @@ class SettingsViewModel(
                     isLkmMode = isLkmMode,
                     autoJailbreak = autoJailbreak,
                     useSoftReboot = useSoftReboot,
+                    allowAnyDynamicManager = allowAnyDynamicManager,
+                    isDynamicManagerAvailable = isDynamicManagerAvailable,
                     isLateLoadMode = isLateLoadMode,
                     folkMountStatus = folkMountResult.getOrNull(),
                     folkMountReadError = folkMountResult.isFailure,
@@ -243,6 +247,11 @@ class SettingsViewModel(
     fun setUseSoftReboot(enabled: Boolean) {
         repo.useSoftReboot = enabled
         _uiState.update { it.copy(useSoftReboot = enabled) }
+    }
+
+    fun setAllowAnyDynamicManager(enabled: Boolean) {
+        repo.allowAnyDynamicManager = enabled
+        _uiState.update { it.copy(allowAnyDynamicManager = enabled) }
     }
 
     fun setSulogEnabled(enabled: Boolean) {

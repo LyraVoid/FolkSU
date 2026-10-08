@@ -3,6 +3,7 @@ package me.weishu.kernelsu.ui.screen.superuser
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.graphics.Color
+import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.data.model.AppInfo
 import me.weishu.kernelsu.ui.component.SearchStatus
 import me.weishu.kernelsu.ui.viewmodel.AppSortConfig
@@ -17,7 +18,13 @@ data class GroupedApps(
     val shouldUmount: Boolean,
     val ownerName: String? = null,
     val matchedIdentifiers: Set<String> = emptySet(),
-)
+    val dynamicManagerFlags: Int = 0,
+) {
+    val isDynamicManager: Boolean
+        get() = dynamicManagerFlags and Natives.DYNAMIC_MANAGER_FLAG_TRUSTED != 0
+    val isPresetManager: Boolean
+        get() = dynamicManagerFlags and Natives.DYNAMIC_MANAGER_FLAG_PRESET != 0
+}
 
 @Stable
 data class SuperUserUiState(

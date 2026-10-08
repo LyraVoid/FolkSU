@@ -100,6 +100,23 @@ object Natives {
 
     external fun getSuperuserCount(): Int
 
+    /**
+     * Kernel-tracked dynamic-manager candidates, flattened as
+     * `[appid, flags, appid, flags, …]` with [DYNAMIC_MANAGER_FLAG_PRESET] /
+     * [DYNAMIC_MANAGER_FLAG_TRUSTED] bits. Empty when unsupported or no candidates.
+     */
+    external fun getDynamicManagers(): IntArray
+
+    const val DYNAMIC_MANAGER_FLAG_PRESET = 1 shl 0
+    const val DYNAMIC_MANAGER_FLAG_TRUSTED = 1 shl 1
+
+    /**
+     * §6.1 compatibility mode: true when the dynamic-manager UI may be shown.
+     * Always true on a matching UAPI; on a mismatch it requires the kernel to
+     * advertise `KSU_FEATURE_DYNAMIC_MANAGER` (probed in cpp/ksu.cc).
+     */
+    external fun isDynamicManagerEnabled(): Boolean
+
     private const val NON_ROOT_DEFAULT_PROFILE_KEY = "$"
     private const val NOBODY_UID = 9999
 

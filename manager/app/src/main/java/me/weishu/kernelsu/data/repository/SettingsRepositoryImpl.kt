@@ -123,6 +123,10 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getInt("superuser_sort_option", 0)
         set(value) = prefs.edit { putInt("superuser_sort_option", value) }
 
+    override var allowAnyDynamicManager: Boolean
+        get() = prefs.getBoolean("allow_any_dynamic_manager", false)
+        set(value) = prefs.edit { putBoolean("allow_any_dynamic_manager", value) }
+
     override var suLogFilters: Set<String>?
         get() = prefs.getStringSet("sulog_filters", null)?.toSet()
         set(filters) = prefs.edit { putStringSet("sulog_filters", filters) }

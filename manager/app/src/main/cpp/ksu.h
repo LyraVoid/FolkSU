@@ -55,6 +55,16 @@ bool is_selinux_hide_enabled();
 
 bool get_allow_list(struct ksu_new_get_allow_list_cmd *);
 
+// Fetch the kernel-tracked dynamic-manager candidates (preset + user-claimed).
+// Writes at most max_count entries into apps, returns the number written and
+// stores the total tracked count in *total_count (may be null).
+uint32_t get_dynamic_managers(struct ksu_dynamic_manager_app *apps, uint32_t max_count,
+                              uint32_t *total_count);
+
+// §6.1 compatibility probe: dynamic-manager ioctls are only guaranteed when the
+// kernel UAPI matches the manager's; on a mismatch, probe KSU_FEATURE_DYNAMIC_MANAGER.
+bool is_dynamic_manager_enabled();
+
 inline std::pair<int, int> legacy_get_info() {
     int32_t version = -1;
     int32_t flags = 0;

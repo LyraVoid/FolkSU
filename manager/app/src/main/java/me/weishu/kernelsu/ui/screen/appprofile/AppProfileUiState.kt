@@ -11,6 +11,9 @@ data class AppProfileUiState(
     val profile: Natives.Profile,
     val appGroup: GroupedApps,
     val sharedUserId: String,
+    val isDynamicManager: Boolean = false,
+    val showDynamicManagerSwitch: Boolean = false,
+    val dynamicManagerEnabled: Boolean = true,
 ) {
     val isUidGroup get() = appGroup.apps.size > 1
 }
@@ -24,4 +27,5 @@ data class AppProfileActions(
     val onViewTemplate: (String) -> Unit,
     val onManageTemplate: () -> Unit,
     val onProfileChange: (Natives.Profile) -> Unit,
+    val onDynamicManagerChange: (Boolean) -> Unit,
 )

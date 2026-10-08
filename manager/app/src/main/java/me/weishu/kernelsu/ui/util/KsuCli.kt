@@ -25,6 +25,7 @@ import me.weishu.kernelsu.core.utils.DataSourceChannel
 import me.weishu.kernelsu.ksuApp
 import okhttp3.OkHttpClient
 import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
@@ -48,6 +49,68 @@ data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) 
 object KsuCli {
     val SHELL: Shell = createRootShell()
     val GLOBAL_MNT_SHELL: Shell = createRootShell(true)
+
+    /** A dynamic-manager certificate as reported by `ksud dynamic get-sign --json`. */
+    data class DynamicManagerSignature(
+        val size: String,
+        val hash: String,
+    )
+
+    /** Flags for the app owning [uid], or 0 when it is not a tracked candidate. */
+    fun getDynamicManagerFlagsForUid(uid: Int): Int {
+        val items = runCatching { Natives.getDynamicManagers() }.getOrDefault(IntArray(0))
+        val appId = uid % 100000
+        var index = 0
+        while (index + 1 < items.size) {
+            if (items[index] == appId) {
+                return items[index + 1]
+            }
+            index += 2
+        }
+        return 0
+    }
+
+    suspend fun getDynamicManagerSignatureForUid(uid: Int): DynamicManagerSignature? =
+        withContext(Dispatchers.IO) {
+            val stdout = ArrayList<String>()
+            val stderr = ArrayList<String>()
+            val result = getRootShell().newJob()
+                .add("${getKsuDaemonPath()} dynamic get-sign --json --uid $uid")
+                .to(stdout, stderr)
+                .exec()
+            if (!result.isSuccess) {
+                Log.w(TAG, "dynamic get-sign --uid $uid failed: ${stderr.joinToString("\n")}")
+                return@withContext null
+            }
+
+            runCatching {
+                val v2 = JSONObject(stdout.joinToString("\n")).getJSONObject("v2")
+                if (!v2.optBoolean("has", false)) return@runCatching null
+                val size = v2.optString("size").takeIf { it.isNotBlank() } ?: return@runCatching null
+                val hash = v2.optString("hash").takeIf { it.isNotBlank() } ?: return@runCatching null
+                DynamicManagerSignature(size, hash)
+            }.getOrElse {
+                Log.w(TAG, "Failed to parse dynamic manager signature for uid $uid", it)
+                null
+            }
+        }
+
+    suspend fun setDynamicManagerUid(uid: Int): Boolean = withContext(Dispatchers.IO) {
+        val result = getRootShell().newJob()
+            .add("${getKsuDaemonPath()} dynamic set-uid $uid")
+            .exec()
+        Log.i(TAG, "dynamic set-uid $uid result: ${result.isSuccess}")
+        result.isSuccess
+    }
+
+    suspend fun deleteDynamicManager(signature: DynamicManagerSignature): Boolean =
+        withContext(Dispatchers.IO) {
+            val result = getRootShell().newJob()
+                .add("${getKsuDaemonPath()} dynamic del ${signature.size} ${signature.hash}")
+                .exec()
+            Log.i(TAG, "dynamic del ${signature.size} ${signature.hash} result: ${result.isSuccess}")
+            result.isSuccess
+        }
 }
 
 fun getRootShell(globalMnt: Boolean = false): Shell {

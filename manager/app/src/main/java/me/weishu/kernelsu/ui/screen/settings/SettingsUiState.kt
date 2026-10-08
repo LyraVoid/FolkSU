@@ -59,7 +59,11 @@ data class SettingsUiState(
     val autoJailbreak: Boolean = false,
 
     // Soft Reboot
-    val useSoftReboot: Boolean = false
+    val useSoftReboot: Boolean = false,
+
+    // Dynamic Manager
+    val allowAnyDynamicManager: Boolean = false,
+    val isDynamicManagerAvailable: Boolean = true
 )
 
 @Immutable
@@ -81,5 +85,6 @@ data class SettingsScreenActions(
     val onSetHomeLayoutStyle: (String) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,
     val onSetUseSoftReboot: (Boolean) -> Unit,
+    val onSetAllowAnyDynamicManager: (Boolean) -> Unit,
     val onOpenAbout: () -> Unit,
 )

@@ -485,8 +485,24 @@ private fun GroupItem(
     val otherFg = colorScheme.onTertiary
 
     val userId = group.uid / 100000
-    val tags = remember(group.anyAllowSu, group.shouldUmount, group.anyCustom, userId) {
+    val dynamicManagerBadge = stringResource(R.string.dynamic_manager_badge)
+    val presetManagerBadge = stringResource(R.string.dynamic_manager_preset_badge)
+    val tags = remember(
+        group.anyAllowSu,
+        group.shouldUmount,
+        group.anyCustom,
+        group.isDynamicManager,
+        group.isPresetManager,
+        userId,
+        dynamicManagerBadge,
+        presetManagerBadge,
+    ) {
         buildList {
+            if (group.isDynamicManager) {
+                add(StatusMeta(dynamicManagerBadge, bg, fg))
+            } else if (group.isPresetManager) {
+                add(StatusMeta(presetManagerBadge, otherBg, otherFg))
+            }
             if (group.anyAllowSu) add(StatusMeta("ROOT", bg, fg))
             if (group.shouldUmount) add(StatusMeta("UMOUNT", umountBg, umountFg))
             if (group.anyCustom) add(StatusMeta("CUSTOM", customBg, customFg))

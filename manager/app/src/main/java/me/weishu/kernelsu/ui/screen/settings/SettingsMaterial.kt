@@ -322,8 +322,8 @@ fun SettingPagerMaterial(
 
                 SegmentedColumn(
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 13.dp),
-                    content = listOf(
-                        {
+                    content = buildList {
+                        add {
                             SegmentedSwitchItem(
                                 icon = Icons.AutoMirrored.Filled.Rule,
                                 title = stringResource(id = R.string.settings_umount_modules_default),
@@ -331,8 +331,8 @@ fun SettingPagerMaterial(
                                 checked = uiState.isDefaultUmountModules,
                                 onCheckedChange = actions.onSetDefaultUmountModules
                             )
-                        },
-                        {
+                        }
+                        add {
                             SegmentedSwitchItem(
                                 icon = Icons.Filled.DeveloperMode,
                                 title = stringResource(id = R.string.enable_web_debugging),
@@ -340,8 +340,8 @@ fun SettingPagerMaterial(
                                 checked = uiState.enableWebDebugging,
                                 onCheckedChange = actions.onSetEnableWebDebugging
                             )
-                        },
-                        {
+                        }
+                        add {
                             SegmentedSwitchItem(
                                 icon = Icons.Filled.FlashOn,
                                 title = stringResource(id = R.string.settings_auto_jailbreak),
@@ -351,7 +351,20 @@ fun SettingPagerMaterial(
                                 onCheckedChange = actions.onSetAutoJailbreak
                             )
                         }
-                    )
+                        // §6.1: hide the dynamic-manager toggle entirely when the kernel cannot
+                        // support it, instead of offering a switch that does nothing.
+                        if (uiState.isDynamicManagerAvailable) {
+                            add {
+                                SegmentedSwitchItem(
+                                    icon = Icons.Filled.AdminPanelSettings,
+                                    title = stringResource(id = R.string.allow_any_dynamic_manager),
+                                    summary = stringResource(id = R.string.allow_any_dynamic_manager_summary),
+                                    checked = uiState.allowAnyDynamicManager,
+                                    onCheckedChange = actions.onSetAllowAnyDynamicManager
+                                )
+                            }
+                        }
+                    }
                 )
 
                 SegmentedColumn(
