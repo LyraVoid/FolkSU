@@ -159,6 +159,12 @@ enum Commands {
         #[command(subcommand)]
         command: Mount,
     },
+
+    /// Manage dynamic managers
+    Dynamic {
+        #[command(subcommand)]
+        command: Dynamic,
+    },
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -511,6 +517,55 @@ enum Mount {
     },
 }
 
+#[derive(clap::Subcommand, Debug)]
+enum Dynamic {
+    /// Print an APK's v2 signature without applying it
+    GetSign {
+        /// APK file path
+        apk: Option<String>,
+        /// UID of an installed package to resolve the APK from
+        #[arg(long, value_name = "UID", conflicts_with = "apk")]
+        uid: Option<u32>,
+        /// Emit a single JSON object instead of text
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Persist and apply a size/hash signature
+    SetHash {
+        /// certificate length (decimal or 0x-prefixed hex)
+        size: String,
+        /// 64-character hex SHA-256 of the certificate
+        hash: String,
+    },
+
+    /// Extract an APK's v2 signature, persist and apply it
+    SetApk {
+        /// APK file path
+        apk: String,
+    },
+
+    /// Extract the signature of an installed UID's APK, persist and apply it
+    SetUid {
+        /// target UID
+        uid: u32,
+    },
+
+    /// List persisted dynamic manager signatures
+    List,
+
+    /// Delete a persisted size/hash signature and apply
+    Del {
+        /// certificate length (decimal or 0x-prefixed hex)
+        size: String,
+        /// 64-character hex SHA-256 of the certificate
+        hash: String,
+    },
+
+    /// Clear persisted signatures and apply an empty list
+    Clear,
+}
+
 pub fn run() -> Result<()> {
     android_logger::init_once(
         Config::default()
@@ -836,6 +891,17 @@ pub fn run() -> Result<()> {
         Commands::Mount { command } => match command {
             Mount::Status { json } => crate::magic_mount::print_status(json),
             Mount::SetMode { mode } => crate::magic_mount::set_mode(&mode),
+        },
+        Commands::Dynamic { command } => match command {
+            Dynamic::GetSign { apk, uid, json } => {
+                crate::dynamic_manager::get_sign(apk.as_deref(), uid, json)
+            }
+            Dynamic::SetHash { size, hash } => crate::dynamic_manager::set_hash(&size, &hash),
+            Dynamic::SetApk { apk } => crate::dynamic_manager::set_apk(&apk),
+            Dynamic::SetUid { uid } => crate::dynamic_manager::set_uid(uid),
+            Dynamic::List => crate::dynamic_manager::list(),
+            Dynamic::Del { size, hash } => crate::dynamic_manager::del(&size, &hash),
+            Dynamic::Clear => crate::dynamic_manager::clear(),
         },
     };
 

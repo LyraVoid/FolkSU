@@ -395,3 +395,40 @@ pub fn set_ksu_no_new_privs() -> anyhow::Result<()> {
     }
     Ok(())
 }
+
+/// Atomically replace the kernel's dynamic-manager signature table.
+///
+/// An empty slice clears the table.
+pub fn set_dynamic_managers(signs: &[ksu_uapi::ksu_dynamic_manager_sign]) -> Result<()> {
+    let mut cmd = ksu_uapi::ksu_dynamic_manager_cmd {
+        count: signs.len() as u32,
+        signs: signs.as_ptr() as u64,
+    };
+    ksuctl(ksu_uapi::KSU_IOCTL_SET_DYNAMIC_MANAGERS, &raw mut cmd)?;
+    Ok(())
+}
+
+/// Query the kernel's tracked dynamic-manager candidates.
+///
+/// Mirrors the `KSU_IOCTL_GET_DYNAMIC_MANAGERS` query used by the manager UI;
+/// kept here so the userspace wrapper stays complete alongside the setter.
+#[allow(dead_code)]
+pub fn get_dynamic_managers() -> Result<Vec<ksu_uapi::ksu_dynamic_manager_app>> {
+    let capacity = ksu_uapi::KSU_DYNAMIC_MANAGER_MAX_APPS as usize;
+    let mut apps = vec![ksu_uapi::ksu_dynamic_manager_app { appid: 0, flags: 0 }; capacity];
+    let mut cmd = ksu_uapi::ksu_get_dynamic_managers_cmd {
+        count: capacity as u32,
+        total_count: 0,
+        apps: apps.as_mut_ptr() as u64,
+    };
+    ksuctl(ksu_uapi::KSU_IOCTL_GET_DYNAMIC_MANAGERS, &raw mut cmd)?;
+    let written = (cmd.count as usize).min(apps.len());
+    if cmd.total_count as usize > written {
+        log::warn!(
+            "dynamic manager: kernel tracks {} app(s), only {written} returned",
+            cmd.total_count
+        );
+    }
+    apps.truncate(written);
+    Ok(apps)
+}

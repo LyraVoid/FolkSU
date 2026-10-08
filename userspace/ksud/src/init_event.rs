@@ -16,6 +16,12 @@ pub fn on_post_fs_data() -> Result<()> {
 
     ksucalls::report_post_fs_data();
 
+    // Restore user-claimed dynamic-manager signatures. The kernel table is
+    // volatile, so replay the persisted list on every boot; it is idempotent.
+    if let Err(e) = crate::dynamic_manager::load_and_apply() {
+        warn!("apply dynamic manager signatures failed: {e}");
+    }
+
     utils::umask(0);
 
     // Clear all temporary module configs early
