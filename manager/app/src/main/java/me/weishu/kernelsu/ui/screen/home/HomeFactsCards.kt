@@ -40,12 +40,14 @@ internal fun HomeFactsTile(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     background: SurfaceConfig? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     HomeTileCard(
         title = title,
         icon = icon,
         modifier = modifier.fillMaxWidth(),
         background = background,
+        onLongClick = onLongClick,
     ) {
         HomeFactRow(
             label = stringResource(R.string.home_manager_version),

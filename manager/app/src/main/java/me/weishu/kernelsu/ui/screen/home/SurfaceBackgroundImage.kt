@@ -35,6 +35,7 @@ internal fun SurfaceBackgroundImage(
     uri: String,
     surface: SurfaceConfig,
     contentScale: ContentScale = ContentScale.Crop,
+    modifier: Modifier = Modifier.fillMaxSize(),
 ) {
     val isDark = isInDarkTheme()
     val opacity = surface.effectiveOpacity(isDark)
@@ -44,8 +45,7 @@ internal fun SurfaceBackgroundImage(
         // Animated images (GIF) play natively; everything else keeps the downsampled bitmap path.
         AnimatedFileImage(
             file = file,
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = modifier
                 .alpha(opacity),
             scaleType = if (contentScale == ContentScale.FillWidth) {
                 ImageView.ScaleType.FIT_CENTER
@@ -64,15 +64,13 @@ internal fun SurfaceBackgroundImage(
                 bitmap = bitmap,
                 contentDescription = null,
                 contentScale = contentScale,
-                modifier = Modifier
-                    .fillMaxSize()
+                modifier = modifier
                     .alpha(opacity),
             )
         }
     }
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
             .background(Color.Black.copy(alpha = surface.effectiveDim(isDark))),
     )
 }

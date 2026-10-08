@@ -20,6 +20,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.SurfaceOptionsDialog
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
@@ -48,9 +53,12 @@ internal fun DashboardHomeContent(
     moduleEnabledCount: Int,
 ) {
     val fullFeatured = Natives.isFullFeatured()
-    val heroBackground = SurfaceStore.config(SurfaceRegistry.DASHBOARD_HERO).takeIf { it.hasImage }
     Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
-        DashboardHeroCard(state = state, actions = actions, background = heroBackground)
+        DashboardHeroCard(
+            state = state,
+            actions = actions,
+            surface = SurfaceStore.config(SurfaceRegistry.DASHBOARD_HERO),
+        )
         if (fullFeatured && isWideLayout(withOrientation = false)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -98,7 +106,7 @@ private fun DashboardHeroCard(
     state: HomeUiState,
     actions: HomeActions,
     modifier: Modifier = Modifier,
-    background: SurfaceConfig? = null,
+    surface: SurfaceConfig,
 ) {
     val ksuActive = state.ksuVersion != null
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
@@ -119,9 +127,10 @@ private fun DashboardHeroCard(
         else -> stringResource(R.string.home_unsupported_reason)
     }
     val jailbreak = notInstalled && state.isSELinuxPermissive
-    val backgroundUri = background?.imageUri?.takeIf { it.isNotEmpty() }
-    val overImage = backgroundUri != null
+    val overImage = surface.hasImage
+    val backgroundUri = if (overImage) surface.imageUri else null
     val subColor = if (overImage) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+    var showOptions by remember { mutableStateOf(false) }
 
     HomeCard(
         modifier = modifier.fillMaxWidth(),
@@ -133,10 +142,19 @@ private fun DashboardHeroCard(
                 actions.onInstallClick()
             }
         },
+        onLongClick = if (surface.enabled) {
+            { showOptions = true }
+        } else {
+            null
+        },
     ) {
         Box {
-            if (background != null && backgroundUri != null) {
-                SurfaceBackgroundImage(uri = backgroundUri, surface = background)
+            if (backgroundUri != null) {
+                SurfaceBackgroundImage(
+                    uri = backgroundUri,
+                    surface = surface,
+                    modifier = Modifier.matchParentSize(),
+                )
             }
             CompositionLocalProvider(LocalHomeTileCardOverImage provides overImage) {
                 Column(
@@ -200,6 +218,13 @@ private fun DashboardHeroCard(
                 }
             }
         }
+    }
+
+    if (showOptions) {
+        SurfaceOptionsDialog(
+            surfaceId = SurfaceRegistry.DASHBOARD_HERO,
+            onDismiss = { showOptions = false },
+        )
     }
 }
 

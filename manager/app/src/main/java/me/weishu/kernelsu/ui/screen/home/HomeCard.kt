@@ -76,6 +76,7 @@ internal fun HomeTileCard(
     iconRes: Int? = null,
     action: (@Composable () -> Unit)? = null,
     background: SurfaceConfig? = null,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backgroundUri = background?.imageUri?.takeIf { it.isNotEmpty() }
@@ -86,10 +87,15 @@ internal fun HomeTileCard(
         containerColor = containerColor,
         contentColor = if (overImage) Color.White else contentColorFor(containerColor),
         wallpaperRole = if (overImage) null else WallpaperSurfaceRole.Group,
+        onLongClick = onLongClick,
     ) {
         Box {
             if (background != null && backgroundUri != null) {
-                SurfaceBackgroundImage(uri = backgroundUri, surface = background)
+                SurfaceBackgroundImage(
+                    uri = backgroundUri,
+                    surface = background,
+                    modifier = Modifier.matchParentSize(),
+                )
             }
             CompositionLocalProvider(LocalHomeTileCardOverImage provides overImage) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {

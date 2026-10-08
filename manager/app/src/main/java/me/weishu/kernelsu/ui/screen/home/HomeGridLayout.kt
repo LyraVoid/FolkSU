@@ -44,7 +44,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.ui.component.WorkCardBackgroundDialog
+import me.weishu.kernelsu.ui.component.SurfaceOptionsDialog
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.ui.theme.isInDarkTheme
@@ -53,6 +53,7 @@ import me.weishu.kernelsu.wallpaper.WallpaperConfig
 import me.weishu.kernelsu.wallpaper.WallpaperManager
 import me.weishu.kernelsu.wallpaper.isAnimatedImageFile
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
+import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import me.weishu.kernelsu.wallpaper.surface.SurfaceFlag
 
 /** The gap between the tiles of the two-column grid. */
@@ -176,6 +177,7 @@ private fun GridStatusCard(
                     uri = backgroundUri,
                     surface = workCardSurface,
                     contentScale = ContentScale.FillWidth,
+                    modifier = Modifier.matchParentSize(),
                 )
             }
             Column(
@@ -216,6 +218,9 @@ private fun GridStatusCard(
     }
 
     if (showWorkCardOptions) {
-        WorkCardBackgroundDialog(onDismiss = { showWorkCardOptions = false })
+        SurfaceOptionsDialog(
+            surfaceId = SurfaceRegistry.GRID_WORK_CARD,
+            onDismiss = { showWorkCardOptions = false },
+        )
     }
 }
