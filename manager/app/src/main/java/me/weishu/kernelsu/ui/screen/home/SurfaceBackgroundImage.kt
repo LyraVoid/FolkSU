@@ -1,6 +1,7 @@
 package me.weishu.kernelsu.ui.screen.home
 
 import android.net.Uri
+import android.widget.ImageView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -30,7 +31,11 @@ import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
  * tiles so every surface paints its image the same way.
  */
 @Composable
-internal fun SurfaceBackgroundImage(uri: String, surface: SurfaceConfig) {
+internal fun SurfaceBackgroundImage(
+    uri: String,
+    surface: SurfaceConfig,
+    contentScale: ContentScale = ContentScale.Crop,
+) {
     val isDark = isInDarkTheme()
     val opacity = surface.effectiveOpacity(isDark)
     val path = remember(uri) { Uri.parse(uri).path }
@@ -42,6 +47,11 @@ internal fun SurfaceBackgroundImage(uri: String, surface: SurfaceConfig) {
             modifier = Modifier
                 .fillMaxSize()
                 .alpha(opacity),
+            scaleType = if (contentScale == ContentScale.FillWidth) {
+                ImageView.ScaleType.FIT_CENTER
+            } else {
+                ImageView.ScaleType.CENTER_CROP
+            },
         )
     } else {
         val image by produceState<ImageBitmap?>(initialValue = null, path) {
@@ -53,7 +63,7 @@ internal fun SurfaceBackgroundImage(uri: String, surface: SurfaceConfig) {
             Image(
                 bitmap = bitmap,
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
+                contentScale = contentScale,
                 modifier = Modifier
                     .fillMaxSize()
                     .alpha(opacity),

@@ -37,6 +37,7 @@ fun AnimatedFileImage(
     modifier: Modifier = Modifier,
     blurRadiusPx: Float = 0f,
     contentDescription: String? = null,
+    scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP,
 ) {
     val drawable by produceState<Drawable?>(initialValue = null, file.path, file.lastModified()) {
         value = withContext(Dispatchers.IO) {
@@ -57,7 +58,7 @@ fun AnimatedFileImage(
         modifier = modifier,
         factory = { ctx ->
             ImageView(ctx).apply {
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                this.scaleType = scaleType
                 this.contentDescription = contentDescription
             }
         },

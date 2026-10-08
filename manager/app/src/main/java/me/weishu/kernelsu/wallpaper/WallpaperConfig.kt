@@ -162,11 +162,11 @@ object WallpaperConfig {
      * image, because the theme is global even though the painted image is per page.
      */
     val isActive: Boolean
-        get() = enabled && if (multiBackgroundEnabled) {
+        get() = if (multiBackgroundEnabled) {
             listOf(homeBackgroundUri, superuserBackgroundUri, moduleBackgroundUri, settingsBackgroundUri)
                 .any { !it.isNullOrEmpty() }
         } else {
-            !uri.isNullOrEmpty()
+            enabled && !uri.isNullOrEmpty()
         }
 
     /** Background URI to paint for [page] (0..3). In multi mode only that page's own URI applies. */

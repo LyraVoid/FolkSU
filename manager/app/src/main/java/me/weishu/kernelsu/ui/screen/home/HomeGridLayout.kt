@@ -172,7 +172,11 @@ private fun GridStatusCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (backgroundUri != null) {
-                SurfaceBackgroundImage(uri = backgroundUri, surface = workCardSurface)
+                SurfaceBackgroundImage(
+                    uri = backgroundUri,
+                    surface = workCardSurface,
+                    contentScale = ContentScale.FillWidth,
+                )
             }
             Column(
                 modifier = Modifier
