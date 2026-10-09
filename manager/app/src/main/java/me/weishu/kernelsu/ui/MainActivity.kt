@@ -71,6 +71,9 @@ import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.ui.component.bottombar.BottomBar
 import me.weishu.kernelsu.ui.component.bottombar.FloatingBar
 import me.weishu.kernelsu.ui.component.bottombar.FloatingBarConfig
+import me.weishu.kernelsu.ui.component.bottombar.LocalFloatingBarReservedHeight
+import me.weishu.kernelsu.ui.component.bottombar.LocalFloatingBarVisible
+import me.weishu.kernelsu.ui.component.bottombar.LocalIsFloatingNavMode
 import me.weishu.kernelsu.ui.component.bottombar.MainPagerState
 import me.weishu.kernelsu.ui.component.bottombar.NavMode
 import me.weishu.kernelsu.ui.component.bottombar.NavModeConfig
@@ -460,21 +463,29 @@ fun MainScreen(
                     .fillMaxSize()
                     .nestedScroll(floatingBarVisibility.connection)
             ) {
-                pagerContent(
-                    floatingBarReservedHeight(floatingBarCompact, floatingBarStyle) +
-                        WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                )
-                AnimatedVisibility(
-                    visible = floatingBarVisible,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                val floatingBarReserved =
+                    floatingBarReservedHeight(floatingBarCompact, floatingBarStyle)
+                CompositionLocalProvider(
+                    LocalIsFloatingNavMode provides true,
+                    LocalFloatingBarVisible provides floatingBarVisible,
+                    LocalFloatingBarReservedHeight provides floatingBarReserved,
                 ) {
-                    FloatingBar(
-                        navigationBadge = navigationBadge,
-                        liquidState = floatingLiquidState,
-                        onUserInteraction = { floatingBarVisibility.onUserInteraction() },
+                    pagerContent(
+                        floatingBarReserved +
+                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     )
+                    AnimatedVisibility(
+                        visible = floatingBarVisible,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    ) {
+                        FloatingBar(
+                            navigationBadge = navigationBadge,
+                            liquidState = floatingLiquidState,
+                            onUserInteraction = { floatingBarVisibility.onUserInteraction() },
+                        )
+                    }
                 }
             }
         } else {
