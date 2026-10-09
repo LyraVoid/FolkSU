@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -64,6 +65,10 @@ object RootShell {
         /** The build currently in progress, shared by every concurrent caller. */
         @Volatile
         var inFlight: Deferred<Shell?>? = null
+
+        /** The single background retry for this slot, if one is scheduled. */
+        @Volatile
+        var retryJob: Job? = null
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -86,8 +91,6 @@ object RootShell {
         val s = slot(globalMnt)
         return if (ready(s) != null) RootShellStatus.Ready else s.status
     }
-
-    fun peek(globalMnt: Boolean = false): Shell? = ready(slot(globalMnt))
 
     /**
      * Blocking accessor for legacy synchronous call sites. It never builds on the main thread:
@@ -153,13 +156,16 @@ object RootShell {
             ready(s)?.let { return it }
 
             val now = SystemClock.elapsedRealtime()
-            // Still inside the backoff window: serve the stale shell (if any) instead of hammering.
-            if (s.shell != null && now - s.lastAttemptElapsed < cooldownFor(s)) {
+            // Still inside the backoff window: do not hammer the driver. This must not depend on
+            // s.shell, because a failed probe deliberately does not store any shell.
+            if (s.lastAttemptElapsed != 0L && now - s.lastAttemptElapsed < cooldownFor(s)) {
                 return s.shell
             }
 
             val existing = s.inFlight
-            if (existing != null && existing.isActive) {
+            // A LAZY Deferred is still in the New state and therefore not "active"; only
+            // isCompleted reliably tells whether the shared build has finished.
+            if (existing != null && !existing.isCompleted) {
                 return@synchronized existing
             }
 
@@ -175,7 +181,7 @@ object RootShell {
                     null
                 }
                 publish(s, globalMnt, built)
-                if (ready(s) == null) scheduleRetry(globalMnt, s)
+                if (ready(s) == null) ensureRetryLoop(s, globalMnt)
                 built
             }
             build.invokeOnCompletion {
@@ -188,13 +194,19 @@ object RootShell {
         return deferred.await()
     }
 
-    /** One bounded backoff retry, scheduled off the caller so a failure cannot spin. */
-    private fun scheduleRetry(globalMnt: Boolean, s: Slot) {
-        if (s.consecutiveFailures > MAX_CONSECUTIVE_FAILURES) return
-        val delayMs = cooldownFor(s)
-        scope.launch {
-            delay(delayMs)
-            if (ready(s) == null) ensure(globalMnt)
+    /**
+     * A single bounded background retry loop per slot. It retries with backoff until a root shell
+     * is ready or the failure budget is exhausted, so repeated failures cannot pile up work.
+     */
+    private fun ensureRetryLoop(s: Slot, globalMnt: Boolean) {
+        synchronized(s.mutex) {
+            if (s.retryJob?.isActive == true) return
+            s.retryJob = scope.launch {
+                while (ready(s) == null && s.consecutiveFailures <= MAX_CONSECUTIVE_FAILURES) {
+                    delay(cooldownFor(s))
+                    ensure(globalMnt)
+                }
+            }
         }
     }
 
@@ -207,7 +219,8 @@ object RootShell {
                 s.status = RootShellStatus.Ready
                 s.consecutiveFailures = 0
             } else {
-                // Never store a non-root fallback as the result: record the failure and retry.
+                // Never store a non-root fallback as the result: release it and record the failure.
+                shell?.let { runCatching { it.close() } }
                 s.status = RootShellStatus.Unavailable
                 s.consecutiveFailures =
                     (s.consecutiveFailures + 1).coerceAtMost(MAX_CONSECUTIVE_FAILURES + 1)
