@@ -32,6 +32,7 @@ struct dynamic_manager_sign {
     u32 size;
     u32 version_code;
     char hash[65];
+    bool matched; /* a scanned app already used this sign (run-local) */
 };
 
 struct dynamic_manager_app {
@@ -308,7 +309,7 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
                             bool *need_rescan)
 {
     u32 i;
-    bool matched = false;
+    bool unmatched = false;
     u32 valid_count = 0;
 
     if (need_rescan)
@@ -353,13 +354,32 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
             if (sign) {
                 app->trusted = true;
                 app->version_code = sign->version_code;
-                matched = true;
+                sign->matched = true;
             }
         }
     }
+
+    /*
+     * Trigger a scan when any configured sign has no matching app yet, so a
+     * manager added after another one is still discovered. A single already
+     * matched sign must not suppress scanning for the new ones.
+     */
+    {
+        int bucket;
+        struct dynamic_manager_sign *sign;
+
+        hash_for_each(dynamic_manager_signs, bucket, sign, node)
+        {
+            if (!sign->matched) {
+                unmatched = true;
+                break;
+            }
+        }
+    }
+
     rebuild_trusted_cache_locked();
 
-    if (valid_count && !matched && need_rescan)
+    if (valid_count && unmatched && need_rescan)
         *need_rescan = true;
 
     mutex_unlock(&dynamic_manager_lock);
