@@ -48,9 +48,6 @@ data class SurfacePhoto(
     }
 }
 
-/** Minimum scrim under over-photo content, so even a no-dim photo gets some separation. */
-private const val PhotoScrimFloor = 0.2f
-
 /** Content colour for light photos; white is used for dark ones. */
 private val PhotoForegroundDark = Color(0xFF141218)
 
@@ -107,8 +104,9 @@ private fun averageLuminance(bitmap: Bitmap): Float {
     return if (count == 0) 0f else (sum / count).toFloat()
 }
 
+/** Scrim alpha: the surface's own dim, honoured exactly so dim 0 draws no scrim. */
 private fun scrimAlpha(surface: SurfaceConfig, isDark: Boolean): Float =
-    surface.effectiveDim(isDark).coerceAtLeast(PhotoScrimFloor).coerceAtMost(1f)
+    surface.effectiveDim(isDark).coerceIn(0f, 1f)
 
 /** Whether the composited photo is light enough to need dark content. */
 internal fun SurfacePhoto.usesDarkContent(surface: SurfaceConfig, isDark: Boolean): Boolean {
