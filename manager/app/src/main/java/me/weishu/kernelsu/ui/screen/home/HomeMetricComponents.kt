@@ -67,11 +67,8 @@ internal fun StatusCircle(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMediumEmphasized,
-            color = if (LocalHomeTileCardOverImage.current) {
-                Color.White.copy(alpha = 0.8f)
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = LocalHomeTileCardContentColor.current?.copy(alpha = 0.8f)
+                ?: MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -124,11 +121,8 @@ internal fun MetricBar(
             Text(
                 text = value,
                 style = FolkType.Summary,
-                color = if (LocalHomeTileCardOverImage.current) {
-                    Color.White.copy(alpha = 0.8f)
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
+                color = LocalHomeTileCardContentColor.current?.copy(alpha = 0.8f)
+                    ?: MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(Modifier.height(8.dp))

@@ -23,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -85,17 +84,17 @@ internal fun HomeFactRow(
     label: String,
     value: String,
 ) {
-    val overImage = LocalHomeTileCardOverImage.current
+    val overColor = LocalHomeTileCardContentColor.current
     Row(verticalAlignment = Alignment.Top) {
         Text(
             text = "$label: ",
             style = FolkType.Summary,
-            color = if (overImage) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = overColor?.copy(alpha = 0.8f) ?: MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = value,
             style = FolkType.Summary.copy(fontWeight = FontWeight.Medium),
-            color = if (overImage) Color.White else MaterialTheme.colorScheme.onSurface,
+            color = overColor ?: MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
     }

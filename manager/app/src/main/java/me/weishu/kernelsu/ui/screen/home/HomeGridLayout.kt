@@ -126,10 +126,12 @@ private fun GridStatusCard(
     val notInstalled = !ksuActive && state.kernelVersion.isGKI()
 
     val workCardSurface = WallpaperConfig.workCardSurface
+    val workCardPhoto = rememberSurfacePhoto(workCardSurface.imageUri.takeIf { workCardSurface.hasImage })
     val workCardStyle = HomeWorkCardControl.style(
         layout = HomeWorkCardLayout.Grid,
         working = ksuActive,
         surface = workCardSurface,
+        photo = workCardPhoto,
     )
     val containerColor = workCardStyle.containerColor
     val contentColor = workCardStyle.contentColor ?: contentColorFor(containerColor)
@@ -174,7 +176,7 @@ private fun GridStatusCard(
         ) {
             if (backgroundUri != null) {
                 SurfaceBackgroundImage(
-                    uri = backgroundUri,
+                    photo = workCardPhoto,
                     surface = workCardSurface,
                     modifier = Modifier.matchParentSize(),
                 )

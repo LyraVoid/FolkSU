@@ -35,6 +35,7 @@ import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.SurfaceOptionsDialog
 import me.weishu.kernelsu.ui.theme.FolkType
+import me.weishu.kernelsu.ui.theme.isInDarkTheme
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 import me.weishu.kernelsu.wallpaper.surface.SurfaceBounds
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
@@ -129,15 +130,18 @@ private fun DashboardHeroCard(
         else -> stringResource(R.string.home_unsupported_reason)
     }
     val jailbreak = notInstalled && state.isSELinuxPermissive
-    val overImage = surface.hasImage
-    val backgroundUri = if (overImage) surface.imageUri else null
-    val subColor = if (overImage) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val backgroundUri = surface.imageUri.takeIf { surface.hasImage }
+    val photo = rememberSurfacePhoto(backgroundUri)
+    // Once the bitmap is decoded, drop to the photo palette; before that keep the opaque card.
+    val overImage = backgroundUri != null && photo.ready
+    val photoContentColor = if (overImage) photo.contentColor(surface, isInDarkTheme()) else null
+    val subColor = photoContentColor?.copy(alpha = 0.8f) ?: MaterialTheme.colorScheme.onSurfaceVariant
     var showOptions by remember { mutableStateOf(false) }
 
     HomeCard(
         modifier = modifier.fillMaxWidth(),
         containerColor = if (overImage) Color.Transparent else MaterialTheme.colorScheme.surfaceBright,
-        contentColor = if (overImage) Color.White else contentColorFor(MaterialTheme.colorScheme.surfaceBright),
+        contentColor = photoContentColor ?: contentColorFor(MaterialTheme.colorScheme.surfaceBright),
         wallpaperRole = if (overImage) null else WallpaperSurfaceRole.Group,
         onClick = {
             if (!state.isLateLoadMode) {
@@ -153,12 +157,12 @@ private fun DashboardHeroCard(
         ) {
             if (backgroundUri != null) {
                 SurfaceBackgroundImage(
-                    uri = backgroundUri,
+                    photo = photo,
                     surface = surface,
                     modifier = Modifier.matchParentSize(),
                 )
             }
-            CompositionLocalProvider(LocalHomeTileCardOverImage provides overImage) {
+            CompositionLocalProvider(LocalHomeTileCardContentColor provides photoContentColor) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -241,11 +245,8 @@ private fun HeroFact(
         Text(
             text = label,
             style = FolkType.Caption,
-            color = if (LocalHomeTileCardOverImage.current) {
-                Color.White.copy(alpha = 0.8f)
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = LocalHomeTileCardContentColor.current?.copy(alpha = 0.8f)
+                ?: MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

@@ -30,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.theme.FolkShape
+import me.weishu.kernelsu.ui.theme.isInDarkTheme
 import me.weishu.kernelsu.wallpaper.WallpaperSurfaceRole
 import me.weishu.kernelsu.wallpaper.surface.SurfaceBounds
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
@@ -60,10 +61,10 @@ internal fun HomeCard(
 }
 
 /**
- * Whether the enclosing [HomeTileCard] is painting a photo behind its content, so nested rows can
- * switch to a high-contrast palette.
+ * The content colour to use while the enclosing [HomeTileCard] paints a photo behind its content,
+ * or null when the card is opaque. Nested rows fall back to the semantic on-surface colours.
  */
-internal val LocalHomeTileCardOverImage = staticCompositionLocalOf { false }
+internal val LocalHomeTileCardContentColor = staticCompositionLocalOf<Color?> { null }
 
 /**
  * One card of the Focus board: the icon-and-title header, a hairline, then the rows. The action
@@ -84,12 +85,16 @@ internal fun HomeTileCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val backgroundUri = background?.imageUri?.takeIf { it.isNotEmpty() }
-    val overImage = backgroundUri != null
+    val photo = rememberSurfacePhoto(backgroundUri)
+    // Only drop to the photo palette once the bitmap is actually decoded; until then the card keeps
+    // its opaque semantic colours instead of white text over nothing.
+    val overImage = background != null && backgroundUri != null && photo.ready
+    val photoContentColor = if (overImage) photo.contentColor(background, isInDarkTheme()) else null
     val containerColor = if (overImage) Color.Transparent else MaterialTheme.colorScheme.surfaceBright
     HomeCard(
         modifier = modifier,
         containerColor = containerColor,
-        contentColor = if (overImage) Color.White else contentColorFor(containerColor),
+        contentColor = photoContentColor ?: contentColorFor(containerColor),
         wallpaperRole = if (overImage) null else WallpaperSurfaceRole.Group,
         onLongClick = onLongClick,
     ) {
@@ -102,19 +107,19 @@ internal fun HomeTileCard(
         ) {
             if (background != null && backgroundUri != null) {
                 SurfaceBackgroundImage(
-                    uri = backgroundUri,
+                    photo = photo,
                     surface = background,
                     modifier = Modifier.matchParentSize(),
                 )
             }
-            CompositionLocalProvider(LocalHomeTileCardOverImage provides overImage) {
+            CompositionLocalProvider(LocalHomeTileCardContentColor provides photoContentColor) {
                 Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val headerIconModifier = Modifier.size(32.dp)
-                        val headerIconTint = if (overImage) Color.White else MaterialTheme.colorScheme.primary
+                        val headerIconTint = photoContentColor ?: MaterialTheme.colorScheme.primary
                         when {
                             iconRes != null -> Icon(
                                 painter = painterResource(iconRes),
@@ -142,11 +147,8 @@ internal fun HomeTileCard(
                     }
                     HorizontalDivider(
                         modifier = Modifier.padding(vertical = 16.dp),
-                        color = if (overImage) {
-                            Color.White.copy(alpha = 0.3f)
-                        } else {
-                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        },
+                        color = photoContentColor?.copy(alpha = 0.3f)
+                            ?: MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         content()
