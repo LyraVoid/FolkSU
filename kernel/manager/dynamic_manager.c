@@ -1,13 +1,20 @@
 #include <linux/compiler.h>
+#include <linux/cred.h>
 #include <linux/errno.h>
+#include <linux/fs.h>
 #include <linux/hashtable.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/mutex.h>
+#include <linux/pid.h>
+#include <linux/rcupdate.h>
+#include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/task_work.h>
 
 #include "klog.h" // IWYU pragma: keep
+#include "ksu.h"
 #include "manager/apk_sign.h"
 #include "manager/dynamic_manager.h"
 #include "manager/manager_identity.h"
@@ -16,9 +23,14 @@
 
 #define KSU_DYNAMIC_MANAGER_HASH_BITS 6
 
+#define KERNEL_SU_DYNAMIC_MANAGER "/data/adb/ksu/dynamic_manager"
+#define DYNAMIC_MANAGER_FILE_MAGIC 0x4d554b53 /* 'KSUM', u32 */
+#define DYNAMIC_MANAGER_FILE_VERSION 1 /* u32 */
+
 struct dynamic_manager_sign {
     struct hlist_node node;
     u32 size;
+    u32 version_code;
     char hash[65];
 };
 
@@ -26,9 +38,17 @@ struct dynamic_manager_app {
     struct hlist_node node;
     uid_t appid;
     u32 size;
+    u32 version_code;
     char hash[65];
     bool preset;
     bool trusted;
+};
+
+/* Fixed on-disk record shared by the persist and load paths. */
+struct dynamic_manager_disk_sign {
+    u32 size;
+    u32 version_code;
+    char hash[65];
 };
 
 static DEFINE_MUTEX(dynamic_manager_lock);
@@ -270,8 +290,14 @@ void ksu_dynamic_manager_note_scanned(uid_t appid, const struct apk_sign_match *
     strscpy(app->hash, match->hash, sizeof(app->hash));
     app->preset = app->preset || match->preset;
 
-    trusted = match->trusted || find_sign_locked(app->size, app->hash) != NULL;
-    app->trusted = app->trusted || trusted;
+    {
+        struct dynamic_manager_sign *sign = find_sign_locked(app->size, app->hash);
+
+        trusted = match->trusted || sign != NULL;
+        app->trusted = app->trusted || trusted;
+        if (sign)
+            app->version_code = sign->version_code;
+    }
 
     rebuild_trusted_cache_locked();
 out:
@@ -308,6 +334,7 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
         }
 
         sign->size = signs[i].size;
+        sign->version_code = signs[i].version_code;
         strscpy(sign->hash, normalized_hash, sizeof(sign->hash));
         hash_add(dynamic_manager_signs, &sign->node, sign_key(sign->size, sign->hash));
         valid_count++;
@@ -319,9 +346,13 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
 
         hash_for_each(dynamic_manager_apps, bucket, app, node)
         {
+            struct dynamic_manager_sign *sign =
+                find_sign_locked(app->size, app->hash);
+
             app->trusted = false;
-            if (find_sign_locked(app->size, app->hash)) {
+            if (sign) {
                 app->trusted = true;
+                app->version_code = sign->version_code;
                 matched = true;
             }
         }
@@ -347,4 +378,169 @@ bool ksu_dynamic_manager_is_trusted_sign(u32 size, const char *hash)
     mutex_unlock(&dynamic_manager_lock);
 
     return result;
+}
+
+bool ksu_dynamic_manager_version_code(uid_t appid, u32 *out)
+{
+    struct dynamic_manager_app *app;
+    bool found = false;
+
+    if (!out)
+        return false;
+
+    mutex_lock(&dynamic_manager_lock);
+    app = find_app_locked(appid % KSU_PER_USER_RANGE);
+    if (app && app->trusted && app->version_code) {
+        *out = app->version_code;
+        found = true;
+    }
+    mutex_unlock(&dynamic_manager_lock);
+
+    return found;
+}
+
+static void do_persist_dynamic_manager(struct callback_head *_cb)
+{
+    u32 magic = DYNAMIC_MANAGER_FILE_MAGIC;
+    u32 version = DYNAMIC_MANAGER_FILE_VERSION;
+    struct dynamic_manager_sign *sign;
+    loff_t off = 0;
+    int bucket;
+
+    const struct cred *saved = override_creds(ksu_cred);
+    struct file *fp = filp_open(KERNEL_SU_DYNAMIC_MANAGER,
+                                O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (IS_ERR(fp)) {
+        pr_err("dynamic_manager: create file failed: %ld\n", PTR_ERR(fp));
+        goto out;
+    }
+
+    if (kernel_write(fp, &magic, sizeof(magic), &off) != sizeof(magic)) {
+        pr_err("dynamic_manager: write magic failed\n");
+        goto close_file;
+    }
+    if (kernel_write(fp, &version, sizeof(version), &off) != sizeof(version)) {
+        pr_err("dynamic_manager: write version failed\n");
+        goto close_file;
+    }
+
+    mutex_lock(&dynamic_manager_lock);
+    hash_for_each (dynamic_manager_signs, bucket, sign, node) {
+        struct dynamic_manager_disk_sign disk = {
+            .size = sign->size,
+            .version_code = sign->version_code,
+        };
+
+        strscpy(disk.hash, sign->hash, sizeof(disk.hash));
+        kernel_write(fp, &disk, sizeof(disk), &off);
+    }
+    mutex_unlock(&dynamic_manager_lock);
+
+close_file:
+    filp_close(fp, 0);
+out:
+    revert_creds(saved);
+    kfree(_cb);
+}
+
+void ksu_dynamic_manager_persist(void)
+{
+    struct task_struct *tsk;
+    struct callback_head *cb;
+
+    rcu_read_lock();
+    tsk = get_pid_task(find_vpid(1), PIDTYPE_PID);
+    if (!tsk) {
+        rcu_read_unlock();
+        pr_err("dynamic_manager: find init task err\n");
+        return;
+    }
+    rcu_read_unlock();
+
+    cb = kzalloc(sizeof(*cb), GFP_KERNEL);
+    if (!cb) {
+        pr_err("dynamic_manager: alloc cb err\n");
+        goto put_task;
+    }
+    cb->func = do_persist_dynamic_manager;
+    if (task_work_add(tsk, cb, TWA_RESUME)) {
+        kfree(cb);
+        pr_warn("dynamic_manager: add task_work failed\n");
+    }
+
+put_task:
+    put_task_struct(tsk);
+}
+
+void ksu_dynamic_manager_load(void)
+{
+    struct dynamic_manager_disk_sign disk;
+    struct file *fp;
+    loff_t off = 0;
+    u32 magic;
+    u32 version;
+
+    fp = filp_open(KERNEL_SU_DYNAMIC_MANAGER, O_RDONLY, 0);
+    if (IS_ERR(fp)) {
+        pr_info("dynamic_manager: no persisted list: %ld\n", PTR_ERR(fp));
+        return;
+    }
+
+    if (kernel_read(fp, &magic, sizeof(magic), &off) != sizeof(magic) ||
+        magic != DYNAMIC_MANAGER_FILE_MAGIC) {
+        pr_err("dynamic_manager: invalid file magic\n");
+        goto exit;
+    }
+
+    if (kernel_read(fp, &version, sizeof(version), &off) != sizeof(version) ||
+        version != DYNAMIC_MANAGER_FILE_VERSION) {
+        pr_err("dynamic_manager: invalid file version\n");
+        goto exit;
+    }
+
+    mutex_lock(&dynamic_manager_lock);
+    clear_signs_locked();
+
+    while (true) {
+        struct dynamic_manager_sign *sign;
+        char normalized_hash[65];
+
+        if (kernel_read(fp, &disk, sizeof(disk), &off) != sizeof(disk))
+            break;
+
+        if (!disk.size || !normalize_hash(normalized_hash, disk.hash))
+            continue;
+
+        sign = kzalloc(sizeof(*sign), GFP_KERNEL);
+        if (!sign)
+            break;
+
+        sign->size = disk.size;
+        sign->version_code = disk.version_code;
+        strscpy(sign->hash, normalized_hash, sizeof(sign->hash));
+        hash_add(dynamic_manager_signs, &sign->node,
+                 sign_key(sign->size, sign->hash));
+    }
+
+    {
+        int bucket;
+        struct dynamic_manager_app *app;
+
+        hash_for_each(dynamic_manager_apps, bucket, app, node)
+        {
+            struct dynamic_manager_sign *sign =
+                find_sign_locked(app->size, app->hash);
+
+            app->trusted = sign != NULL;
+            if (sign)
+                app->version_code = sign->version_code;
+        }
+    }
+    rebuild_trusted_cache_locked();
+    mutex_unlock(&dynamic_manager_lock);
+
+    pr_info("dynamic_manager: restored persisted list\n");
+
+exit:
+    filp_close(fp, 0);
 }

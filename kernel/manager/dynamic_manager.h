@@ -10,6 +10,11 @@ struct apk_sign_match;
 void ksu_dynamic_manager_init(void);
 void ksu_dynamic_manager_exit(void);
 
+/* Persist/restore the trusted signature list in the kernel, so it survives a
+ * boot even when a third-party manager's ksud owns /data/adb/ksud. */
+void ksu_dynamic_manager_persist(void);
+void ksu_dynamic_manager_load(void);
+
 /* Hot-path queries (must not take the dynamic-manager mutex). */
 bool ksu_is_dynamic_manager_uid(uid_t uid);
 bool ksu_has_dynamic_manager(void);
@@ -31,5 +36,8 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs,
 
 /* Is (size, hash) in the user-managed trusted signature list? */
 bool ksu_dynamic_manager_is_trusted_sign(u32 size, const char *hash);
+
+/* Reported versionCode for a trusted dynamic manager appid, if known. */
+bool ksu_dynamic_manager_version_code(uid_t appid, u32 *out);
 
 #endif /* __KSU_H_DYNAMIC_MANAGER */

@@ -164,6 +164,7 @@ int __init kernelsu_init(void)
         ksu_throne_tracker_init();
 #ifdef CONFIG_KSU_DYNAMIC_MANAGER
         ksu_dynamic_manager_init();
+        ksu_dynamic_manager_load();
 #endif
         ksu_observer_init();
         ksu_file_wrapper_init();

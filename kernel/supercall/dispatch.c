@@ -62,6 +62,16 @@ static int do_get_info(void __user *arg)
     cmd.features = KSU_FEATURE_MAX;
     cmd.uapi_version = KERNEL_SU_UAPI_VERSION;
 
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    {
+        u32 dynamic_version;
+
+        if (ksu_dynamic_manager_version_code(current_uid().val,
+                                             &dynamic_version))
+            cmd.version = dynamic_version;
+    }
+#endif
+
     if (copy_to_user(arg, &cmd, sizeof(cmd))) {
         pr_err("get_version: copy_to_user failed\n");
         return -EFAULT;
@@ -91,6 +101,16 @@ static int do_get_info_legacy(void __user *arg)
     cmd.flags |= KSU_GET_INFO_FLAG_PR_BUILD;
 #endif
     cmd.features = KSU_FEATURE_MAX;
+
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+    {
+        u32 dynamic_version;
+
+        if (ksu_dynamic_manager_version_code(current_uid().val,
+                                             &dynamic_version))
+            cmd.version = dynamic_version;
+    }
+#endif
 
     if (copy_to_user(arg, &cmd, sizeof(cmd))) {
         pr_err("get_version: copy_to_user failed\n");
@@ -737,8 +757,11 @@ static int do_set_dynamic_managers(void __user *arg)
     ret = ksu_dynamic_manager_set(signs, cmd.count, &need_rescan);
     kfree(signs);
 
-    if (ret == 0 && need_rescan)
-        track_throne_force();
+    if (ret == 0) {
+        ksu_dynamic_manager_persist();
+        if (need_rescan)
+            track_throne_force();
+    }
 
     return ret;
 }

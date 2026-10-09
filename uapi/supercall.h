@@ -158,6 +158,7 @@ struct ksu_get_sulog_fd_cmd {
 
 struct ksu_dynamic_manager_sign {
     __u32 size; /* Input: certificate length */
+    __u32 version_code; /* Input: manager APK versionCode (0 if unknown) */
     char hash[65]; /* Input: lowercase hex SHA-256 of the certificate */
 };
 
