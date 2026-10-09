@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -135,6 +136,7 @@ data class WallpaperScreenActions(
     val onClearSurfaceImage: (SurfaceId) -> Unit,
     val onExport: () -> Unit,
     val onImport: () -> Unit,
+    val onResetTheme: () -> Unit,
 )
 
 @Composable
@@ -152,6 +154,7 @@ fun WallpaperScreen() {
     var pendingPage by remember { mutableIntStateOf(NO_PAGE) }
     var pendingPageCrop by remember { mutableStateOf<Uri?>(null) }
     var showPageCropDialog by remember { mutableStateOf(false) }
+    var showResetDialog by remember { mutableStateOf(false) }
 
     val persist: (Uri) -> Unit = { picked ->
         scope.launch {
@@ -190,6 +193,17 @@ fun WallpaperScreen() {
             isSaving = false
             snackbarHost.showSnackbar(
                 resources.getString(if (ok) R.string.wallpaper_saved else R.string.wallpaper_save_failed)
+            )
+        }
+    }
+
+    val resetTheme: () -> Unit = {
+        scope.launch {
+            val ok = FolkThemeIO.resetTheme(context)
+            snackbarHost.showSnackbar(
+                resources.getString(
+                    if (ok) R.string.wallpaper_theme_reset else R.string.wallpaper_theme_reset_failed
+                )
             )
         }
     }
@@ -334,6 +348,27 @@ fun WallpaperScreen() {
         )
     }
 
+    if (showResetDialog) {
+        AlertDialog(
+            onDismissRequest = { showResetDialog = false },
+            title = { Text(stringResource(R.string.wallpaper_reset_theme)) },
+            text = { Text(stringResource(R.string.wallpaper_reset_theme_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResetDialog = false
+                    resetTheme()
+                }) {
+                    Text(stringResource(R.string.wallpaper_reset_theme))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetDialog = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+        )
+    }
+
     val state = WallpaperUiState(
         enabled = WallpaperConfig.enabled,
         hasImage = !WallpaperConfig.uri.isNullOrEmpty(),
@@ -443,6 +478,7 @@ fun WallpaperScreen() {
         },
         onExport = { exportLauncher.launch(FolkThemeIO.FILE_NAME) },
         onImport = { importLauncher.launch("*/*") },
+        onResetTheme = { showResetDialog = true },
     )
 
     WallpaperScreenMaterial(state, actions, snackbarHost)
@@ -669,6 +705,14 @@ fun WallpaperScreenMaterial(
                             headlineContent = { Text(stringResource(R.string.wallpaper_import)) },
                             supportingContent = { Text(stringResource(R.string.wallpaper_import_summary)) },
                             leadingContent = { Icon(Icons.Filled.FileUpload, null) },
+                        )
+                    }
+                    add {
+                        SegmentedListItem(
+                            onClick = actions.onResetTheme,
+                            headlineContent = { Text(stringResource(R.string.wallpaper_reset_theme)) },
+                            supportingContent = { Text(stringResource(R.string.wallpaper_reset_theme_summary)) },
+                            leadingContent = { Icon(Icons.Filled.RestartAlt, null) },
                         )
                     }
                 },

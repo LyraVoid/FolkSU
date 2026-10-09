@@ -477,6 +477,11 @@
     <string name="wallpaper_export_failed">Export failed</string>
     <string name="wallpaper_import_success">Theme package imported</string>
     <string name="wallpaper_import_failed">Import failed</string>
+    <string name="wallpaper_reset_theme">Restore default theme</string>
+    <string name="wallpaper_reset_theme_summary">Clear wallpapers, font, home layout and navigation icons</string>
+    <string name="wallpaper_reset_theme_confirm">Restore the default theme? This clears custom wallpapers, font and navigation icons.</string>
+    <string name="wallpaper_theme_reset">Theme reset to default</string>
+    <string name="wallpaper_theme_reset_failed">Failed to reset theme</string>
     <string name="wallpaper_crop_title">Crop image</string>
     <string name="wallpaper_crop_message">Crop the image to fit the screen, or use it as is?</string>
     <string name="wallpaper_crop_confirm">Crop</string>

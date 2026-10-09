@@ -57,9 +57,16 @@ object SurfaceStore {
         }
     }
 
-    /** Drops the in-memory values, so the next read sees the defaults again. */
+    /**
+     * Resets every registered surface to its type defaults, in memory. The map is repopulated
+     * rather than emptied so that a following [save] persists the defaults instead of skipping the
+     * absent entries.
+     */
     fun reset() {
-        configs.clear()
+        SurfaceRegistry.all.forEach { descriptor ->
+            if (descriptor.fields.isEmpty() && descriptor.flags.isEmpty()) return@forEach
+            configs[descriptor.id] = SurfaceConfig()
+        }
     }
 
     /** Storage key for [field] in [id]; also used as the theme json key. */

@@ -37,7 +37,8 @@ import javax.crypto.spec.SecretKeySpec
  *  - [base]: the file-name stem inside the zip (`<base>.<ext>`), which also identifies the asset
  *    when importing;
  *  - [writeConfig]: the `theme.json` keys this asset contributes on export;
- *  - [apply]: reading those keys back and applying [file] (or clearing the asset when it is null).
+ *  - [apply]: reading those keys back and applying [file] (or clearing the asset when it is null);
+ *  - [reset]: dropping everything this asset owns back to the factory default.
  */
 internal interface ThemedAsset {
     val base: String
@@ -47,6 +48,9 @@ internal interface ThemedAsset {
     fun writeConfig(json: JSONObject)
 
     suspend fun apply(context: Context, json: JSONObject, file: File?)
+
+    /** Restores this asset to its factory default: removes its file and reverts its settings. */
+    suspend fun reset(context: Context)
 }
 
 /**
@@ -66,6 +70,9 @@ internal interface ThemedAssetGroup {
      * that was extracted for it.
      */
     suspend fun apply(context: Context, json: JSONObject, imported: Map<String, File>)
+
+    /** Restores this group to its factory default: removes its files and reverts its settings. */
+    suspend fun reset(context: Context)
 }
 
 /**
@@ -123,6 +130,10 @@ private object MainWallpaperAsset : ThemedAsset {
         WallpaperConfig.updateUseWallpaperColor(
             json.optBoolean("wallpaper_use_color", WallpaperConfig.useWallpaperColor)
         )
+    }
+
+    override suspend fun reset(context: Context) {
+        WallpaperManager.clear(context)
     }
 }
 
@@ -248,6 +259,10 @@ private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) 
             )
         }
     }
+
+    override suspend fun reset(context: Context) {
+        if (ownsImage) WallpaperManager.clearSurfaceImage(context, id)
+    }
 }
 
 /**
@@ -283,6 +298,10 @@ private object HomeBackgroundAsset : ThemedAsset {
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
         applyPageBackground(context, WallpaperConfig.PAGE_HOME, file)
     }
+
+    override suspend fun reset(context: Context) {
+        WallpaperManager.clearPageBackground(context, WallpaperConfig.PAGE_HOME)
+    }
 }
 
 private object SuperuserBackgroundAsset : ThemedAsset {
@@ -295,6 +314,10 @@ private object SuperuserBackgroundAsset : ThemedAsset {
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
         applyPageBackground(context, WallpaperConfig.PAGE_SUPERUSER, file)
+    }
+
+    override suspend fun reset(context: Context) {
+        WallpaperManager.clearPageBackground(context, WallpaperConfig.PAGE_SUPERUSER)
     }
 }
 
@@ -309,6 +332,10 @@ private object ModuleBackgroundAsset : ThemedAsset {
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
         applyPageBackground(context, WallpaperConfig.PAGE_MODULE, file)
     }
+
+    override suspend fun reset(context: Context) {
+        WallpaperManager.clearPageBackground(context, WallpaperConfig.PAGE_MODULE)
+    }
 }
 
 private object SettingsBackgroundAsset : ThemedAsset {
@@ -321,6 +348,10 @@ private object SettingsBackgroundAsset : ThemedAsset {
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
         applyPageBackground(context, WallpaperConfig.PAGE_SETTINGS, file)
+    }
+
+    override suspend fun reset(context: Context) {
+        WallpaperManager.clearPageBackground(context, WallpaperConfig.PAGE_SETTINGS)
     }
 }
 
@@ -356,6 +387,10 @@ private object FontAsset : ThemedAsset {
             file != null -> FontConfig.applyCustomFont(context, file)
             else -> FontConfig.setFontMode(context, FontMode.APP_DEFAULT)
         }
+    }
+
+    override suspend fun reset(context: Context) {
+        FontConfig.clearFont(context)
     }
 }
 
@@ -394,6 +429,10 @@ private object HomeLayoutAsset : ThemedAsset {
             else -> return
         }
         SettingsRepositoryImpl().homeLayoutStyle = token
+    }
+
+    override suspend fun reset(context: Context) {
+        SettingsRepositoryImpl().homeLayoutStyle = HomeLayoutStyle.DEFAULT
     }
 }
 
@@ -453,6 +492,10 @@ private object NavIconsAsset : ThemedAssetGroup {
         }
         BottomBarIconConfig.isEnabled = enabled
         BottomBarIconConfig.notifyChanged()
+    }
+
+    override suspend fun reset(context: Context) {
+        BottomBarIconConfig.resetAll()
     }
 
     private fun findImported(imported: Map<String, File>, name: String): File? {
@@ -573,6 +616,22 @@ object FolkThemeIO {
             } finally {
                 dest.deleteRecursively()
             }
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Restores every themed asset to its factory default and clears the shared wallpaper config.
+     *
+     * The order matters: each asset first removes its own file and settings, then the numbers are
+     * zeroed in one go and persisted, so nothing the individual resets left behind survives.
+     */
+    suspend fun resetTheme(context: Context): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            assets.forEach { it.reset(context) }
+            groups.forEach { it.reset(context) }
+            WallpaperConfig.reset()
+            WallpaperConfig.save(context)
+            true
         }.getOrDefault(false)
     }
 

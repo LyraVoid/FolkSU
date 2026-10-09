@@ -471,6 +471,11 @@
     <string name="wallpaper_export_failed">导出失败</string>
     <string name="wallpaper_import_success">主题包已导入</string>
     <string name="wallpaper_import_failed">导入失败</string>
+    <string name="wallpaper_reset_theme">恢复默认主题</string>
+    <string name="wallpaper_reset_theme_summary">清除壁纸、字体、首页布局与导航图标</string>
+    <string name="wallpaper_reset_theme_confirm">确定要恢复默认主题吗？这会清除自定义壁纸、字体和导航图标。</string>
+    <string name="wallpaper_theme_reset">主题已恢复默认</string>
+    <string name="wallpaper_theme_reset_failed">恢复主题失败</string>
     <string name="wallpaper_crop_title">裁剪图片</string>
     <string name="wallpaper_crop_message">将图片裁剪以适配屏幕，或直接使用？</string>
     <string name="wallpaper_crop_confirm">裁剪</string>
