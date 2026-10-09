@@ -15,12 +15,13 @@
 
 #include <unistd.h>
 #include <climits>
+#include <atomic>
 #include <mutex>
 #include <sys/syscall.h>
 #include <cerrno>
 #include "ksu.h"
 
-static int fd = -1;
+static std::atomic<int> fd{-1};
 static std::mutex g_fd_mutex;
 
 static inline int scan_driver_fd() {
@@ -69,13 +70,13 @@ static inline int scan_driver_fd() {
 template<typename... Args>
 static int ksuctl(unsigned long op, Args &&... args) {
 
-    int local_fd = fd;
+    int local_fd = fd.load(std::memory_order_acquire);
     if (local_fd < 0) {
         std::lock_guard<std::mutex> lock(g_fd_mutex);
-        if (fd < 0) {
-            fd = scan_driver_fd();
+        if (fd.load(std::memory_order_relaxed) < 0) {
+            fd.store(scan_driver_fd(), std::memory_order_release);
         }
-        local_fd = fd;
+        local_fd = fd.load(std::memory_order_relaxed);
     }
 
     static_assert(sizeof...(Args) <= 1, "ioctl expects at most one extra argument");
