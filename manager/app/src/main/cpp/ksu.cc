@@ -3,6 +3,7 @@
 //
 
 #include <sys/prctl.h>
+#include <ctime>
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
@@ -76,17 +77,24 @@ static int ksuctl(unsigned long op, Args &&... args) {
 }
 
 static struct ksu_get_info_cmd g_version {};
+static bool g_version_valid = false;
+static int64_t g_version_at_ms = 0;
 
-// A driver answer that carries the MANAGER flag is cached; a negative one never is. When this
-// process is authorized only after it started (late-load, or a manager registered as the dynamic
-// manager), a cached answer without the flag would otherwise keep is_manager()/isFullFeatured()
-// false until the app is restarted.
-static bool info_is_final(const struct ksu_get_info_cmd &info) {
-    return info.version != 0 && (info.flags & KSU_GET_INFO_FLAG_MANAGER) != 0;
+// The MANAGER flag and the dynamic-manager version are mutable: a manager can be
+// authorized or revoked while this process runs. A cached answer must therefore
+// expire, or a revoked identity would stay "manager" forever. Stable fields
+// (kernel version, UAPI, feature mask) ride along in the same short-lived cache.
+static constexpr int64_t INFO_CACHE_TTL_MS = 1000;
+
+static int64_t now_ms() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return static_cast<int64_t>(ts.tv_sec) * 1000 + ts.tv_nsec / 1000000;
 }
 
 struct ksu_get_info_cmd get_info() {
-    if (!info_is_final(g_version)) {
+    int64_t now = now_ms();
+    if (!g_version_valid || now - g_version_at_ms >= INFO_CACHE_TTL_MS) {
         struct ksu_get_info_cmd info {};
         if (ksuctl(KSU_IOCTL_GET_INFO, &info) == 0) {
             g_version = info;
@@ -95,6 +103,8 @@ struct ksu_get_info_cmd get_info() {
             info.uapi_version = 0;
             g_version = info;
         }
+        g_version_valid = true;
+        g_version_at_ms = now;
     }
     return g_version;
 }

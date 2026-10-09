@@ -4,6 +4,7 @@
 #include <linux/err.h>
 #include <linux/fs.h>
 #include <linux/list.h>
+#include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/types.h>
@@ -87,6 +88,15 @@ struct apk_path_hash {
 
 static struct list_head apk_path_hash_list = LIST_HEAD_INIT(apk_path_hash_list);
 static bool ksu_force_manager_scan;
+
+/*
+ * Serializes every manager scan. The forced path (ioctl/worker) and the
+ * packages.list observer both traverse the shared apk_path_hash_list and the
+ * force flag, so they must not run concurrently. The lock also makes the
+ * forced-scan request atomic: it is set and consumed within one hold, so a
+ * concurrent observer scan cannot clear a request that just arrived.
+ */
+static DEFINE_MUTEX(throne_lock);
 
 struct my_dir_context {
     struct dir_context ctx;
@@ -281,7 +291,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
     return exist;
 }
 
-void track_throne(bool prune_only)
+static void do_track_throne(bool prune_only)
 {
     const struct cred *old_cred = override_creds(ksu_cred);
     struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
@@ -297,6 +307,7 @@ void track_throne(bool prune_only)
     loff_t pos = 0;
     loff_t line_start = 0;
     char buf[KSU_MAX_PACKAGE_NAME];
+    bool parse_ok = true;
     for (;;) {
         ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
         if (count != sizeof(chr))
@@ -323,6 +334,7 @@ void track_throne(bool prune_only)
         if (!uid || !package) {
             kfree(data);
             pr_err("update_uid: package or uid is NULL!\n");
+            parse_ok = false;
             break;
         }
 
@@ -330,6 +342,7 @@ void track_throne(bool prune_only)
         if (kstrtou32(uid, 10, &res)) {
             kfree(data);
             pr_err("update_uid: uid parse err\n");
+            parse_ok = false;
             break;
         }
         data->uid = res;
@@ -339,6 +352,17 @@ void track_throne(bool prune_only)
         line_start = pos;
     }
     filp_close(fp, 0);
+
+    /*
+     * A truncated parse (allocation or format error) yields an incomplete uid
+     * list. Acting on it could revoke the fixed manager by mistake and prune
+     * allowlist entries for apps that simply were not parsed yet, so bail out
+     * and leave the previous state untouched.
+     */
+    if (!parse_ok) {
+        pr_warn("%s: incomplete packages list, skipping manager check and prune\n", __func__);
+        goto out;
+    }
 
     // now update uid list
     struct uid_data *np;
@@ -385,10 +409,23 @@ out_revert_cred:
     revert_creds(old_cred);
 }
 
+void track_throne(bool prune_only)
+{
+    mutex_lock(&throne_lock);
+    do_track_throne(prune_only);
+    mutex_unlock(&throne_lock);
+}
+
 void track_throne_force(void)
 {
+    /*
+     * Set the force flag and consume it under the same hold so a concurrent
+     * observer scan cannot clear a request that just arrived.
+     */
+    mutex_lock(&throne_lock);
     ksu_force_manager_scan = true;
-    track_throne(false);
+    do_track_throne(false);
+    mutex_unlock(&throne_lock);
 }
 
 void __init ksu_throne_tracker_init()
@@ -400,8 +437,10 @@ void __exit ksu_throne_tracker_exit()
 {
     struct apk_path_hash *pos, *n;
 
+    mutex_lock(&throne_lock);
     list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
         list_del(&pos->list);
         kfree(pos);
     }
+    mutex_unlock(&throne_lock);
 }

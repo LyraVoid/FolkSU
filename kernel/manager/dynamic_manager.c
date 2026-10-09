@@ -58,10 +58,19 @@ static DEFINE_HASHTABLE(dynamic_manager_apps, KSU_DYNAMIC_MANAGER_HASH_BITS);
 
 /*
  * Published snapshot of trusted appids. ksu_is_dynamic_manager_uid() runs from
- * the setuid/umount paths, so readers must not take dynamic_manager_lock.
+ * the setuid/umount paths, so readers must not take dynamic_manager_lock and
+ * must never observe a half-written table. The writer builds a complete
+ * immutable snapshot and swaps it in with RCU; the old one is freed after a
+ * grace period. A failed allocation keeps the previous snapshot live instead
+ * of silently revoking every dynamic manager.
  */
-static uid_t trusted_dynamic_appids[KSU_DYNAMIC_MANAGER_MAX_APPS];
-static u32 trusted_dynamic_count;
+struct dynamic_manager_trusted {
+    u32 count;
+    uid_t appids[KSU_DYNAMIC_MANAGER_MAX_APPS];
+    struct rcu_head rcu;
+};
+
+static struct dynamic_manager_trusted __rcu *trusted_dynamic;
 
 static u32 sign_key(u32 size, const char *hash)
 {
@@ -136,13 +145,17 @@ static void clear_signs_locked(void)
 
 static void rebuild_trusted_cache_locked(void)
 {
+    struct dynamic_manager_trusted *snap;
+    struct dynamic_manager_trusted *old;
     struct dynamic_manager_app *app;
-    uid_t appids[KSU_DYNAMIC_MANAGER_MAX_APPS];
     u32 count = 0;
     int bucket;
-    u32 i;
 
-    smp_store_release(&trusted_dynamic_count, 0);
+    snap = kzalloc(sizeof(*snap), GFP_KERNEL);
+    if (!snap) {
+        pr_warn("dynamic_manager: snapshot alloc failed, keeping previous\n");
+        return;
+    }
 
     hash_for_each(dynamic_manager_apps, bucket, app, node)
     {
@@ -150,13 +163,14 @@ static void rebuild_trusted_cache_locked(void)
             continue;
         if (count >= KSU_DYNAMIC_MANAGER_MAX_APPS)
             break;
-        appids[count++] = app->appid;
+        snap->appids[count++] = app->appid;
     }
+    snap->count = count;
 
-    for (i = 0; i < count; i++)
-        WRITE_ONCE(trusted_dynamic_appids[i], appids[i]);
-
-    smp_store_release(&trusted_dynamic_count, count);
+    old = rcu_dereference_protected(trusted_dynamic, true);
+    rcu_assign_pointer(trusted_dynamic, snap);
+    if (old)
+        kfree_rcu(old, rcu);
 }
 
 static int dynamic_manager_feature_get(u64 *value)
@@ -176,7 +190,7 @@ void __init ksu_dynamic_manager_init(void)
 {
     hash_init(dynamic_manager_signs);
     hash_init(dynamic_manager_apps);
-    smp_store_release(&trusted_dynamic_count, 0);
+    rcu_assign_pointer(trusted_dynamic, NULL);
 
     if (ksu_register_feature_handler(&dynamic_manager_feature_handler))
         pr_warn("dynamic_manager: failed to register feature handler\n");
@@ -185,11 +199,11 @@ void __init ksu_dynamic_manager_init(void)
 void __exit ksu_dynamic_manager_exit(void)
 {
     struct dynamic_manager_app *app;
+    struct dynamic_manager_trusted *snap;
     struct hlist_node *tmp;
     int bucket;
 
     mutex_lock(&dynamic_manager_lock);
-    smp_store_release(&trusted_dynamic_count, 0);
     clear_signs_locked();
     hash_for_each_safe(dynamic_manager_apps, bucket, tmp, app, node)
     {
@@ -198,21 +212,34 @@ void __exit ksu_dynamic_manager_exit(void)
     }
     mutex_unlock(&dynamic_manager_lock);
 
+    snap = rcu_dereference_protected(trusted_dynamic, true);
+    rcu_assign_pointer(trusted_dynamic, NULL);
+    synchronize_rcu();
+    kfree(snap);
+
     ksu_unregister_feature_handler(KSU_FEATURE_DYNAMIC_MANAGER);
 }
 
 bool ksu_is_dynamic_manager_uid(uid_t uid)
 {
+    struct dynamic_manager_trusted *snap;
     uid_t appid = uid % KSU_PER_USER_RANGE;
-    u32 count = smp_load_acquire(&trusted_dynamic_count);
+    bool found = false;
     u32 i;
 
-    for (i = 0; i < count; i++) {
-        if (READ_ONCE(trusted_dynamic_appids[i]) == appid)
-            return true;
+    rcu_read_lock();
+    snap = rcu_dereference(trusted_dynamic);
+    if (snap) {
+        for (i = 0; i < snap->count; i++) {
+            if (snap->appids[i] == appid) {
+                found = true;
+                break;
+            }
+        }
     }
+    rcu_read_unlock();
 
-    return false;
+    return found;
 }
 
 bool ksu_is_preset_manager_uid(uid_t uid)
@@ -231,7 +258,15 @@ bool ksu_is_preset_manager_uid(uid_t uid)
 
 bool ksu_has_dynamic_manager(void)
 {
-    return smp_load_acquire(&trusted_dynamic_count) > 0;
+    struct dynamic_manager_trusted *snap;
+    bool has;
+
+    rcu_read_lock();
+    snap = rcu_dereference(trusted_dynamic);
+    has = snap && snap->count > 0;
+    rcu_read_unlock();
+
+    return has;
 }
 
 u32 ksu_dynamic_manager_get_apps(struct ksu_dynamic_manager_app *apps,
@@ -308,7 +343,8 @@ out:
 int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 count,
                             bool *need_rescan)
 {
-    u32 i;
+    struct dynamic_manager_sign *pending[KSU_DYNAMIC_MANAGER_MAX_SIGNS];
+    u32 i, pending_count = 0;
     bool unmatched = false;
     u32 valid_count = 0;
 
@@ -318,9 +354,12 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
     if (count > KSU_DYNAMIC_MANAGER_MAX_SIGNS)
         return -EINVAL;
 
-    mutex_lock(&dynamic_manager_lock);
-    clear_signs_locked();
-
+    /*
+     * Build and validate the whole replacement table before touching live
+     * state. If any allocation fails, the previous trusted managers are kept
+     * intact instead of being left in a half-cleared state. The final splice
+     * only links preallocated nodes, so it cannot fail midway.
+     */
     for (i = 0; i < count; i++) {
         struct dynamic_manager_sign *sign;
         char normalized_hash[65];
@@ -329,17 +368,22 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
             continue;
 
         sign = kzalloc(sizeof(*sign), GFP_KERNEL);
-        if (!sign) {
-            mutex_unlock(&dynamic_manager_lock);
-            return -ENOMEM;
-        }
+        if (!sign)
+            goto nomem;
 
         sign->size = signs[i].size;
         sign->version_code = signs[i].version_code;
         strscpy(sign->hash, normalized_hash, sizeof(sign->hash));
-        hash_add(dynamic_manager_signs, &sign->node, sign_key(sign->size, sign->hash));
-        valid_count++;
+        pending[pending_count++] = sign;
     }
+
+    mutex_lock(&dynamic_manager_lock);
+    clear_signs_locked();
+
+    for (i = 0; i < pending_count; i++)
+        hash_add(dynamic_manager_signs, &pending[i]->node,
+                 sign_key(pending[i]->size, pending[i]->hash));
+    valid_count = pending_count;
 
     {
         int bucket;
@@ -384,6 +428,11 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
 
     mutex_unlock(&dynamic_manager_lock);
     return 0;
+
+nomem:
+    for (i = 0; i < pending_count; i++)
+        kfree(pending[i]);
+    return -ENOMEM;
 }
 
 bool ksu_dynamic_manager_is_trusted_sign(u32 size, const char *hash)
