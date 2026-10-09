@@ -37,9 +37,9 @@ import java.io.File
  */
 @Composable
 fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
-    // In multi mode each page paints its own image, so the master switch (which gates the single
-    // global wallpaper) must not blank out pages that carry their own background.
-    if (!WallpaperConfig.enabled && !WallpaperConfig.multiBackgroundEnabled) return
+    // The master switch gates every mode: with it off nothing is painted, even if a per-page image
+    // is still remembered, matching the manager-wide background toggle.
+    if (!WallpaperConfig.enabled) return
     val uri = WallpaperConfig.pageUri(LocalWallpaperPage.current) ?: return
     val blurRadius = WallpaperConfig.blur
     val scrim = (LocalWallpaperDim.current ?: WallpaperConfig.effectiveDim(isInDarkTheme()))

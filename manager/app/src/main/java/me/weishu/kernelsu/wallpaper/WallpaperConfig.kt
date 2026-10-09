@@ -158,26 +158,33 @@ object WallpaperConfig {
     val activeUri: String? get() = if (enabled) uri else null
 
     /**
-     * Whether wallpaper mode is on for the app. In multi mode it is enough that any page has an
-     * image, because the theme is global even though the painted image is per page.
+     * Whether wallpaper mode is on for the app. The master [enabled] switch gates every mode: with
+     * it off nothing is active, even if a per-page image is still remembered. In multi mode it is
+     * enough that any page has an image, because the theme is global even though the painted image
+     * is per page.
      */
     val isActive: Boolean
-        get() = if (multiBackgroundEnabled) {
+        get() = enabled && if (multiBackgroundEnabled) {
             listOf(homeBackgroundUri, superuserBackgroundUri, moduleBackgroundUri, settingsBackgroundUri)
                 .any { !it.isNullOrEmpty() }
         } else {
-            enabled && !uri.isNullOrEmpty()
+            !uri.isNullOrEmpty()
         }
 
-    /** Background URI to paint for [page] (0..3). In multi mode only that page's own URI applies. */
-    fun pageUri(page: Int): String? = if (multiBackgroundEnabled) pageOwnUri(page) else uri
+    /**
+     * Background URI to paint for [page] (0..3), or null when the master switch is off. In multi
+     * mode only that page's own URI applies.
+     */
+    fun pageUri(page: Int): String? =
+        if (!enabled) null else if (multiBackgroundEnabled) pageOwnUri(page) else uri
 
-    /** Background luminance to adapt against for [page] (0..3). */
+    /** Background luminance to adapt against for [page] (0..3); -1f when the master switch is off. */
     fun pageLuminance(page: Int): Float =
-        if (multiBackgroundEnabled) pageOwnLuminance(page) else derivedLuminance
+        if (!enabled) -1f else if (multiBackgroundEnabled) pageOwnLuminance(page) else derivedLuminance
 
-    /** Background seed color for [page] (0..3). */
-    fun pageSeed(page: Int): Int = if (multiBackgroundEnabled) pageOwnSeed(page) else derivedSeed
+    /** Background seed color for [page] (0..3); 0 when the master switch is off. */
+    fun pageSeed(page: Int): Int =
+        if (!enabled) 0 else if (multiBackgroundEnabled) pageOwnSeed(page) else derivedSeed
 
     private fun pageOwnUri(page: Int): String? = when (page) {
         PAGE_HOME -> homeBackgroundUri

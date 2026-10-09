@@ -486,69 +486,73 @@ fun WallpaperScreenMaterial(
                             onCheckedChange = actions.onToggleEnabled,
                         )
                     }
-                    add {
-                        SegmentedSwitchItem(
-                            icon = Icons.Filled.GridView,
-                            title = stringResource(R.string.wallpaper_multi_background_mode),
-                            summary = stringResource(R.string.wallpaper_multi_background_mode_summary),
-                            checked = state.multiBackgroundEnabled,
-                            onCheckedChange = actions.onToggleMultiBackground,
-                        )
-                    }
-                    if (state.multiBackgroundEnabled) {
+                    // The master switch gates every mode, so the single/multi choice and its pickers
+                    // stay hidden until the background is on.
+                    if (state.enabled) {
                         add {
-                            WallpaperPagePickItem(
-                                titleRes = R.string.wallpaper_select_home_background,
-                                selected = state.homeBackgroundSelected,
-                                enabled = !state.isSaving,
-                                onClick = actions.onPickHomeBackground,
+                            SegmentedSwitchItem(
+                                icon = Icons.Filled.GridView,
+                                title = stringResource(R.string.wallpaper_multi_background_mode),
+                                summary = stringResource(R.string.wallpaper_multi_background_mode_summary),
+                                checked = state.multiBackgroundEnabled,
+                                onCheckedChange = actions.onToggleMultiBackground,
                             )
                         }
-                        add {
-                            WallpaperPagePickItem(
-                                titleRes = R.string.wallpaper_select_superuser_background,
-                                selected = state.superuserBackgroundSelected,
-                                enabled = !state.isSaving,
-                                onClick = actions.onPickSuperuserBackground,
-                            )
-                        }
-                        add {
-                            WallpaperPagePickItem(
-                                titleRes = R.string.wallpaper_select_module_background,
-                                selected = state.moduleBackgroundSelected,
-                                enabled = !state.isSaving,
-                                onClick = actions.onPickModuleBackground,
-                            )
-                        }
-                        add {
-                            WallpaperPagePickItem(
-                                titleRes = R.string.wallpaper_select_settings_background,
-                                selected = state.settingsBackgroundSelected,
-                                enabled = !state.isSaving,
-                                onClick = actions.onPickSettingsBackground,
-                            )
-                        }
-                    } else {
-                        add {
-                            SegmentedListItem(
-                                onClick = actions.onPickImage,
-                                enabled = !state.isSaving,
-                                headlineContent = {
-                                    Text(stringResource(if (state.hasImage) R.string.wallpaper_change else R.string.wallpaper_pick))
-                                },
-                                leadingContent = { Icon(Icons.Filled.Image, null) },
-                                trailingContent = {
-                                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
-                                },
-                            )
-                        }
-                        if (state.hasImage) {
+                        if (state.multiBackgroundEnabled) {
+                            add {
+                                WallpaperPagePickItem(
+                                    titleRes = R.string.wallpaper_select_home_background,
+                                    selected = state.homeBackgroundSelected,
+                                    enabled = !state.isSaving,
+                                    onClick = actions.onPickHomeBackground,
+                                )
+                            }
+                            add {
+                                WallpaperPagePickItem(
+                                    titleRes = R.string.wallpaper_select_superuser_background,
+                                    selected = state.superuserBackgroundSelected,
+                                    enabled = !state.isSaving,
+                                    onClick = actions.onPickSuperuserBackground,
+                                )
+                            }
+                            add {
+                                WallpaperPagePickItem(
+                                    titleRes = R.string.wallpaper_select_module_background,
+                                    selected = state.moduleBackgroundSelected,
+                                    enabled = !state.isSaving,
+                                    onClick = actions.onPickModuleBackground,
+                                )
+                            }
+                            add {
+                                WallpaperPagePickItem(
+                                    titleRes = R.string.wallpaper_select_settings_background,
+                                    selected = state.settingsBackgroundSelected,
+                                    enabled = !state.isSaving,
+                                    onClick = actions.onPickSettingsBackground,
+                                )
+                            }
+                        } else {
                             add {
                                 SegmentedListItem(
-                                    onClick = actions.onClear,
-                                    headlineContent = { Text(stringResource(R.string.wallpaper_clear)) },
-                                    leadingContent = { Icon(Icons.Filled.Delete, null) },
+                                    onClick = actions.onPickImage,
+                                    enabled = !state.isSaving,
+                                    headlineContent = {
+                                        Text(stringResource(if (state.hasImage) R.string.wallpaper_change else R.string.wallpaper_pick))
+                                    },
+                                    leadingContent = { Icon(Icons.Filled.Image, null) },
+                                    trailingContent = {
+                                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                                    },
                                 )
+                            }
+                            if (state.hasImage) {
+                                add {
+                                    SegmentedListItem(
+                                        onClick = actions.onClear,
+                                        headlineContent = { Text(stringResource(R.string.wallpaper_clear)) },
+                                        leadingContent = { Icon(Icons.Filled.Delete, null) },
+                                    )
+                                }
                             }
                         }
                     }
