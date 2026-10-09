@@ -6,7 +6,6 @@ import androidx.compose.runtime.Immutable
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import me.weishu.kernelsu.Natives.Profile.RootProfileFlag
-import me.weishu.kernelsu.ui.util.CapabilityRepository
 
 /**
  * @author weishu
@@ -55,9 +54,6 @@ object Natives {
 
     val isPrBuild: Boolean
         external get
-
-    /** Force a fresh kernel query, bypassing the short-lived info cache. */
-    external fun refreshInfo()
 
     /** One consistent identity snapshot: `[version, isManager, kernelUapi, managerUapi]`. */
     external fun getInfoSnapshot(): IntArray
@@ -148,11 +144,6 @@ object Natives {
 
     val managerUAPIVersion: Int
         external get
-
-    fun isFullFeatured(): Boolean {
-        if (DebugFlags.forceFullFeatured) return true
-        return CapabilityRepository.current().fullLayout
-    }
 
     @Keep
     @Immutable

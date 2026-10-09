@@ -22,8 +22,6 @@ import me.weishu.kernelsu.Natives
  */
 @Immutable
 data class CapabilityState(
-    /** The kernel driver is present and answering. */
-    val kernelAvailable: Boolean = false,
     /** This app currently holds a manager identity (fixed or dynamic). */
     val isManager: Boolean = false,
     /** Kernel and manager UAPI agree. */
@@ -60,13 +58,6 @@ fun useFullFeaturedLayout(): Boolean {
     return LocalCapabilityState.current.fullLayout
 }
 
-/** Compose-visible privileged gate: structural full layout *and* a ready root shell. */
-@Composable
-fun usePrivilegedAvailable(): Boolean {
-    if (DebugFlags.forceFullFeatured) return true
-    return LocalCapabilityState.current.privileged
-}
-
 /**
  * Collects the mutable identity and root signals into one snapshot, and owns the refresh
  * triggers. Identity comes from the JNI bridge (which must not cache a revocable MANAGER
@@ -77,7 +68,6 @@ object CapabilityRepository {
     private val identity = MutableStateFlow(readIdentity())
 
     private data class Identity(
-        val kernelAvailable: Boolean,
         val isManager: Boolean,
         val uapiCompatible: Boolean,
     )
@@ -85,7 +75,6 @@ object CapabilityRepository {
     val state: StateFlow<CapabilityState> =
         combine(identity, RootShell.status, RootShell.generation) { id, root, _ ->
             CapabilityState(
-                kernelAvailable = id.kernelAvailable,
                 isManager = id.isManager,
                 uapiCompatible = id.uapiCompatible,
                 rootStatus = root,
@@ -107,11 +96,6 @@ object CapabilityRepository {
         }
     }
 
-    /** Re-read identity only, without forcing a shell build (used on identity changes). */
-    fun refreshIdentity() {
-        scope.launch { identity.value = readIdentity() }
-    }
-
     /**
      * Fresh, consistent privileged gate for a new operation: re-reads identity (forcing a kernel
      * refresh so a just-revoked manager is observed) and probes root. Returns false when the app no
@@ -124,15 +108,13 @@ object CapabilityRepository {
     }
 
     private fun readIdentity(): Identity {
-        // A single JNI snapshot keeps the four fields mutually consistent under a concurrent
+        // A single JNI snapshot keeps the fields mutually consistent under a concurrent
         // grant/revoke; the cache TTL alone cannot describe an identity change.
         val snapshot = runCatching { Natives.getInfoSnapshot() }.getOrNull()
-        val version = snapshot?.getOrNull(0) ?: 0
         val manager = snapshot?.getOrNull(1) == 1
         val kernelUapi = snapshot?.getOrNull(2) ?: 0
         val managerUapi = snapshot?.getOrNull(3) ?: 0
         return Identity(
-            kernelAvailable = version > 0 || kernelUapi > 0,
             isManager = manager,
             uapiCompatible = manager && kernelUapi > 0 && kernelUapi == managerUapi,
         )

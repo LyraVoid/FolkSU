@@ -35,14 +35,6 @@ Java_me_weishu_kernelsu_Natives_getManagerUAPIVersion(JNIEnv *env, jobject) {
     return get_manager_uapi_version();
 }
 
-// Force a fresh kernel query, ignoring the short-lived info cache. Used when the caller must
-// observe a just-changed manager identity (grant/revoke) rather than a stale cached answer.
-extern "C"
-JNIEXPORT void JNICALL
-Java_me_weishu_kernelsu_Natives_refreshInfo(JNIEnv *env, jclass clazz) {
-    refresh_info();
-}
-
 // One consistent identity snapshot: {version, isManager, kernelUapi, managerUapi}. All four fields
 // come from a single GET_INFO, so a concurrent revoke cannot mix old and new values.
 extern "C"

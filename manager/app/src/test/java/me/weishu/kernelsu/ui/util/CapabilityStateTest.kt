@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The four capability concerns are deliberately independent. These tests pin the contract that a
+ * The capability concerns are deliberately independent. These tests pin the contract that a
  * transient root probe can never change the structural layout, and that only a ready shell can
  * authorize privileged work.
  */
@@ -16,7 +16,6 @@ class CapabilityStateTest {
         uapi: Boolean = true,
         root: RootShellStatus,
     ) = CapabilityState(
-        kernelAvailable = true,
         isManager = manager,
         uapiCompatible = uapi,
         rootStatus = root,
