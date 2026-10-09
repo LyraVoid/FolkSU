@@ -450,6 +450,8 @@
     <string name="wallpaper_night_dim">Night scrim</string>
     <string name="wallpaper_surface_enable">Card background</string>
     <string name="wallpaper_surface_enable_summary">Show a custom image behind the card</string>
+    <string name="wallpaper_focus_enable">Focus card backgrounds</string>
+    <string name="wallpaper_focus_enable_summary">Show a custom image behind each focus card</string>
     <string name="wallpaper_use_color">Colors from wallpaper</string>
     <string name="wallpaper_use_color_summary">Derive the accent color from the wallpaper</string>
     <string name="wallpaper_section_interop">Theme package</string>

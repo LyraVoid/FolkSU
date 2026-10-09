@@ -48,6 +48,7 @@ internal fun FocusHomeContent(
     val fullFeatured = useFullFeaturedLayout()
     val focusStyle = SurfaceStore.config(SurfaceRegistry.FOCUS)
     fun focusBackground(id: SurfaceId): SurfaceConfig? {
+        if (!focusStyle.enabled) return null
         val card = SurfaceStore.config(id)
         return if (card.hasImage) focusStyle.copy(imageUri = card.imageUri) else null
     }

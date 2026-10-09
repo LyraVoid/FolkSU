@@ -142,6 +142,9 @@ private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) 
     /** Whether the surface has a per-surface enable flag, as opposed to a bare image slot. */
     private val hasEnabledField = SurfaceField.Enabled in descriptor.fields
 
+    /** Surfaces whose shared master switch this one owns; empty for a leaf surface. */
+    private val children = SurfaceRegistry.all.filter { it.parentId == id }
+
     override val base: String = descriptor.themeBase ?: id.value
 
     override fun currentFile(context: Context): File? =
@@ -177,10 +180,22 @@ private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) 
             if (field == SurfaceField.Image) return@forEach
             val legacyKey = descriptor.legacyThemeFields[field]
             if (field.isToggle) {
-                val fallback = if (legacyKey != null) {
-                    json.optBoolean(legacyKey, current.toggle(field))
+                // A grouped parent (the focus master) has no legacy image of its own, so when the
+                // theme carries no explicit master bit it follows the wider ecosystem's default:
+                // enabled as soon as any child card ships an image.
+                val inherited = if (field == SurfaceField.Enabled && children.isNotEmpty()) {
+                    children.any { child ->
+                        val childLegacy = child.legacyThemeFields[SurfaceField.Enabled]
+                        json.optBoolean(SurfaceStore.key(child.id, SurfaceField.Enabled), false) ||
+                            (childLegacy != null && json.optBoolean(childLegacy, false))
+                    }
                 } else {
                     current.toggle(field)
+                }
+                val fallback = if (legacyKey != null) {
+                    json.optBoolean(legacyKey, inherited)
+                } else {
+                    inherited
                 }
                 parsed = parsed.withToggle(field, json.optBoolean(SurfaceStore.key(id, field), fallback))
             } else {
@@ -209,7 +224,9 @@ private class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor) 
             // file, because the wider ecosystem stores such cards as an entry plus a presence bool.
             val wantsImage = if (hasEnabledField) parsed.enabled else file != null
             if (wantsImage && file != null) {
-                WallpaperManager.saveSurfaceImage(context, id, Uri.fromFile(file))
+                // Import must not flip a group parent on as a side effect; the parent's own bit is
+                // restored below from the theme (or inferred from the children).
+                WallpaperManager.saveSurfaceImage(context, id, Uri.fromFile(file), enableParent = false)
             } else {
                 WallpaperManager.clearSurfaceImage(context, id)
             }

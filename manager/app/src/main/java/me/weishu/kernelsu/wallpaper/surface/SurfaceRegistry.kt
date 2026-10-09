@@ -60,6 +60,12 @@ data class SurfaceDescriptor(
     val legacyThemeFlags: Map<SurfaceFlag, String> = emptyMap(),
     /** Whether this surface is available for a home layout token such as [HomeLayoutStyle.GRID]. */
     val available: (String) -> Boolean = { true },
+    /**
+     * Id of the surface that owns this one's shared master switch, when this is a child of a grouped
+     * feature. The focus cards are children of [FOCUS], whose `enabled` bit is the single gate the
+     * settings host and the renderer both consult. Null for top-level surfaces.
+     */
+    val parentId: SurfaceId? = null,
 )
 
 /**
@@ -208,7 +214,49 @@ object SurfaceRegistry {
             SurfaceField.DayOpacity to "focusCardBgDayOpacity",
             SurfaceField.NightOpacity to "focusCardBgNightOpacity",
         ),
-        available = { false },
+        rows = listOf(
+            SurfaceToggleRow(
+                titleRes = R.string.wallpaper_focus_enable,
+                icon = Icons.Filled.Wallpaper,
+                field = SurfaceField.Enabled,
+                summaryRes = R.string.wallpaper_focus_enable_summary,
+            ),
+            SurfaceToggleRow(
+                titleRes = R.string.wallpaper_work_card_dual_opacity,
+                icon = Icons.Filled.Contrast,
+                field = SurfaceField.DualOpacity,
+                showWhenEnabled = true,
+            ),
+            SurfaceScalarRow(
+                singleTitleRes = R.string.wallpaper_work_card_opacity,
+                dayTitleRes = R.string.wallpaper_work_card_day_opacity,
+                nightTitleRes = R.string.wallpaper_work_card_night_opacity,
+                singleField = SurfaceField.Opacity,
+                dayField = SurfaceField.DayOpacity,
+                nightField = SurfaceField.NightOpacity,
+                dualField = SurfaceField.DualOpacity,
+                singleIcon = Icons.Filled.Opacity,
+                dayNightIcon = Icons.Filled.Contrast,
+            ),
+            SurfaceToggleRow(
+                titleRes = R.string.wallpaper_dual_dim,
+                icon = Icons.Filled.Brightness6,
+                field = SurfaceField.DualDim,
+                showWhenEnabled = true,
+            ),
+            SurfaceScalarRow(
+                singleTitleRes = R.string.wallpaper_work_card_dim,
+                dayTitleRes = R.string.wallpaper_day_dim,
+                nightTitleRes = R.string.wallpaper_night_dim,
+                singleField = SurfaceField.Dim,
+                dayField = SurfaceField.DayDim,
+                nightField = SurfaceField.NightDim,
+                dualField = SurfaceField.DualDim,
+                singleIcon = Icons.Filled.Brightness6,
+                dayNightIcon = Icons.Filled.Contrast,
+            ),
+        ),
+        available = { layout -> layout == HomeLayoutStyle.FOCUS },
     )
 
     private val focusCards = listOf(
@@ -361,6 +409,7 @@ object SurfaceRegistry {
         aspect = 1.4f,
         legacyThemeFields = mapOf(SurfaceField.Enabled to legacyKey),
         available = { layout -> layout == HomeLayoutStyle.FOCUS },
+        parentId = FOCUS,
     )
 
     /** Reserved slot for the stats layout; the model is in place but exposes no controls yet. */

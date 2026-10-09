@@ -444,6 +444,8 @@
     <string name="wallpaper_night_dim">夜间遮罩</string>
     <string name="wallpaper_surface_enable">卡片背景</string>
     <string name="wallpaper_surface_enable_summary">在卡片后显示自定义图片</string>
+    <string name="wallpaper_focus_enable">聚焦卡片背景</string>
+    <string name="wallpaper_focus_enable_summary">为每张聚焦卡片显示自定义图片</string>
     <string name="wallpaper_use_color">从壁纸取色</string>
     <string name="wallpaper_use_color_summary">从壁纸中提取主题强调色</string>
     <string name="wallpaper_section_interop">主题包</string>

@@ -79,8 +79,14 @@ object WallpaperManager {
     suspend fun clearWorkCardBackground(context: Context) =
         clearSurfaceImage(context, SurfaceRegistry.GRID_WORK_CARD)
 
-    /** Copies the picked image into app storage and points surface [id] at it. */
-    suspend fun saveSurfaceImage(context: Context, id: SurfaceId, source: Uri): Boolean =
+    /**
+     * Copies the picked image into app storage and points surface [id] at it.
+     *
+     * When [enableParent] is set and [id] is a child of a grouped feature, the parent's master
+     * switch is turned on too, so a fresh pick is visible without a second step. Theme import
+     * passes false so it can restore the parent's own explicit enabled bit afterwards.
+     */
+    suspend fun saveSurfaceImage(context: Context, id: SurfaceId, source: Uri, enableParent: Boolean = true): Boolean =
         withContext(Dispatchers.IO) {
             val stem = surfaceStem(id) ?: return@withContext false
             surfaceLocks.getOrPut(id) { Mutex() }.withLock {
@@ -100,6 +106,11 @@ object WallpaperManager {
                     withContext(NonCancellable + Dispatchers.Main.immediate) {
                         val stamped = "${Uri.fromFile(target)}?revision=${UUID.randomUUID()}"
                         SurfaceStore.update(id) { it.copy(imageUri = stamped, enabled = true) }
+                        if (enableParent) {
+                            SurfaceRegistry.descriptor(id)?.parentId?.let { parent ->
+                                SurfaceStore.update(parent) { it.copy(enabled = true) }
+                            }
+                        }
                         WallpaperConfig.save(context)
                     }
                     clearSurfaceFiles(context, stem, except = target)

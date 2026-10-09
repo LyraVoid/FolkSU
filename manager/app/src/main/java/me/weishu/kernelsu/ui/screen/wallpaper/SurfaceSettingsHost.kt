@@ -48,6 +48,10 @@ fun SurfaceSettingsHost(
 ) {
     val layout = LocalHomeLayoutStyle.current
     SurfaceRegistry.forLayout(layout).forEach { descriptor ->
+        // A grouped child (the focus cards) only appears once its shared master switch is on,
+        // mirroring the theme's own nesting so a card can never be configured while its parent is off.
+        val parent = descriptor.parentId?.let { SurfaceRegistry.descriptor(it) }
+        if (parent != null && state.surfaceFor(parent.id)?.enabled != true) return@forEach
         val config = state.surfaceFor(descriptor.id) ?: return@forEach
         SurfaceSettingsGroup(
             titleRes = descriptor.titleRes,
