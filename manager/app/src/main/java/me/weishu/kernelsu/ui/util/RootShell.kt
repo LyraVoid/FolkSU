@@ -94,8 +94,11 @@ object RootShell {
 
     /**
      * Blocking accessor for legacy synchronous call sites. It never builds on the main thread:
-     * there it only kicks a background probe and returns whatever shell already exists. Code that
-     * needs a real root shell must use [awaitRoot].
+     * there it only kicks a background probe and returns whatever shell already exists.
+     *
+     * It never throws: when no root shell is available it returns the latest best-effort shell
+     * (which may be non-root) or builds one, so a degraded/unrooted state degrades instead of
+     * crashing the process. Code that needs a real root shell must use [awaitRoot].
      */
     fun obtain(globalMnt: Boolean = false): Shell {
         val s = slot(globalMnt)
@@ -105,7 +108,7 @@ object RootShell {
         } else {
             runBlocking { ensure(globalMnt) }
         }
-        return ready(s) ?: s.shell ?: error("Root shell is not available")
+        return ready(s) ?: s.shell ?: buildShell(globalMnt)
     }
 
     /**
@@ -215,14 +218,17 @@ object RootShell {
     private fun publish(s: Slot, globalMnt: Boolean, shell: Shell?) {
         var replaced: Shell? = null
         synchronized(s.mutex) {
-            if (shell != null && shell.isAlive && shell.isRoot) {
+            if (shell != null) {
+                // Keep the latest shell even when it is non-root, so legacy synchronous callers
+                // (getRootShell) still receive a shell instead of throwing. A non-root shell is
+                // never reported as ready: status stays Unavailable and awaitRoot keeps throwing.
                 replaced = s.shell
                 s.shell = shell
+            }
+            if (shell != null && shell.isAlive && shell.isRoot) {
                 s.status = RootShellStatus.Ready
                 s.consecutiveFailures = 0
             } else {
-                // Never store a non-root fallback as the result: release it and record the failure.
-                shell?.let { runCatching { it.close() } }
                 s.status = RootShellStatus.Unavailable
                 s.consecutiveFailures =
                     (s.consecutiveFailures + 1).coerceAtMost(MAX_CONSECUTIVE_FAILURES + 1)
