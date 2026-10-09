@@ -543,6 +543,9 @@ enum Dynamic {
     SetApk {
         /// APK file path
         apk: String,
+        /// Manager APK versionCode to report to the kernel
+        #[arg(long, value_name = "CODE")]
+        version_code: Option<u32>,
     },
 
     /// Extract the signature of an installed UID's APK, persist and apply it
@@ -897,7 +900,9 @@ pub fn run() -> Result<()> {
                 crate::dynamic_manager::get_sign(apk.as_deref(), uid, json)
             }
             Dynamic::SetHash { size, hash } => crate::dynamic_manager::set_hash(&size, &hash),
-            Dynamic::SetApk { apk } => crate::dynamic_manager::set_apk(&apk),
+            Dynamic::SetApk { apk, version_code } => {
+                crate::dynamic_manager::set_apk(&apk, version_code)
+            }
             Dynamic::SetUid { uid } => crate::dynamic_manager::set_uid(uid),
             Dynamic::List => crate::dynamic_manager::list(),
             Dynamic::Del { size, hash } => crate::dynamic_manager::del(&size, &hash),

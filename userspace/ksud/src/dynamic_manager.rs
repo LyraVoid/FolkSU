@@ -25,14 +25,23 @@ const PER_USER_RANGE: u32 = 100_000;
 /// Maximum number of signatures the kernel accepts.
 const MAX_SIGNS: usize = ksu_uapi::KSU_DYNAMIC_MANAGER_MAX_SIGNS as usize;
 
-/// A normalized `(size, sha256)` certificate signature.
+/// A normalized `(size, sha256)` certificate signature, optionally carrying the
+/// version code of the manager APK it was extracted from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Sign {
     size: u32,
     hash: String,
+    version_code: u32,
 }
 
 impl Sign {
+    /// Whether two signatures cover the same certificate. The version code is
+    /// metadata used by the kernel to report a matching manager version, not
+    /// part of the certificate identity.
+    fn same_cert(&self, other: &Self) -> bool {
+        self.size == other.size && self.hash == other.hash
+    }
+
     /// Encode into the UAPI struct, copying the hash into its fixed 65-byte
     /// NUL-terminated buffer.
     fn to_uapi(&self) -> ksu_uapi::ksu_dynamic_manager_sign {
@@ -42,6 +51,7 @@ impl Sign {
         }
         ksu_uapi::ksu_dynamic_manager_sign {
             size: self.size,
+            version_code: self.version_code,
             hash,
         }
     }
@@ -79,6 +89,7 @@ fn parse_sign(size_arg: &str, hash_arg: &str) -> Result<Sign> {
     Ok(Sign {
         size: parse_size(size_arg)?,
         hash: normalize_hash(hash_arg)?,
+        version_code: 0,
     })
 }
 
@@ -96,7 +107,16 @@ fn sign_from_json(map: &serde_json::Map<String, serde_json::Value>) -> Option<Si
         .get("hash")
         .and_then(serde_json::Value::as_str)
         .and_then(|value| normalize_hash(value).ok())?;
-    Some(Sign { size, hash })
+    let version_code = map
+        .get("version_code")
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| u32::try_from(value).ok())
+        .unwrap_or(0);
+    Some(Sign {
+        size,
+        hash,
+        version_code,
+    })
 }
 
 /// Walk a parsed config, tolerating both a bare array and an object that nests
@@ -110,7 +130,7 @@ fn collect_signs(value: &serde_json::Value, signs: &mut Vec<Sign>) {
         }
         serde_json::Value::Object(map) => {
             if let Some(sign) = sign_from_json(map) {
-                if !signs.contains(&sign) {
+                if !signs.iter().any(|existing| existing.same_cert(&sign)) {
                     signs.push(sign);
                 }
                 return;
@@ -147,6 +167,7 @@ fn signs_to_json(signs: &[Sign]) -> String {
             serde_json::json!({
                 "size": sign.size,
                 "hash": sign.hash,
+                "version_code": sign.version_code,
             })
         })
         .collect::<Vec<_>>();
@@ -201,7 +222,11 @@ fn add_sign(sign: Sign) -> Result<()> {
     let mut list = load_signs()?;
     let size = sign.size;
     let hash = sign.hash.clone();
-    if !list.contains(&sign) {
+    if let Some(existing) = list.iter_mut().find(|existing| existing.same_cert(&sign)) {
+        if sign.version_code != 0 {
+            existing.version_code = sign.version_code;
+        }
+    } else {
         ensure!(
             list.len() < MAX_SIGNS,
             "too many dynamic manager signatures: {} >= {MAX_SIGNS}",
@@ -216,12 +241,13 @@ fn add_sign(sign: Sign) -> Result<()> {
     Ok(())
 }
 
-fn sign_from_apk(apk: &str) -> Result<Sign> {
+fn sign_from_apk(apk: &str, version_code: u32) -> Result<Sign> {
     let (size, hash) = apk_sign::get_apk_signature(apk)
         .with_context(|| format!("failed to get APK signature: {apk}"))?;
     Ok(Sign {
         size,
         hash: normalize_hash(&hash)?,
+        version_code,
     })
 }
 
@@ -233,6 +259,20 @@ fn run_command(program: &str, args: &[&str]) -> Option<String> {
     } else {
         None
     }
+}
+
+/// Read a package's versionCode from `dumpsys package`, returning 0 when it
+/// cannot be resolved. `dumpsys` lists it as `versionCode=<N> ...`.
+fn version_code_for_package(package: &str) -> u32 {
+    let Some(output) = run_command("dumpsys", &["package", package]) else {
+        return 0;
+    };
+    output
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("versionCode="))
+        .and_then(|value| value.split_whitespace().next())
+        .and_then(|value| value.parse::<u32>().ok())
+        .unwrap_or(0)
 }
 
 /// Map a UID to package names using `cmd package` / `pm`.
@@ -373,17 +413,19 @@ pub fn set_hash(size_arg: &str, hash_arg: &str) -> Result<()> {
     add_sign(parse_sign(size_arg, hash_arg)?)
 }
 
-/// `ksud dynamic set-apk <APK>`
-pub fn set_apk(apk: &str) -> Result<()> {
-    add_sign(sign_from_apk(apk)?)
+/// `ksud dynamic set-apk <APK> [--version-code <CODE>]`
+pub fn set_apk(apk: &str, version_code: Option<u32>) -> Result<()> {
+    add_sign(sign_from_apk(apk, version_code.unwrap_or(0))?)
 }
 
 /// `ksud dynamic set-uid <UID>`
 pub fn set_uid(uid: u32) -> Result<()> {
     let (package, apk) = apk_from_uid(uid)?;
-    let sign = sign_from_apk(&apk)?;
+    let version_code = version_code_for_package(&package);
+    let sign = sign_from_apk(&apk, version_code)?;
     println!("package: {package}");
     println!("apk: {apk}");
+    println!("version_code: {version_code}");
     add_sign(sign)
 }
 
@@ -401,7 +443,7 @@ pub fn del(size_arg: &str, hash_arg: &str) -> Result<()> {
     let target = parse_sign(size_arg, hash_arg)?;
     let mut signs = load_signs()?;
     let before = signs.len();
-    signs.retain(|sign| sign != &target);
+    signs.retain(|sign| !sign.same_cert(&target));
     ensure!(signs.len() < before, "signature not found");
     apply(&signs)?;
     save_signs(&signs)
