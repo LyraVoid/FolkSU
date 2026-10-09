@@ -3,6 +3,7 @@ package me.weishu.kernelsu.ui.component.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.component.material.folkPressScale
@@ -36,8 +38,8 @@ data class SettingsCategoryEntry(
 
 /**
  * The settings hub's category picker: a [TonalCard] holding a grid of the [SettingsCategory]
- * entries. Tiles are laid out [columns] per row; a short final row is padded with weighted spacers
- * so the remaining tiles keep the same width as a full row.
+ * entries. The column count follows the available width (see [adaptiveColumns]); a short final row
+ * is padded with weighted spacers so the remaining tiles keep the same width as a full row.
  *
  * TonalCard (rather than a plain Surface) is deliberate: it carries the grouped-surface colour and
  * joins the wallpaper transparency layering, so this panel behaves like every other group.
@@ -46,30 +48,42 @@ data class SettingsCategoryEntry(
 fun SettingsCategoryGrid(
     entries: List<SettingsCategoryEntry>,
     modifier: Modifier = Modifier,
-    columns: Int = 4,
 ) {
     if (entries.isEmpty()) return
 
-    TonalCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = FolkShape.Corner20,
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+    BoxWithConstraints(modifier = modifier) {
+        val columns = adaptiveColumns(entries.size, maxWidth)
+        TonalCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = FolkShape.Corner20,
         ) {
-            entries.chunked(columns).forEach { row ->
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    row.forEach { entry ->
-                        CategoryCell(entry = entry, modifier = Modifier.weight(1f))
-                    }
-                    repeat(columns - row.size) {
-                        Spacer(modifier = Modifier.weight(1f))
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                entries.chunked(columns).forEach { row ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        row.forEach { entry ->
+                            CategoryCell(entry = entry, modifier = Modifier.weight(1f))
+                        }
+                        repeat(columns - row.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * How many tiles fit per row at [available] width. A wide screen folds the whole set into one row
+ * instead of stretching four tiles across a tablet; a narrow phone drops to three.
+ */
+private fun adaptiveColumns(count: Int, available: Dp): Int = when {
+    available >= 600.dp -> count.coerceAtLeast(1)
+    available >= 360.dp -> 4
+    else -> 3
 }
 
 @Composable

@@ -36,6 +36,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -89,6 +91,7 @@ import me.weishu.kernelsu.ui.component.material.TonalCard
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
 import me.weishu.kernelsu.ui.component.material.folkPressScale
+import me.weishu.kernelsu.ui.component.settings.SettingsContentMaxWidth
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.theme.keyColorOptions
 import me.weishu.kernelsu.ui.theme.rememberKernelSUColorScheme
@@ -131,7 +134,9 @@ fun ColorPaletteScreenMaterial(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .widthIn(max = SettingsContentMaxWidth),
             verticalArrangement = Arrangement.spacedBy(13.dp)
         ) {
             item {

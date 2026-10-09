@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -13,6 +15,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
@@ -24,6 +27,7 @@ import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
 import me.weishu.kernelsu.ui.component.material.TopBarBackButton
 import me.weishu.kernelsu.ui.component.material.expressiveTopAppBarColors
 import me.weishu.kernelsu.ui.component.settings.SettingsCategory
+import me.weishu.kernelsu.ui.component.settings.SettingsContentMaxWidth
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.ui.viewmodel.SettingsViewModel
 
@@ -55,6 +59,8 @@ fun CategorySettingsScreen(categoryKey: String) {
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .padding(innerPadding)
+                .wrapContentWidth(Alignment.CenterHorizontally)
+                .widthIn(max = SettingsContentMaxWidth)
                 .verticalScroll(rememberScrollState()),
         ) {
             Spacer(modifier = Modifier.height(8.dp))
