@@ -173,6 +173,7 @@ fun AppearanceCategoryContent(uiState: SettingsUiState, actions: SettingsScreenA
     )
 
     DisplayDensitySection(uiState, actions)
+    VisualMediaSettings()
 }
 
 @Composable

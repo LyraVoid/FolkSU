@@ -107,7 +107,7 @@ fun HomePagerMaterial(
 @Composable
 private fun TopBar() {
     TopAppBar(
-        title = { Text(stringResource(R.string.app_name)) },
+        title = { me.weishu.kernelsu.ui.component.HomeTitleImage() },
         actions = { RebootListPopup() },
         colors = expressiveTopAppBarColors(),
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),

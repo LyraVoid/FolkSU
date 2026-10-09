@@ -164,7 +164,8 @@ object WallpaperConfig {
      * is per page.
      */
     val isActive: Boolean
-        get() = enabled && if (multiBackgroundEnabled) {
+        get() = (me.weishu.kernelsu.media.VisualMediaConfig.videoEnabled &&
+            me.weishu.kernelsu.media.VisualMediaConfig.videoFilename != null) || enabled && if (multiBackgroundEnabled) {
             listOf(homeBackgroundUri, superuserBackgroundUri, moduleBackgroundUri, settingsBackgroundUri)
                 .any { !it.isNullOrEmpty() }
         } else {

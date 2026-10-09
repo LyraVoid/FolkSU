@@ -42,6 +42,7 @@ fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
                     selected = selected,
                     onClick = {
                         if (!selected) {
+                            me.weishu.kernelsu.media.MediaFeedback.navigation()
                             mainPagerState.animateToPage(index)
                         }
                     },

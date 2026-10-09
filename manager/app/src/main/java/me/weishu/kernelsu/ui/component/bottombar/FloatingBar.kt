@@ -114,8 +114,10 @@ internal fun FloatingBar(
                         selectedIndex = selectedIndex,
                         badge = { badgeFor(it.ordinal, navigationBadge) },
                         onSelect = {
+                            if (it.ordinal == selectedIndex) return@FloatingBarDrawer
                             onUserInteraction()
                             mainPagerState.animateToPage(it.ordinal)
+                            me.weishu.kernelsu.media.MediaFeedback.navigation()
                         },
                     )
                 } else {
@@ -126,6 +128,7 @@ internal fun FloatingBar(
                         onSelect = {
                             onUserInteraction()
                             mainPagerState.animateToPage(it.ordinal)
+                            me.weishu.kernelsu.media.MediaFeedback.navigation()
                         },
                     )
                 }

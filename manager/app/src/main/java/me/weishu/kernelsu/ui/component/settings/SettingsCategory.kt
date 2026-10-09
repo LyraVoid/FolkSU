@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Handyman
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TouchApp
@@ -27,6 +28,7 @@ enum class SettingsCategory(
     BEHAVIOR("behavior", R.string.settings_category_behavior, Icons.Filled.TouchApp),
     FUNCTION("function", R.string.settings_category_function, Icons.Filled.Handyman),
     SECURITY("security", R.string.settings_category_security, Icons.Filled.Security),
+    MULTIMEDIA("multimedia", R.string.settings_category_multimedia, Icons.Filled.MusicNote),
     ;
 
     companion object {

@@ -37,6 +37,12 @@ import java.io.File
  */
 @Composable
 fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
+    val media = me.weishu.kernelsu.media.VisualMediaConfig
+    val video = media.file(androidx.compose.ui.platform.LocalContext.current, true)
+    if (media.videoEnabled && video != null) {
+        VideoBackgroundLayer(video, LocalWallpaperDim.current ?: WallpaperConfig.effectiveDim(isInDarkTheme()), modifier)
+        return
+    }
     // The master switch gates every mode: with it off nothing is painted, even if a per-page image
     // is still remembered, matching the manager-wide background toggle.
     if (!WallpaperConfig.enabled) return

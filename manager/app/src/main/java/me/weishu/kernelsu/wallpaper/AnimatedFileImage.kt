@@ -39,6 +39,7 @@ fun AnimatedFileImage(
     contentDescription: String? = null,
     scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP,
     revision: String = file.lastModified().toString(),
+    dim: Float = 0f,
 ) {
     val drawable by produceState<Drawable?>(initialValue = null, file.path, revision) {
         value = null
@@ -68,6 +69,11 @@ fun AnimatedFileImage(
             view.scaleType = scaleType
             view.contentDescription = contentDescription
             view.setImageDrawable(current)
+            view.colorFilter = if (dim > 0f) android.graphics.ColorMatrixColorFilter(
+                android.graphics.ColorMatrix().apply {
+                    setScale(1f - dim, 1f - dim, 1f - dim, 1f)
+                }
+            ) else null
             view.setRenderEffect(
                 if (blurRadiusPx > 0f) {
                     RenderEffect.createBlurEffect(blurRadiusPx, blurRadiusPx, Shader.TileMode.CLAMP)

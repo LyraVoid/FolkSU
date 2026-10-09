@@ -45,6 +45,9 @@ internal interface ThemedAsset {
 
     fun currentFile(context: Context): File?
 
+    /** Assets with non-image formats retain their own extension on export. */
+    fun extension(file: File): String = WallpaperManager.resolveFileExtension(file).removePrefix(".")
+
     fun writeConfig(json: JSONObject)
 
     suspend fun apply(context: Context, json: JSONObject, file: File?)
@@ -525,6 +528,8 @@ object FolkThemeIO {
 
     /** The registered themed assets, in export order. Add a themed asset by adding one entry here. */
     private val assets: List<ThemedAsset> = buildList {
+        add(VisualMediaThemeAsset(true))
+        add(VisualMediaThemeAsset(false))
         add(MainWallpaperAsset)
         // Every surface that owns a theme payload and a legacy alias set round-trips here.
         SurfaceRegistry.themeSlots().forEach { add(SurfaceBackgroundAsset(it)) }
@@ -537,7 +542,7 @@ object FolkThemeIO {
     }
 
     /** Multi-file themed assets, registered alongside the single-file [assets]. */
-    private val groups: List<ThemedAssetGroup> = listOf(NavIconsAsset)
+    private val groups: List<ThemedAssetGroup> = listOf(NavIconsAsset, MusicThemeAsset, SoundThemeAsset)
 
     suspend fun exportBackground(context: Context, target: Uri, name: String): Boolean =
         withContext(Dispatchers.IO) {
@@ -545,7 +550,7 @@ object FolkThemeIO {
                 val entries = buildList {
                     assets.forEach { asset ->
                         asset.currentFile(context)?.let { file ->
-                            val extension = WallpaperManager.resolveFileExtension(file).removePrefix(".")
+                            val extension = asset.extension(file)
                             add("${asset.base}.$extension" to file)
                         }
                     }
