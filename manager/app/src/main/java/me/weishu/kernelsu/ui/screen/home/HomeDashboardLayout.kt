@@ -3,8 +3,10 @@ package me.weishu.kernelsu.ui.screen.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -63,8 +65,13 @@ internal fun DashboardHomeContent(
             surface = SurfaceStore.config(SurfaceRegistry.DASHBOARD_HERO),
         )
         if (fullFeatured && isWideLayout(withOrientation = false)) {
+            // The row must bound its own height: its parent is the scrolling column, so weighted
+            // children of an unbounded row collapse and leave the counters blank. IntrinsicSize.Min
+            // lets the taller half set the height, the same way the Grid and Focus boards do.
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(TileSpacing),
             ) {
                 CountCardPair(
@@ -73,7 +80,7 @@ internal fun DashboardHomeContent(
                     onOpenSuperUser = actions.onOpenSuperUser,
                     onOpenModule = actions.onOpenModule,
                     layout = CountCardLayout.Vertical,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
                     emphasis = CountCardEmphasis.Value,
                 )
                 InfoCard(
