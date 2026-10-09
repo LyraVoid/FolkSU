@@ -103,6 +103,7 @@ struct my_dir_context {
     struct list_head *data_path_list;
     char *parent_dir;
     void *private_data;
+    char *candidate_path;
     int depth;
     int *stop;
 };
@@ -157,45 +158,15 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name, int name
         strscpy(data->dirpath, dirpath, DATA_PATH_LEN);
         data->depth = my_ctx->depth - 1;
         list_add_tail(&data->list, my_ctx->data_path_list);
-    } else {
-        if ((namelen == 8) && (strncmp(name, "base.apk", namelen) == 0)) {
-            struct apk_path_hash *pos, *n;
-            unsigned int hash = full_name_hash(NULL, dirpath, strlen(dirpath));
-            list_for_each_entry (pos, &apk_path_hash_list, list) {
-                if (hash == pos->hash) {
-                    pos->exists = true;
-                    return FILLDIR_ACTOR_CONTINUE;
-                }
-            }
-
-            struct apk_sign_match match = { .index = -1 };
-            bool matched = match_apk_signature(dirpath, &match);
-            pr_info("Found new base.apk at path: %s, matched: %d, trusted: %d\n", dirpath, matched,
-                    matched && match.trusted);
-            if (matched && match.trusted && match.index >= 0) {
-                crown_manager(dirpath, my_ctx->private_data);
-
-                // Manager found, clear APK cache list
-                list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
-                    list_del(&pos->list);
-                    kfree(pos);
-                }
-            } else {
-#ifdef CONFIG_KSU_DYNAMIC_MANAGER
-                if (matched) {
-                    note_candidate_manager(dirpath, my_ctx->private_data, &match);
-                }
-#endif // CONFIG_KSU_DYNAMIC_MANAGER
-                struct apk_path_hash *apk_data = kzalloc(sizeof(struct apk_path_hash), GFP_KERNEL);
-                if (!apk_data) {
-                    pr_err("Failed to allocate apk_path_hash for %s\n", dirpath);
-                    return FILLDIR_ACTOR_CONTINUE;
-                }
-                apk_data->hash = hash;
-                apk_data->exists = true;
-                list_add_tail(&apk_data->list, &apk_path_hash_list);
-            }
-        }
+    } else if (d_type == DT_REG && namelen == 8 && !memcmp(name, "base.apk", 8)) {
+        /*
+         * Do not score the apk here: match_apk_signature() opens the file, and
+         * this callback runs from inside iterate_dir() with the directory lock
+         * held, which can deadlock. Stash the path and let search_manager()
+         * score it once the directory enumeration has returned.
+         */
+        if (my_ctx->candidate_path)
+            strscpy(my_ctx->candidate_path, dirpath, DATA_PATH_LEN);
     }
 
     return FILLDIR_ACTOR_CONTINUE;
@@ -220,6 +191,9 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
     data.depth = depth;
     list_add_tail(&data.list, &data_path_list);
 
+    // Holds the base.apk path discovered in the current directory, if any
+    char candidate_path[DATA_PATH_LEN];
+
     for (i = depth; i >= 0; i--) {
         struct data_path *pos, *n;
 
@@ -228,12 +202,16 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
                                           .data_path_list = &data_path_list,
                                           .parent_dir = pos->dirpath,
                                           .private_data = uid_data,
+                                          .candidate_path = candidate_path,
                                           .depth = pos->depth,
                                           .stop = &stop };
             struct file *file;
 
+            // destroy the buffer on every iteration
+            candidate_path[0] = 0;
+
             if (!stop) {
-                file = ksu_filp_open_nonotify(pos->dirpath, O_RDONLY | O_NOFOLLOW | O_NOATIME);
+                file = ksu_filp_open_nonotify(pos->dirpath, O_RDONLY | O_NOFOLLOW | O_NOATIME | O_DIRECTORY);
                 if (IS_ERR(file)) {
                     pr_err("Failed to open directory: %s, err: %ld\n", pos->dirpath, PTR_ERR(file));
                     goto skip_iterate;
@@ -260,6 +238,58 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
                 iterate_dir(file, &ctx.ctx);
                 filp_close(file, NULL);
             }
+
+            /*
+             * Score the collected apk only after iterate_dir() returned and the
+             * directory file has been closed. match_apk_signature() opens the
+             * apk, which must not happen while the readdir callback still holds
+             * the directory lock. Keep the existing cache and dynamic-manager
+             * semantics, and keep scanning so other candidates are still found.
+             */
+            if (candidate_path[0]) {
+                struct apk_path_hash *cpos, *cn;
+                unsigned int hash = full_name_hash(NULL, candidate_path, strlen(candidate_path));
+                bool cached = false;
+
+                list_for_each_entry (cpos, &apk_path_hash_list, list) {
+                    if (hash == cpos->hash) {
+                        cpos->exists = true;
+                        cached = true;
+                        break;
+                    }
+                }
+
+                if (!cached) {
+                    struct apk_sign_match match = { .index = -1 };
+                    bool matched = match_apk_signature(candidate_path, &match);
+                    pr_info("Found new base.apk at path: %s, matched: %d, trusted: %d\n", candidate_path,
+                            matched, matched && match.trusted);
+
+                    if (matched && match.trusted && match.index >= 0) {
+                        crown_manager(candidate_path, uid_data);
+
+                        // Manager found, clear APK cache list
+                        list_for_each_entry_safe (cpos, cn, &apk_path_hash_list, list) {
+                            list_del(&cpos->list);
+                            kfree(cpos);
+                        }
+                    } else {
+#ifdef CONFIG_KSU_DYNAMIC_MANAGER
+                        if (matched)
+                            note_candidate_manager(candidate_path, uid_data, &match);
+#endif // CONFIG_KSU_DYNAMIC_MANAGER
+                        struct apk_path_hash *apk_data = kzalloc(sizeof(struct apk_path_hash), GFP_KERNEL);
+                        if (!apk_data) {
+                            pr_err("Failed to allocate apk_path_hash for %s\n", candidate_path);
+                        } else {
+                            apk_data->hash = hash;
+                            apk_data->exists = true;
+                            list_add_tail(&apk_data->list, &apk_path_hash_list);
+                        }
+                    }
+                }
+            }
+
         skip_iterate:
             list_del(&pos->list);
             if (pos != &data)
