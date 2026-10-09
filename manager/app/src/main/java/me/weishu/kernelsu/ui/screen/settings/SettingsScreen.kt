@@ -69,6 +69,7 @@ fun rememberSettingsActions(
         onSetKernelUmountEnabled = viewModel::setKernelUmountEnabled,
         onSetSelinuxHideEnabled = viewModel::setSelinuxHideEnabled,
         onSetSulogEnabled = viewModel::setSulogEnabled,
+        onSetAvcSpoofEnabled = viewModel::setAvcSpoofEnabled,
         onSetFolkMountMode = viewModel::setFolkMountMode,
         onSetAdbRootEnabled = viewModel::setAdbRootEnabled,
         onSetDefaultUmountModules = viewModel::setDefaultUmountModules,

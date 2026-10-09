@@ -258,6 +258,10 @@
     <string name="settings_selinux_hide_reboot_required">Reboot to take effect</string>
     <string name="settings_selinux_hide_failed">Error: %d</string>
     <string name="settings_sulog">SU Log</string>
+    <string name="settings_avc_spoof">AVC log spoofing</string>
+    <string name="settings_avc_spoof_summary">Mask the KSU target context in SELinux audit logs</string>
+    <string name="settings_avc_spoof_failed">Could not change AVC log spoofing. Check kernel support and SELinux policy readiness.</string>
+    <string name="settings_avc_spoof_save_failed">Applied, but could not save the setting for the next boot</string>
     <string name="settings_sulog_summary">Record Root-related events into KernelSU sulog files</string>
     <string name="settings_folk_mount">Folk Mount</string>
     <string name="settings_folk_mount_summary">Choose how modules are mounted on boot.</string>

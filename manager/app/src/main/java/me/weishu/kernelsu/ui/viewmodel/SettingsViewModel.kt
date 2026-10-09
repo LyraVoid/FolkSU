@@ -61,6 +61,8 @@ class SettingsViewModel(
             val selinuxHideStatus = repo.getSelinuxHideStatus()
             val isSelinuxHideEnabled = repo.isSelinuxHideEnabled()
             val sulogStatus = repo.getSulogStatus()
+            val avcSpoofStatus = repo.getAvcSpoofStatus()
+            val isAvcSpoofEnabled = repo.isAvcSpoofEnabled()
             val isSulogEnabled = repo.getSulogPersistValue() == 1L
             val adbRootStatus = repo.getAdbRootStatus()
             val isAdbRootEnabled = repo.getAdbRootPersistValue() == 1L
@@ -97,6 +99,8 @@ class SettingsViewModel(
                     selinuxHideStatus = selinuxHideStatus,
                     isSelinuxHideEnabled = isSelinuxHideEnabled,
                     sulogStatus = sulogStatus,
+                    avcSpoofStatus = avcSpoofStatus,
+                    isAvcSpoofEnabled = isAvcSpoofEnabled,
                     isSulogEnabled = isSulogEnabled,
                     isDefaultUmountModules = isDefaultUmountModules,
                     isLkmMode = isLkmMode,
@@ -252,6 +256,30 @@ class SettingsViewModel(
     fun setAllowAnyDynamicManager(enabled: Boolean) {
         repo.allowAnyDynamicManager = enabled
         _uiState.update { it.copy(allowAnyDynamicManager = enabled) }
+    }
+
+    fun setAvcSpoofEnabled(enabled: Boolean) {
+        if (_uiState.value.isAvcSpoofWriting) return
+        _uiState.update { it.copy(isAvcSpoofWriting = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (repo.setAvcSpoofEnabled(enabled)) {
+                    val saved = repo.execKsudFeatureSave()
+                    _uiState.update { it.copy(isAvcSpoofEnabled = repo.isAvcSpoofEnabled()) }
+                    if (!saved) {
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(ksuApp, R.string.settings_avc_spoof_save_failed, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(ksuApp, R.string.settings_avc_spoof_failed, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } finally {
+                _uiState.update { it.copy(isAvcSpoofWriting = false) }
+            }
+        }
     }
 
     fun setSulogEnabled(enabled: Boolean) {

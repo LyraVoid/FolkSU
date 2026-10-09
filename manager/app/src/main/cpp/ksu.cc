@@ -302,6 +302,16 @@ bool is_selinux_hide_enabled() {
     return value != 0;
 }
 
+bool is_avc_spoof_enabled() {
+    uint64_t value = 0;
+    bool supported = false;
+    return get_feature(KSU_FEATURE_AVC_SPOOF, &value, &supported) && supported && value != 0;
+}
+
+bool set_avc_spoof_enabled(bool enabled) {
+    return set_feature(KSU_FEATURE_AVC_SPOOF, enabled ? 1 : 0);
+}
+
 // Dynamic-manager support is advertised by KSU_FEATURE_DYNAMIC_MANAGER, not
 // by the UAPI version: the commands are additive, so a kernel that merely
 // shares uapi 5 is not guaranteed to implement them. Feature detection is

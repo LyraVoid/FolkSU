@@ -37,6 +37,9 @@ data class SettingsUiState(
 
     // SU Log
     val sulogStatus: String = "",
+    val avcSpoofStatus: String = "",
+    val isAvcSpoofEnabled: Boolean = false,
+    val isAvcSpoofWriting: Boolean = false,
     val isSulogEnabled: Boolean = false,
 
     // Folk Mount
@@ -79,6 +82,7 @@ data class SettingsScreenActions(
     val onSetKernelUmountEnabled: (Boolean) -> Unit,
     val onSetSelinuxHideEnabled: (Boolean) -> Unit,
     val onSetSulogEnabled: (Boolean) -> Unit,
+    val onSetAvcSpoofEnabled: (Boolean) -> Unit,
     val onSetFolkMountMode: (FolkMountMode) -> Unit,
     val onSetAdbRootEnabled: (Boolean) -> Unit,
     val onSetDefaultUmountModules: (Boolean) -> Unit,

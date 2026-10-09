@@ -200,6 +200,12 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     override suspend fun getSulogStatus(): String = getFeatureStatus("sulog")
 
+    override suspend fun getAvcSpoofStatus(): String = getFeatureStatus("avc_spoof")
+
+    override fun isAvcSpoofEnabled(): Boolean = Natives.isAvcSpoofEnabled()
+
+    override fun setAvcSpoofEnabled(enabled: Boolean): Boolean = Natives.setAvcSpoofEnabled(enabled)
+
     override suspend fun getSulogPersistValue(): Long? = getFeaturePersistValue("sulog")
 
     override fun setSulogEnabled(enabled: Boolean): Boolean = execKsud("feature set sulog ${if (enabled) 1 else 0}", true)
@@ -246,7 +252,5 @@ class SettingsRepositoryImpl : SettingsRepository {
 
     override fun isLkmMode(): Boolean = Natives.isLkmMode
 
-    override fun execKsudFeatureSave() {
-        execKsud("feature save", true)
-    }
+    override fun execKsudFeatureSave(): Boolean = execKsud("feature save", true)
 }

@@ -26,6 +26,7 @@
 #include "hook/syscall_hook.h"
 #include "feature/adb_root.h"
 #include "feature/selinux_hide.h"
+#include "feature/avc_spoof.h"
 #include "infra/symbol_resolver.h"
 
 #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
@@ -140,6 +141,7 @@ int __init kernelsu_init(void)
     ksu_adb_root_init();
     ksu_lsm_hook_init();
     ksu_selinux_hide_init();
+    ksu_avc_spoof_init();
 
     ksu_supercalls_init();
     ksu_app_profile_init();
@@ -205,6 +207,7 @@ void __exit kernelsu_exit(void)
 {
     // Phase 1: Stop all hooks first to prevent new callbacks
     ksu_syscall_hook_manager_exit();
+    ksu_avc_spoof_exit();
 
     ksu_supercalls_exit();
 

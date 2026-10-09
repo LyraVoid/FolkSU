@@ -197,4 +197,8 @@
     <string name="profile_flags_desc_no_new_privs">防止在此 Root Profile 的上下文中透過 KernelSU 進一步提升權限</string>
     <string name="install_force_backup">備份為原廠映像</string>
     <string name="install_force_backup_summary">請確保你選擇的 boot 映像是原廠映像</string>
+    <string name="settings_avc_spoof">AVC 日誌偽裝</string>
+    <string name="settings_avc_spoof_summary">隱藏 SELinux 稽核日誌中的 KSU 目標情境</string>
+    <string name="settings_avc_spoof_failed">無法切換 AVC 日誌偽裝，請檢查核心支援及 SELinux 原則是否就緒</string>
+    <string name="settings_avc_spoof_save_failed">已生效，但無法儲存設定供下次啟動使用</string>
 </resources>

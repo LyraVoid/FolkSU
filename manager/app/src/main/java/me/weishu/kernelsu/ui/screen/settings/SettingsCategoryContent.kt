@@ -270,6 +270,21 @@ fun FunctionCategoryContent(uiState: SettingsUiState, actions: SettingsScreenAct
                     )
                 },
                 {
+                    val avcSpoofSummary = when (uiState.avcSpoofStatus) {
+                        "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
+                        "managed" -> stringResource(id = R.string.feature_status_managed_summary)
+                        else -> stringResource(id = R.string.settings_avc_spoof_summary)
+                    }
+                    SegmentedSwitchItem(
+                        icon = Icons.Filled.Security,
+                        title = stringResource(id = R.string.settings_avc_spoof),
+                        summary = avcSpoofSummary,
+                        enabled = uiState.avcSpoofStatus == "supported" && !uiState.isAvcSpoofWriting,
+                        checked = uiState.isAvcSpoofEnabled,
+                        onCheckedChange = actions.onSetAvcSpoofEnabled
+                    )
+                },
+                {
                     val sulogSummary = when (uiState.sulogStatus) {
                         "unsupported" -> stringResource(id = R.string.feature_status_unsupported_summary)
                         "managed" -> stringResource(id = R.string.feature_status_managed_summary)
