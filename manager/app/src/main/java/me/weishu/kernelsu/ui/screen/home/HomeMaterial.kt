@@ -14,16 +14,25 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.R
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.weishu.kernelsu.media.MusicConfig
+import me.weishu.kernelsu.media.MusicManager
 import me.weishu.kernelsu.data.HomeMetrics
 import me.weishu.kernelsu.data.model.HomeLayoutStyle
 import me.weishu.kernelsu.ui.component.material.ExpressiveScaffold
@@ -108,7 +117,18 @@ fun HomePagerMaterial(
 private fun TopBar() {
     TopAppBar(
         title = { me.weishu.kernelsu.ui.component.HomeTitleImage() },
-        actions = { RebootListPopup() },
+        actions = {
+            if (MusicConfig.isMusicEnabled && MusicConfig.getMusicFile(LocalContext.current) != null) {
+                val playing by MusicManager.isPlaying.collectAsStateWithLifecycle()
+                IconButton(onClick = { MusicManager.toggle() }) {
+                    Icon(
+                        imageVector = if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = stringResource(if (playing) R.string.media_pause else R.string.media_play),
+                    )
+                }
+            }
+            RebootListPopup()
+        },
         colors = expressiveTopAppBarColors(),
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
     )
