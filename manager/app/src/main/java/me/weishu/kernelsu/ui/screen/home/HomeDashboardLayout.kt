@@ -81,7 +81,7 @@ internal fun DashboardHomeContent(
                     onOpenModule = actions.onOpenModule,
                     layout = CountCardLayout.Vertical,
                     modifier = Modifier.weight(1f).fillMaxHeight(),
-                    emphasis = CountCardEmphasis.Value,
+                    emphasis = CountCardEmphasis.Centered,
                 )
                 InfoCard(
                     systemInfo = state.systemInfo,

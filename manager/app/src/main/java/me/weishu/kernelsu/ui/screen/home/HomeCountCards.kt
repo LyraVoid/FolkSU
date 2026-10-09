@@ -39,19 +39,22 @@ internal enum class CountCardLayout {
 }
 
 /**
- * Which of the two lines carries the card.
+ * How the count card reads.
  *
  * [Label] reads as a name with a number under it, [Value] as a small caption over a number, so a
- * host can pick the one that suits the size it gives the card.
+ * host can pick the one that suits the size it gives the card. [Centered] is the stat-tile variant:
+ * a centred icon, name and large number, made to fill a tall card without looking empty.
  */
 internal enum class CountCardEmphasis {
     Label,
     Value,
+    Centered,
 }
 
 internal object CountCardDefaults {
     val ContentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
     val IconSize = 20.dp
+    val CenteredIconSize = 28.dp
     val IconTextSpacing = 16.dp
     val PairSpacing = 16.dp
 }
@@ -122,49 +125,86 @@ internal fun CountCard(
     val labelStyle = when (emphasis) {
         CountCardEmphasis.Label -> FolkType.Summary
         CountCardEmphasis.Value -> FolkType.Caption
+        CountCardEmphasis.Centered -> FolkType.Summary
     }
     val labelColor = when (emphasis) {
         CountCardEmphasis.Label -> MaterialTheme.colorScheme.onSurface
         CountCardEmphasis.Value -> MaterialTheme.colorScheme.onSurfaceVariant
+        CountCardEmphasis.Centered -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val valueStyle = when (emphasis) {
         CountCardEmphasis.Label -> FolkType.Numeral
         CountCardEmphasis.Value -> FolkType.Title
+        CountCardEmphasis.Centered -> MaterialTheme.typography.displaySmall
     }
     val valueColor = when (emphasis) {
         CountCardEmphasis.Label -> MaterialTheme.colorScheme.outline
         CountCardEmphasis.Value -> MaterialTheme.colorScheme.onSurface
+        CountCardEmphasis.Centered -> MaterialTheme.colorScheme.onSurface
     }
 
     HomeCard(modifier = modifier, onClick = onClick) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        if (emphasis == CountCardEmphasis.Centered) {
+            // Stat tile: fill the tall card the wide host hands over instead of pinning a small row
+            // to the leading edge and leaving the rest blank.
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(CountCardDefaults.IconSize),
+                    modifier = Modifier.size(CountCardDefaults.CenteredIconSize),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.width(CountCardDefaults.IconTextSpacing))
-                Column {
-                    Text(
-                        text = label,
-                        style = labelStyle,
-                        color = labelColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = label,
+                    style = labelStyle,
+                    color = labelColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = count.toString(),
+                    style = valueStyle,
+                    color = valueColor
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(CountCardDefaults.IconSize),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = count.toString(),
-                        style = valueStyle,
-                        color = valueColor
-                    )
+                    Spacer(Modifier.width(CountCardDefaults.IconTextSpacing))
+                    Column {
+                        Text(
+                            text = label,
+                            style = labelStyle,
+                            color = labelColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = count.toString(),
+                            style = valueStyle,
+                            color = valueColor
+                        )
+                    }
                 }
             }
         }
