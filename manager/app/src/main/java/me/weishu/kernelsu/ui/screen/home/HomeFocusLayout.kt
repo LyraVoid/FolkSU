@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.HomeMetrics
 import me.weishu.kernelsu.ui.component.SurfaceOptionsDialog
@@ -45,7 +45,7 @@ internal fun FocusHomeContent(
     actions: HomeActions,
     metrics: HomeMetrics,
 ) {
-    val fullFeatured = Natives.isFullFeatured()
+    val fullFeatured = useFullFeaturedLayout()
     val focusStyle = SurfaceStore.config(SurfaceRegistry.FOCUS)
     fun focusBackground(id: SurfaceId): SurfaceConfig? {
         val card = SurfaceStore.config(id)

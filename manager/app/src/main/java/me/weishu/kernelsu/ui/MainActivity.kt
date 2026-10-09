@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavKey
@@ -109,10 +110,14 @@ import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.LocalColorMode
 import me.weishu.kernelsu.ui.theme.LocalEnableNavigationBadge
 import me.weishu.kernelsu.ui.theme.LocalModuleDescriptionMaxLines
+import me.weishu.kernelsu.ui.util.CapabilityRepository
+import me.weishu.kernelsu.ui.util.LocalCapabilityState
 import me.weishu.kernelsu.ui.util.PagerNavigationSpringSpec
+import me.weishu.kernelsu.ui.util.RootShell
 import me.weishu.kernelsu.ui.util.getSuperuserCount
 import me.weishu.kernelsu.ui.util.install
 import me.weishu.kernelsu.ui.util.rememberContentReady
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.ui.viewmodel.MainActivityViewModel
 import me.weishu.kernelsu.ui.viewmodel.MainPagerConfig
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
@@ -142,6 +147,10 @@ class MainActivity : ComponentActivity() {
 
         val isManager = Natives.isManager
         if (isManager && Natives.kernelUAPIVersion == Natives.managerUAPIVersion) install()
+
+        // Warm the shell slots and build the first capability snapshot off the main thread.
+        RootShell.initialize()
+        CapabilityRepository.refresh()
 
         if (savedInstanceState == null) intent?.let { intentChannel.trySend(it) }
 
@@ -176,6 +185,8 @@ class MainActivity : ComponentActivity() {
                 Density(systemDensity.density * uiState.pageScale, systemDensity.fontScale)
             }
 
+            val capability by CapabilityRepository.state.collectAsStateWithLifecycle()
+
             CompositionLocalProvider(
                 LocalNavigator provides navigator,
                 LocalDensity provides density,
@@ -184,6 +195,7 @@ class MainActivity : ComponentActivity() {
                 LocalModuleDescriptionMaxLines provides uiState.moduleDescriptionMaxLines,
                 LocalHomeLayoutStyle provides uiState.homeLayoutStyle,
                 LocalWallpaperPage provides selectedMainPage,
+                LocalCapabilityState provides capability,
             ) {
                 KernelSUTheme(appSettings = appSettings) {
                     IntentDispatcher(intentChannel = intentChannel)
@@ -276,8 +288,15 @@ fun MainScreen(
         pagerState = pagerState,
         animatePageChanges = !useNavigationRail,
     )
-    val isFullFeatured = Natives.isFullFeatured()
+    val isFullFeatured = useFullFeaturedLayout()
     var userScrollEnabled by remember(isFullFeatured) { mutableStateOf(isFullFeatured) }
+
+    // Re-probe identity and the root shell whenever the app returns to the foreground, so a
+    // grant/revocation done while we were backgrounded is reflected without a restart.
+    LifecycleResumeEffect(Unit) {
+        CapabilityRepository.refresh()
+        onPauseOrDispose { }
+    }
 
     val enableNavigationBadge = LocalEnableNavigationBadge.current
     val badgeEnabled = enableNavigationBadge && isFullFeatured

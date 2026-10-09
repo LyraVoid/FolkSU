@@ -22,7 +22,8 @@ import me.weishu.kernelsu.data.model.WEBVIEW_ZYGOTE_PROFILE_KEY
 import me.weishu.kernelsu.data.model.WEBVIEW_ZYGOTE_UID
 import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.ui.KsuService
-import me.weishu.kernelsu.ui.util.KsuCli
+import me.weishu.kernelsu.ui.util.awaitRootShell
+import me.weishu.kernelsu.ui.util.getRootShell
 import kotlin.coroutines.resume
 
 class SuperUserRepositoryImpl : SuperUserRepository {
@@ -33,7 +34,7 @@ class SuperUserRepositoryImpl : SuperUserRepository {
 
     override suspend fun getAppList(): Result<Pair<List<AppInfo>, List<Int>>> = withContext(Dispatchers.IO) {
         runCatching {
-            if (!KsuCli.SHELL.isRoot) {
+            if (!awaitRootShell().isRoot) {
                 return@withContext Result.failure(
                     IllegalStateException("Root access is required")
                 )
@@ -176,7 +177,7 @@ class SuperUserRepositoryImpl : SuperUserRepository {
                 Shell.EXECUTOR,
                 connection,
             )
-            val shell = KsuCli.SHELL
+            val shell = getRootShell()
             task?.let { shell.execTask(it) }
         }
     }

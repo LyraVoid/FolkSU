@@ -209,6 +209,7 @@
     <string name="settings_pager_gesture_ios_like">iOS-like</string>
     <string name="settings_module_check_update">Check for module updates</string>
     <string name="grant_root_failed">Failed to grant Root!</string>
+    <string name="root_recovering">Restoring root access...</string>
     <string name="home_pr_build_warning">This is a PR debug build. Do NOT use it in production!</string>
     <string name="home_pr_kernel_warning">The kernel was built with PR signature support. This is not a production kernel!</string>
     <string name="action">Action</string>

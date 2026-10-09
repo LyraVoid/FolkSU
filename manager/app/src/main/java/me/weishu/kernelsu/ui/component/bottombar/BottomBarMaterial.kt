@@ -16,14 +16,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.ui.LocalMainPagerState
 import me.weishu.kernelsu.ui.component.material.ChromeEdge
 import me.weishu.kernelsu.ui.component.material.WallpaperChromeZone
 
 @Composable
 fun BottomBarMaterial(navigationBadge: NavigationBadgeState) {
-    val fullFeatured = Natives.isFullFeatured()
+    val fullFeatured = useFullFeaturedLayout()
     if (!fullFeatured) return
 
     val mainPagerState = LocalMainPagerState.current

@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.HomeMetrics
 import me.weishu.kernelsu.data.model.HomeLayoutStyle
@@ -96,7 +96,7 @@ fun HomePagerMaterial(
             SupportLinks(onOpenUrl = actions.onOpenUrl)
             Spacer(
                 Modifier.height(
-                    bottomInnerPadding + if (!Natives.isFullFeatured())
+                    bottomInnerPadding + if (!useFullFeaturedLayout())
                         WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else 0.dp
                 )
             )

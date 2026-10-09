@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.SurfaceOptionsDialog
 import me.weishu.kernelsu.ui.component.statustag.StatusTag
@@ -72,7 +72,7 @@ internal fun GridHomeContent(
     superuserCount: Int,
     moduleEnabledCount: Int,
 ) {
-    if (Natives.isFullFeatured()) {
+    if (useFullFeaturedLayout()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

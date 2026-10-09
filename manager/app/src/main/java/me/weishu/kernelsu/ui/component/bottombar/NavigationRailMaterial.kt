@@ -16,7 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.ui.LocalMainPagerState
 import me.weishu.kernelsu.ui.component.material.ChromeEdge
 import me.weishu.kernelsu.ui.component.material.WallpaperChromeZone
@@ -35,7 +35,7 @@ fun NavigationRailMaterial(
     navigationBadge: NavigationBadgeState,
     modifier: Modifier = Modifier,
 ) {
-    if (!Natives.isFullFeatured()) return
+    if (!useFullFeaturedLayout()) return
 
     val mainPagerState = LocalMainPagerState.current
     val railStyle = BottomBarControl.style(BottomBarLayout.Rail)

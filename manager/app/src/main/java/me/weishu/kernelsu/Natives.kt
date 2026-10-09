@@ -6,7 +6,7 @@ import androidx.compose.runtime.Immutable
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 import me.weishu.kernelsu.Natives.Profile.RootProfileFlag
-import me.weishu.kernelsu.ui.util.rootAvailable
+import me.weishu.kernelsu.ui.util.CapabilityRepository
 
 /**
  * @author weishu
@@ -145,7 +145,7 @@ object Natives {
 
     fun isFullFeatured(): Boolean {
         if (DebugFlags.forceFullFeatured) return true
-        return isManager && kernelUAPIVersion == managerUAPIVersion && rootAvailable()
+        return CapabilityRepository.current().fullLayout
     }
 
     @Keep

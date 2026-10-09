@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 
 @Composable
 internal fun CircleHomeContent(
@@ -18,7 +18,7 @@ internal fun CircleHomeContent(
         actions = actions,
     )
     // The counts only exist on a device where the kernel module is present.
-    if (Natives.isFullFeatured()) {
+    if (useFullFeaturedLayout()) {
         CountCardPair(
             superuserCount = superuserCount,
             moduleEnabledCount = moduleEnabledCount,

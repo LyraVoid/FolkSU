@@ -47,8 +47,6 @@ data class FlashResult(val code: Int, val err: String, val showReboot: Boolean) 
 }
 
 object KsuCli {
-    val SHELL: Shell = createRootShell()
-    val GLOBAL_MNT_SHELL: Shell = createRootShell(true)
 
     /** A dynamic-manager certificate as reported by `ksud dynamic get-sign --json`. */
     data class DynamicManagerSignature(
@@ -74,7 +72,7 @@ object KsuCli {
         withContext(Dispatchers.IO) {
             val stdout = ArrayList<String>()
             val stderr = ArrayList<String>()
-            val result = getRootShell().newJob()
+            val result = awaitRootShell().newJob()
                 .add("${getKsuDaemonPath()} dynamic get-sign --json --uid $uid")
                 .to(stdout, stderr)
                 .exec()
@@ -96,7 +94,7 @@ object KsuCli {
         }
 
     suspend fun setDynamicManagerUid(uid: Int): Boolean = withContext(Dispatchers.IO) {
-        val result = getRootShell().newJob()
+        val result = awaitRootShell().newJob()
             .add("${getKsuDaemonPath()} dynamic set-uid $uid")
             .exec()
         Log.i(TAG, "dynamic set-uid $uid result: ${result.isSuccess}")
@@ -105,7 +103,7 @@ object KsuCli {
 
     suspend fun deleteDynamicManager(signature: DynamicManagerSignature): Boolean =
         withContext(Dispatchers.IO) {
-            val result = getRootShell().newJob()
+            val result = awaitRootShell().newJob()
                 .add("${getKsuDaemonPath()} dynamic del ${signature.size} ${signature.hash}")
                 .exec()
             Log.i(TAG, "dynamic del ${signature.size} ${signature.hash} result: ${result.isSuccess}")
@@ -114,9 +112,21 @@ object KsuCli {
 }
 
 fun getRootShell(globalMnt: Boolean = false): Shell {
-    return if (globalMnt) KsuCli.GLOBAL_MNT_SHELL else {
-        KsuCli.SHELL
-    }
+    return RootShell.obtain(globalMnt)
+}
+
+/**
+ * Suspending accessor for privileged commands that must not run on a stale/non-root shell: waits
+ * for a usable root shell (rebuilding it if needed) before executing.
+ */
+suspend fun awaitRootShell(globalMnt: Boolean = false): Shell {
+    RootShell.awaitReady(globalMnt)
+    return RootShell.obtain(globalMnt)
+}
+
+/** Re-probe the cached root shell in the background (recovery entry point). */
+fun probeRootShell(globalMnt: Boolean = false) {
+    RootShell.probe(globalMnt)
 }
 
 inline fun <T> withNewRootShell(
@@ -573,8 +583,7 @@ fun reboot(reason: String = "") {
 }
 
 fun rootAvailable(): Boolean {
-    val shell = getRootShell()
-    return shell.isRoot
+    return RootShell.isRootAvailable()
 }
 
 suspend fun getCurrentKmi(): String = withContext(Dispatchers.IO) {

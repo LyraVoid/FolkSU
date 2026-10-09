@@ -60,8 +60,14 @@ internal fun HomeWarnings(
             onClick = actions.onInstallClick,
         )
     }
+    if (state.showRootRecovering) {
+        WarningCard(stringResource(id = R.string.root_recovering), level = WarningLevel.Notice)
+    }
     if (state.showRootWarning) {
-        WarningCard(stringResource(id = R.string.grant_root_failed))
+        WarningCard(
+            message = stringResource(id = R.string.grant_root_failed),
+            onClick = actions.onRetryRoot,
+        )
     }
 }
 

@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.fletchmckee.liquid.LiquidState
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.ui.LocalMainPagerState
 
 /** Vertical space the floating bar occupies from the screen bottom, excluding system insets. */
@@ -47,7 +47,7 @@ internal fun FloatingBar(
     modifier: Modifier = Modifier,
     onUserInteraction: () -> Unit = {},
 ) {
-    if (!Natives.isFullFeatured()) return
+    if (!useFullFeaturedLayout()) return
     val mainPagerState = LocalMainPagerState.current
     val revision by FloatingBarConfig.revision.collectAsStateWithLifecycle()
     val style = remember(revision) { FloatingBarConfig.style }

@@ -30,6 +30,7 @@ import me.weishu.kernelsu.ui.component.bottombar.BottomBarDestination
 import me.weishu.kernelsu.ui.component.dialog.rememberLoadingDialog
 import me.weishu.kernelsu.ui.navigation3.Navigator
 import me.weishu.kernelsu.ui.navigation3.Route
+import me.weishu.kernelsu.ui.util.CapabilityRepository
 import me.weishu.kernelsu.ui.viewmodel.HomeViewModel
 
 @Composable
@@ -92,6 +93,7 @@ fun HomePager(
         },
         onOpenSuperUser = { mainPagerState.animateToPage(BottomBarDestination.SuperUser.ordinal) },
         onOpenModule = { mainPagerState.animateToPage(BottomBarDestination.Module.ordinal) },
+        onRetryRoot = { CapabilityRepository.refresh() },
     )
 
     HomePagerMaterial(

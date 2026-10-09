@@ -28,11 +28,12 @@ import me.weishu.kernelsu.ksuApp
 import me.weishu.kernelsu.ui.screen.home.HomeUiState
 import me.weishu.kernelsu.ui.screen.home.SystemInfo
 import me.weishu.kernelsu.ui.screen.home.getManagerVersion
+import me.weishu.kernelsu.ui.util.CapabilityRepository
+import me.weishu.kernelsu.ui.util.RootShellStatus
 import me.weishu.kernelsu.ui.util.checkNewVersion
 import me.weishu.kernelsu.ui.util.getSELinuxStatusRaw
 import me.weishu.kernelsu.ui.util.module.LatestVersionInfo
 import me.weishu.kernelsu.ui.util.resolveDeviceName
-import me.weishu.kernelsu.ui.util.rootAvailable
 
 class HomeViewModel(
     private val settingsRepo: SettingsRepository = SettingsRepositoryImpl()
@@ -86,7 +87,7 @@ class HomeViewModel(
         val kernelUAPIVersion = if (isManager) Natives.kernelUAPIVersion else null
         val managerUAPIVersion = Natives.managerUAPIVersion
         val lkmMode = ksuVersion?.let { if (kernelVersion.isGKI()) Natives.isLkmMode else null }
-        val isRootAvailable = rootAvailable()
+        val rootStatus = CapabilityRepository.current().rootStatus
         val managerVersion = getManagerVersion(ksuApp)
 
         return HomeUiState(
@@ -101,7 +102,8 @@ class HomeViewModel(
             requiresNewManager = isManager && Natives.managerUAPIVersion < Natives.kernelUAPIVersion,
             kernelUAPIVersion = kernelUAPIVersion,
             managerUAPIVersion = managerUAPIVersion,
-            isRootAvailable = isRootAvailable,
+            isRootAvailable = rootStatus == RootShellStatus.Ready,
+            rootStatus = rootStatus,
             isSafeMode = Natives.isSafeMode,
             isLateLoadMode = Natives.isLateLoadMode,
             checkUpdateEnabled = settingsRepo.checkUpdate,

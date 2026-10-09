@@ -31,7 +31,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.ui.util.useFullFeaturedLayout
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.SurfaceOptionsDialog
 import me.weishu.kernelsu.ui.theme.FolkType
@@ -55,7 +55,7 @@ internal fun DashboardHomeContent(
     superuserCount: Int,
     moduleEnabledCount: Int,
 ) {
-    val fullFeatured = Natives.isFullFeatured()
+    val fullFeatured = useFullFeaturedLayout()
     Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
         DashboardHeroCard(
             state = state,

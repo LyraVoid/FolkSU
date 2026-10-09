@@ -20,6 +20,7 @@ import me.weishu.kernelsu.R
 import me.weishu.kernelsu.data.repository.SettingsRepositoryImpl
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.ui.navigation3.Route
+import me.weishu.kernelsu.ui.util.CapabilityRepository
 import me.weishu.kernelsu.ui.util.KsuCli
 import me.weishu.kernelsu.ui.util.forceStopApp
 import me.weishu.kernelsu.ui.util.getSepolicy
@@ -192,6 +193,10 @@ fun AppProfileScreen(uid: Int) {
                     }
                 } finally {
                     dynamicManagerBusy = false
+                    // A dynamic grant/revoke can change who is a manager and may temporarily
+                    // disturb the shell: re-read identity and re-probe root so the home layout and
+                    // navigation stay consistent without restarting the app.
+                    CapabilityRepository.refresh()
                 }
             }
         },
