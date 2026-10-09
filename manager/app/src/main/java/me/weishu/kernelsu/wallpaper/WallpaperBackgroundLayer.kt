@@ -48,7 +48,10 @@ fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
     val file = remember(path) { path?.let { File(it) } }
     val animatedFile = file?.takeIf { isAnimatedImageFile(it) }
 
-    val image by produceState<ImageBitmap?>(initialValue = null, path, animatedFile) {
+    // Key on the whole URI (it carries the ?t= revision), not the query-less path: replacing a
+    // wallpaper with another file of the same name and format must re-decode instead of keeping
+    // the old frame next to freshly derived brightness/seed colours.
+    val image by produceState<ImageBitmap?>(initialValue = null, uri, animatedFile) {
         value = if (animatedFile != null) {
             null
         } else {
@@ -65,6 +68,7 @@ fun WallpaperBackgroundLayer(modifier: Modifier = Modifier) {
             val blurPx = with(LocalDensity.current) { blurRadius.dp.toPx() }
             AnimatedFileImage(
                 file = animatedFile,
+                revision = uri,
                 modifier = Modifier.fillMaxSize(),
                 blurRadiusPx = blurPx,
             )

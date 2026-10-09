@@ -92,8 +92,12 @@ fun MaterialKernelSUTheme(
         neutral = chosenNeutral,
         active = wallpaperActive,
     )
+    // Animate the scheme once, then derive both the MaterialTheme palette and the wallpaper tokens
+    // from the same animated instance. Otherwise a panel's fill/content comes from the target scheme
+    // while the text inside it is still interpolating, leaving a transient low-contrast frame.
+    val animatedColorScheme = adaptedColorScheme.animateAsState()
     val wallpaperTokens = if (wallpaperActive) {
-        resolveFolkWallpaperTokens(adaptedColorScheme, WallpaperConfig.opacity)
+        resolveFolkWallpaperTokens(animatedColorScheme, WallpaperConfig.opacity)
     } else {
         null
     }
@@ -114,8 +118,6 @@ fun MaterialKernelSUTheme(
             isAppearanceLightNavigationBars = !systemBarDark
         }
     }
-
-    val animatedColorScheme = adaptedColorScheme.animateAsState()
 
     val fontFamily = remember(FontConfig.fontMode, FontConfig.customFontFilename) {
         FontConfig.getFontFamily(context)
