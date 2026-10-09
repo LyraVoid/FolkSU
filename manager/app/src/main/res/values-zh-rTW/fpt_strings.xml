@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fpt_import_title">確認匯入主題</string>
+    <string name="fpt_resources">資源：%1$d 項</string>
+    <string name="fpt_compatibility">缺少的設定保留預設值或目前值。未知欄位及不支援的資源會保留以供再次匯出。啟動音和震動仍為裝置設定。</string>
+    <string name="fpt_type_value">裝置類型：%1$s</string>
+    <string name="fpt_name">名稱</string>
+    <string name="fpt_version">版本</string>
+    <string name="fpt_author">作者</string>
+    <string name="fpt_description">描述</string>
+</resources>

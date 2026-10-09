@@ -22,7 +22,6 @@ import me.weishu.kernelsu.data.themestore.RemoteTheme
 import me.weishu.kernelsu.data.themestore.ThemeDownloader
 import me.weishu.kernelsu.data.themestore.normalizeStoreUrl
 import me.weishu.kernelsu.ksuApp
-import me.weishu.kernelsu.wallpaper.FolkThemeIO
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -30,7 +29,7 @@ import org.json.JSONObject
  * Backs the online theme store and the local "my themes" list.
  *
  * Remote themes are listed from the FolkPatch-compatible index at [THEMES_URL]; a downloaded `.fpt`
- * package lands in `filesDir/themes/<author>/<name>/` and is applied through [FolkThemeIO], the
+ * package lands in `filesDir/themes/<author>/<name>/` and uses the shared theme confirmation flow.
  * same importer the wallpaper screen uses. Downloads are delegated to [ThemeDownloader], which
  * exposes progress as a [StateFlow].
  */
@@ -162,13 +161,6 @@ class ThemeStoreViewModel : ViewModel() {
     fun isThemeDownloaded(id: String): Boolean = localThemes.any { it.id == id }
 
     fun isThemeDownloading(id: String): Boolean = downloadJobs.containsKey(id)
-
-    /** Applies a downloaded theme through the shared `.fpt` importer. */
-    suspend fun applyTheme(localTheme: LocalTheme): Boolean = withContext(Dispatchers.IO) {
-        val file = File(localTheme.localPath)
-        if (!file.exists() || !isLikelyThemeFile(file)) return@withContext false
-        FolkThemeIO.importBackground(context, Uri.fromFile(file))
-    }
 
     fun deleteTheme(localTheme: LocalTheme) {
         viewModelScope.launch {
@@ -330,16 +322,6 @@ class ThemeStoreViewModel : ViewModel() {
             )
         }
         return result.values.toList()
-    }
-
-    private fun isLikelyThemeFile(file: File): Boolean {
-        if (file.length() < MIN_THEME_SIZE) return false
-        return runCatching {
-            file.inputStream().use { stream ->
-                val first = stream.read()
-                first != '<'.code && first != '{'.code
-            }
-        }.getOrDefault(false)
     }
 
     private fun LocalTheme.matches(query: String): Boolean =

@@ -125,7 +125,8 @@ internal fun StatusCard(
         }
     } else ""
 
-    val statusTrailing: (@Composable () -> Unit)? = if (ksuActive && workingMode.isNotEmpty()) {
+    val hideMode = rememberHomeThemeSettings().listWorkingCardModeHidden
+    val statusTrailing: (@Composable () -> Unit)? = if (ksuActive && workingMode.isNotEmpty() && !hideMode) {
         {
             StatusTag(
                 label = workingMode,

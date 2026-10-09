@@ -82,7 +82,7 @@ internal object SoundThemeAsset : ThemedAssetGroup {
             SoundEffectConfig.setFilenameValue(target?.name)
             SoundEffectConfig.setEnabledState(json.optBoolean("isSoundEffectEnabled") && target != null)
             SoundEffectConfig.setSourceTypeValue(SoundEffectConfig.SOURCE_TYPE_LOCAL)
-            SoundEffectConfig.setScopeValue(json.optString("soundEffectScope", SoundEffectConfig.SCOPE_GLOBAL))
+            SoundEffectConfig.setScopeValue(json.optString("soundEffectScope", SoundEffectConfig.scope))
             SoundEffectConfig.save(context)
         }
     }

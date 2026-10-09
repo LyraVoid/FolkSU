@@ -60,7 +60,7 @@ internal fun StatsHomeContent(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(TileSpacing),
             ) {
-                StatusCard(state = state, actions = actions)
+                StatsStatusSection(state, actions, superuserCount, moduleEnabledCount)
                 StatsMonitorTile(metrics = metrics)
             }
             Column(
@@ -82,7 +82,7 @@ internal fun StatsHomeContent(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(TileSpacing)) {
-        StatusCard(state = state, actions = actions)
+        StatsStatusSection(state, actions, superuserCount, moduleEnabledCount)
         StatsMonitorTile(metrics = metrics)
         StatsModuleTile(
             superuserCount = superuserCount,
@@ -93,6 +93,15 @@ internal fun StatsHomeContent(
             title = stringResource(R.string.home_tile_system),
             icon = Icons.Outlined.Info,
         )
+    }
+}
+
+@Composable
+private fun StatsStatusSection(state: HomeUiState, actions: HomeActions, superuserCount: Int, moduleEnabledCount: Int) {
+    if (rememberHomeThemeSettings().statsTopLayout == "grid") {
+        GridHomeContent(state, actions, superuserCount, moduleEnabledCount)
+    } else {
+        StatusCard(state, actions)
     }
 }
 

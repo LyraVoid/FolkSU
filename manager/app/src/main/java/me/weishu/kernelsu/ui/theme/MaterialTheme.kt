@@ -44,7 +44,7 @@ fun MaterialKernelSUTheme(
     val systemDarkTheme = isSystemInDarkTheme()
     val darkTheme = appSettings.colorMode.isDark || (appSettings.colorMode.isSystem && systemDarkTheme)
     val amoledMode = appSettings.colorMode.isAmoled
-    val dynamicColor = appSettings.keyColor == 0
+    val dynamicColor = appSettings.useSystemDynamicColor
 
     val wallpaperPage = LocalWallpaperPage.current
     val wallpaperActive = WallpaperConfig.isActive
@@ -73,6 +73,8 @@ fun MaterialKernelSUTheme(
         isAmoled = amoledMode,
         paletteStyle = appSettings.paletteStyle,
         colorSpec = appSettings.colorSpec,
+        contrastLevel = appSettings.contrastLevel,
+        generationMode = appSettings.colorGenerationMode,
     )
 
     // In wallpaper mode the neutral roles follow the wallpaper's effective brightness so text stays
@@ -85,6 +87,8 @@ fun MaterialKernelSUTheme(
         isAmoled = false,
         paletteStyle = PaletteStyle.Neutral,
         colorSpec = appSettings.colorSpec,
+        contrastLevel = appSettings.contrastLevel,
+        generationMode = appSettings.colorGenerationMode,
     )
     val chosenNeutral = if (wallpaperActive && darkNeutral != darkTheme) neutralScheme else colorScheme
     val adaptedColorScheme = adaptColorScheme(

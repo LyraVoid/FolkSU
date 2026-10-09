@@ -139,16 +139,19 @@ class SettingsViewModel(
 
     fun setKeyColor(color: Int) {
         repo.keyColor = color
+        repo.useSystemDynamicColor = color == 0
         _uiState.update { it.copy(keyColor = color) }
     }
 
     fun setColorStyle(style: String) {
         repo.colorStyle = style
+        repo.colorGenerationMode = "custom"
         _uiState.update { it.copy(colorStyle = style) }
     }
 
     fun setColorSpec(spec: String) {
         repo.colorSpec = spec
+        repo.colorGenerationMode = "custom"
         _uiState.update { it.copy(colorSpec = spec) }
     }
 

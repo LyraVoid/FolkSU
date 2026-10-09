@@ -153,6 +153,10 @@ class MainActivity : ComponentActivity() {
     private var splashStartedAt = 0L
     private val splashAnimationDurationMs = 500L
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(me.weishu.kernelsu.wallpaper.ThemeLanguage.wrap(newBase))
+    }
+
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {

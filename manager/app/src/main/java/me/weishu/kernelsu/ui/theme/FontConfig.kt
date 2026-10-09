@@ -137,6 +137,7 @@ object FontConfig {
             save(context)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to apply custom font", e)
+            throw e
         }
     }
 

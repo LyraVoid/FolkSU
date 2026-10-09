@@ -70,6 +70,26 @@ class SettingsRepositoryImpl : SettingsRepository {
         get() = prefs.getString("color_spec", ColorSpec.SpecVersion.SPEC_2025.name) ?: ColorSpec.SpecVersion.SPEC_2025.name
         set(value) = prefs.edit { putString("color_spec", value) }
 
+    override var useSystemDynamicColor: Boolean
+        get() = prefs.getBoolean("use_system_dynamic_color", keyColor == 0)
+        set(value) = prefs.edit { putBoolean("use_system_dynamic_color", value) }
+
+    override var colorGenerationMode: String
+        get() = prefs.getString("color_generation_mode", "custom") ?: "custom"
+        set(value) = prefs.edit { putString("color_generation_mode", value) }
+
+    override var colorContrast: String
+        get() = prefs.getString("color_contrast", "STANDARD") ?: "STANDARD"
+        set(value) = prefs.edit { putString("color_contrast", value) }
+
+    override var statsTopLayout: String
+        get() = prefs.getString("stats_top_layout", "list") ?: "list"
+        set(value) = prefs.edit { putString("stats_top_layout", value) }
+
+    override var listWorkingCardModeHidden: Boolean
+        get() = prefs.getBoolean("list_working_card_mode_hidden", false)
+        set(value) = prefs.edit { putBoolean("list_working_card_mode_hidden", value) }
+
     override var enablePredictiveBack: Boolean
         get() = prefs.getBoolean("enable_predictive_back", false)
         set(value) = prefs.edit { putBoolean("enable_predictive_back", value) }

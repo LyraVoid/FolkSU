@@ -47,6 +47,9 @@ data class AppSettings(
     val keyColor: Int,
     val paletteStyle: PaletteStyle,
     val colorSpec: ColorSpec.SpecVersion,
+    val useSystemDynamicColor: Boolean = keyColor == 0,
+    val colorGenerationMode: String = "custom",
+    val contrastLevel: Double = 0.0,
 )
 
 val PaletteStyle.supportsSpec2025: Boolean
@@ -79,7 +82,13 @@ object ThemeController {
             ColorSpec.SpecVersion.SPEC_2025
         }
 
-        return AppSettings(colorMode, keyColor, paletteStyle, colorSpec)
+        val contrast = when (repo.colorContrast) {
+            "MEDIUM" -> 0.5
+            "HIGH" -> 1.0
+            else -> 0.0
+        }
+        return AppSettings(colorMode, keyColor, paletteStyle, colorSpec,
+            repo.useSystemDynamicColor, repo.colorGenerationMode, contrast)
     }
 }
 

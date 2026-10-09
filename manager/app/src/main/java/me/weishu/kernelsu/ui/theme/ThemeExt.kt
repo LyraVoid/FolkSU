@@ -48,12 +48,23 @@ fun rememberKernelSUColorScheme(
     isAmoled: Boolean,
     paletteStyle: PaletteStyle,
     colorSpec: ColorSpec.SpecVersion,
+    contrastLevel: Double = 0.0,
+    generationMode: String = "custom",
 ): ColorScheme {
     val context = LocalContext.current
+    if (generationMode == "classic" && seedColor == Color.Unspecified) {
+        return (if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context))
+            .withSemanticError(isDark).amoledBackground(isAmoled)
+    }
+    if (generationMode == "classic") {
+        FptPalette.scheme(seedColor, isDark)?.let {
+            return it.withSemanticError(isDark).amoledBackground(isAmoled)
+        }
+    }
     val seed = if (seedColor == Color.Unspecified) {
         (if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)).primary
     } else {
-        seedColor
+        FptPalette.seed(seedColor, isDark)
     }
     return rememberDynamicColorScheme(
         seedColor = seed,
@@ -61,6 +72,7 @@ fun rememberKernelSUColorScheme(
         isAmoled = isAmoled,
         style = paletteStyle,
         specVersion = colorSpec.effectiveFor(paletteStyle),
+        contrastLevel = if (generationMode == "custom") contrastLevel else 0.0,
     ).withSemanticError(isDark).amoledBackground(isAmoled)
 }
 

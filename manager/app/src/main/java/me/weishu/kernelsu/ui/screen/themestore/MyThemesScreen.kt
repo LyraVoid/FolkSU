@@ -1,5 +1,8 @@
 package me.weishu.kernelsu.ui.screen.themestore
 
+import android.net.Uri
+import me.weishu.kernelsu.ui.component.rememberThemeImportRequest
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +67,10 @@ fun MyThemesScreen() {
 
     val appliedMessage = stringResource(R.string.theme_store_applied)
     val applyFailedMessage = stringResource(R.string.theme_store_apply_failed)
+    val requestImport = rememberThemeImportRequest { result ->
+        scope.launch { snackbarHostState.showSnackbar(if (result.isSuccess) appliedMessage else
+            "$applyFailedMessage: ${result.exceptionOrNull()?.message.orEmpty()}") }
+    }
 
     var selectedTheme by remember { mutableStateOf<LocalTheme?>(null) }
     var deleteTheme by remember { mutableStateOf<LocalTheme?>(null) }
@@ -157,8 +164,7 @@ fun MyThemesScreen() {
             confirmButton = {
                 Button(onClick = {
                     scope.launch {
-                        val ok = viewModel.applyTheme(detail)
-                        snackbarHostState.showSnackbar(if (ok) appliedMessage else applyFailedMessage)
+                        requestImport(Uri.fromFile(File(detail.localPath)))
                     }
                     selectedTheme = null
                 }) {

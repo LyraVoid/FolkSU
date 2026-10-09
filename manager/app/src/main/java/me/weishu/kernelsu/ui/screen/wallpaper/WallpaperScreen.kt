@@ -1,5 +1,10 @@
 package me.weishu.kernelsu.ui.screen.wallpaper
 
+import me.weishu.kernelsu.ui.component.rememberThemeImportRequest
+import me.weishu.kernelsu.ui.component.ThemeMetadataEditor
+import me.weishu.kernelsu.wallpaper.ThemeMetadata
+import me.weishu.kernelsu.wallpaper.ThemeExportService
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -155,6 +160,8 @@ fun WallpaperScreen() {
     var pendingPageCrop by remember { mutableStateOf<Uri?>(null) }
     var showPageCropDialog by remember { mutableStateOf(false) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showExportDialog by remember { mutableStateOf(false) }
+    var exportMetadata by remember { mutableStateOf(ThemeMetadata.current(context)) }
 
     val persist: (Uri) -> Unit = { picked ->
         scope.launch {
@@ -235,7 +242,7 @@ fun WallpaperScreen() {
     ) { uri ->
         if (uri != null) {
             scope.launch {
-                val ok = FolkThemeIO.exportBackground(context, uri, FolkThemeIO.FILE_NAME)
+                val ok = ThemeExportService.export(context, uri, exportMetadata).isSuccess
                 snackbarHost.showSnackbar(
                     resources.getString(
                         if (ok) R.string.wallpaper_export_success else R.string.wallpaper_export_failed
@@ -245,17 +252,28 @@ fun WallpaperScreen() {
         }
     }
 
-    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
+    val requestImport = rememberThemeImportRequest { result ->
             scope.launch {
-                val ok = FolkThemeIO.importBackground(context, uri)
                 snackbarHost.showSnackbar(
                     resources.getString(
-                        if (ok) R.string.wallpaper_import_success else R.string.wallpaper_import_failed
-                    )
+                        if (result.isSuccess) R.string.wallpaper_import_success else R.string.wallpaper_import_failed
+                    ) + (result.exceptionOrNull()?.message?.let { ": $it" } ?: "")
                 )
             }
-        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let(requestImport)
+    }
+    if (showExportDialog) {
+        ThemeMetadataEditor(
+            initial = ThemeMetadata.current(context).let { if (it.name.isBlank()) it.copy(name = "FolkSU") else it },
+            onDismiss = { showExportDialog = false },
+            onExport = {
+                exportMetadata = it
+                showExportDialog = false
+                exportLauncher.launch("${it.name.replace(Regex("[^\\p{L}\\p{N}_ -]"), "_")}.fpt")
+            },
+        )
     }
 
     if (showCropDialog) {
@@ -476,7 +494,7 @@ fun WallpaperScreen() {
                 snackbarHost.showSnackbar(resources.getString(removedRes))
             }
         },
-        onExport = { exportLauncher.launch(FolkThemeIO.FILE_NAME) },
+        onExport = { showExportDialog = true },
         onImport = { importLauncher.launch("*/*") },
         onResetTheme = { showResetDialog = true },
     )

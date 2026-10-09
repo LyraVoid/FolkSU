@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fpt_import_title">Confirm theme import</string>
+    <string name="fpt_resources">Resources: %1$d</string>
+    <string name="fpt_compatibility">Missing settings keep defaults or current values. Unknown fields and unsupported resources are retained for export. Startup sound and vibration remain device settings.</string>
+    <string name="fpt_type_value">Device type: %1$s</string>
+    <string name="fpt_name">Name</string>
+    <string name="fpt_version">Version</string>
+    <string name="fpt_author">Author</string>
+    <string name="fpt_description">Description</string>
+</resources>

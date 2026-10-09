@@ -12,6 +12,11 @@ interface SettingsRepository {
     var keyColor: Int
     var colorStyle: String
     var colorSpec: String
+    var useSystemDynamicColor: Boolean
+    var colorGenerationMode: String
+    var colorContrast: String
+    var statsTopLayout: String
+    var listWorkingCardModeHidden: Boolean
     var enablePredictiveBack: Boolean
     var enableNavigationBadge: Boolean
     var pageScale: Float

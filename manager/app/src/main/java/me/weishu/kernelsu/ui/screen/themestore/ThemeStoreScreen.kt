@@ -1,5 +1,8 @@
 package me.weishu.kernelsu.ui.screen.themestore
 
+import android.net.Uri
+import me.weishu.kernelsu.ui.component.rememberThemeImportRequest
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,6 +102,10 @@ fun ThemeStoreScreen() {
 
     val appliedMessage = stringResource(R.string.theme_store_applied)
     val applyFailedMessage = stringResource(R.string.theme_store_apply_failed)
+    val requestImport = rememberThemeImportRequest { result ->
+        scope.launch { snackbarHostState.showSnackbar(if (result.isSuccess) appliedMessage else
+            "$applyFailedMessage: ${result.exceptionOrNull()?.message.orEmpty()}") }
+    }
     val downloadFailedMessage = stringResource(R.string.theme_store_download_failed)
 
     var selectedTheme by remember { mutableStateOf<RemoteTheme?>(null) }
@@ -232,8 +239,8 @@ fun ThemeStoreScreen() {
             onApply = {
                 scope.launch {
                     val local = viewModel.localThemes.firstOrNull { it.id == detail.id }
-                    val ok = local != null && viewModel.applyTheme(local)
-                    snackbarHostState.showSnackbar(if (ok) appliedMessage else applyFailedMessage)
+                    if (local != null) requestImport(Uri.fromFile(File(local.localPath)))
+                    else snackbarHostState.showSnackbar(applyFailedMessage)
                 }
                 selectedTheme = null
             },
@@ -275,8 +282,8 @@ fun ThemeStoreScreen() {
                 Button(onClick = {
                     scope.launch {
                         val local = viewModel.localThemes.firstOrNull { it.id == completed.id }
-                        val ok = local != null && viewModel.applyTheme(local)
-                        snackbarHostState.showSnackbar(if (ok) appliedMessage else applyFailedMessage)
+                        if (local != null) requestImport(Uri.fromFile(File(local.localPath)))
+                        else snackbarHostState.showSnackbar(applyFailedMessage)
                     }
                     completedTheme = null
                 }) {
