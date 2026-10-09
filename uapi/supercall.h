@@ -10,8 +10,11 @@
 // 3: scoped su-session driver fd
 // 4: add KSU_GET_INFO_FLAG_BUNDLED
 // 5: add EVENT_SERVICES with a start/skip result
-// 6: add dynamic-manager commands
-static const __u32 KERNEL_SU_UAPI_VERSION = 6;
+// NB: the dynamic-manager commands are additive and advertised through
+//     KSU_FEATURE_DYNAMIC_MANAGER, so they deliberately do not bump the
+//     UAPI. Keeping this at 5 lets third-party managers built against
+//     uapi 5 treat the kernel as compatible.
+static const __u32 KERNEL_SU_UAPI_VERSION = 5;
 
 /* Magic numbers for reboot hook to install fd */
 static const __u32 KSU_INSTALL_MAGIC1 = 0xDEADBEEF;

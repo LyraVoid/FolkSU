@@ -1,6 +1,7 @@
 #include <linux/compiler.h>
 #include <linux/errno.h>
 #include <linux/hashtable.h>
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
@@ -10,6 +11,7 @@
 #include "manager/apk_sign.h"
 #include "manager/dynamic_manager.h"
 #include "manager/manager_identity.h"
+#include "policy/feature.h"
 #include "uapi/supercall.h"
 
 #define KSU_DYNAMIC_MANAGER_HASH_BITS 6
@@ -136,14 +138,30 @@ static void rebuild_trusted_cache_locked(void)
     smp_store_release(&trusted_dynamic_count, count);
 }
 
-void ksu_dynamic_manager_init(void)
+static int dynamic_manager_feature_get(u64 *value)
+{
+    *value = 1;
+    return 0;
+}
+
+static const struct ksu_feature_handler dynamic_manager_feature_handler = {
+    .feature_id = KSU_FEATURE_DYNAMIC_MANAGER,
+    .name = "dynamic_manager",
+    .get_handler = dynamic_manager_feature_get,
+    .set_handler = NULL,
+};
+
+void __init ksu_dynamic_manager_init(void)
 {
     hash_init(dynamic_manager_signs);
     hash_init(dynamic_manager_apps);
     smp_store_release(&trusted_dynamic_count, 0);
+
+    if (ksu_register_feature_handler(&dynamic_manager_feature_handler))
+        pr_warn("dynamic_manager: failed to register feature handler\n");
 }
 
-void ksu_dynamic_manager_exit(void)
+void __exit ksu_dynamic_manager_exit(void)
 {
     struct dynamic_manager_app *app;
     struct hlist_node *tmp;
@@ -158,6 +176,8 @@ void ksu_dynamic_manager_exit(void)
         kfree(app);
     }
     mutex_unlock(&dynamic_manager_lock);
+
+    ksu_unregister_feature_handler(KSU_FEATURE_DYNAMIC_MANAGER);
 }
 
 bool ksu_is_dynamic_manager_uid(uid_t uid)

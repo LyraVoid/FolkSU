@@ -266,14 +266,11 @@ bool is_selinux_hide_enabled() {
     return value != 0;
 }
 
-// §6.1 compatibility mode: never trust a mismatched UAPI blindly for the
-// dynamic-manager commands. When the kernel UAPI matches the manager's the
-// commands are guaranteed; otherwise require the kernel to advertise
-// KSU_FEATURE_DYNAMIC_MANAGER before enabling the UI.
+// Dynamic-manager support is advertised by KSU_FEATURE_DYNAMIC_MANAGER, not
+// by the UAPI version: the commands are additive, so a kernel that merely
+// shares uapi 5 is not guaranteed to implement them. Feature detection is
+// the only reliable probe.
 bool is_dynamic_manager_enabled() {
-    if (get_kernel_uapi_version() == KERNEL_SU_UAPI_VERSION) {
-        return true;
-    }
     uint64_t value = 0;
     bool supported = false;
     if (!get_feature(KSU_FEATURE_DYNAMIC_MANAGER, &value, &supported)) {
