@@ -56,6 +56,12 @@ object Natives {
     val isPrBuild: Boolean
         external get
 
+    /** Force a fresh kernel query, bypassing the short-lived info cache. */
+    external fun refreshInfo()
+
+    /** One consistent identity snapshot: `[version, isManager, kernelUapi, managerUapi]`. */
+    external fun getInfoSnapshot(): IntArray
+
     external fun uidShouldUmount(uid: Int): Boolean
 
     /**

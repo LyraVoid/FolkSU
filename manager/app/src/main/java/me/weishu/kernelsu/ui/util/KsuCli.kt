@@ -70,6 +70,10 @@ object KsuCli {
 
     suspend fun getDynamicManagerSignatureForUid(uid: Int): DynamicManagerSignature? =
         withContext(Dispatchers.IO) {
+            if (!CapabilityRepository.currentPrivileged()) {
+                Log.w(TAG, "refusing dynamic get-sign: no manager identity or ready root")
+                return@withContext null
+            }
             val stdout = ArrayList<String>()
             val stderr = ArrayList<String>()
             val result = awaitRootShell().newJob()
@@ -94,6 +98,11 @@ object KsuCli {
         }
 
     suspend fun setDynamicManagerUid(uid: Int): Boolean = withContext(Dispatchers.IO) {
+        // A revocation must be respected: never run a new privileged task on a stale identity.
+        if (!CapabilityRepository.currentPrivileged()) {
+            Log.w(TAG, "refusing dynamic set-uid $uid: no manager identity or ready root")
+            return@withContext false
+        }
         val result = awaitRootShell().newJob()
             .add("${getKsuDaemonPath()} dynamic set-uid $uid")
             .exec()
@@ -103,6 +112,10 @@ object KsuCli {
 
     suspend fun deleteDynamicManager(signature: DynamicManagerSignature): Boolean =
         withContext(Dispatchers.IO) {
+            if (!CapabilityRepository.currentPrivileged()) {
+                Log.w(TAG, "refusing dynamic del: no manager identity or ready root")
+                return@withContext false
+            }
             val result = awaitRootShell().newJob()
                 .add("${getKsuDaemonPath()} dynamic del ${signature.size} ${signature.hash}")
                 .exec()
@@ -116,13 +129,10 @@ fun getRootShell(globalMnt: Boolean = false): Shell {
 }
 
 /**
- * Suspending accessor for privileged commands that must not run on a stale/non-root shell: waits
- * for a usable root shell (rebuilding it if needed) before executing.
+ * Suspending accessor for privileged commands. It throws when no root shell can be obtained, so a
+ * failed probe can never silently run a command on a non-root fallback shell.
  */
-suspend fun awaitRootShell(globalMnt: Boolean = false): Shell {
-    RootShell.awaitReady(globalMnt)
-    return RootShell.obtain(globalMnt)
-}
+suspend fun awaitRootShell(globalMnt: Boolean = false): Shell = RootShell.awaitRoot(globalMnt)
 
 /** Re-probe the cached root shell in the background (recovery entry point). */
 fun probeRootShell(globalMnt: Boolean = false) {

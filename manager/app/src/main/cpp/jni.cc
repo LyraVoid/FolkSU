@@ -35,6 +35,34 @@ Java_me_weishu_kernelsu_Natives_getManagerUAPIVersion(JNIEnv *env, jobject) {
     return get_manager_uapi_version();
 }
 
+// Force a fresh kernel query, ignoring the short-lived info cache. Used when the caller must
+// observe a just-changed manager identity (grant/revoke) rather than a stale cached answer.
+extern "C"
+JNIEXPORT void JNICALL
+Java_me_weishu_kernelsu_Natives_refreshInfo(JNIEnv *env, jclass clazz) {
+    refresh_info();
+}
+
+// One consistent identity snapshot: {version, isManager, kernelUapi, managerUapi}. All four fields
+// come from a single GET_INFO, so a concurrent revoke cannot mix old and new values.
+extern "C"
+JNIEXPORT jintArray JNICALL
+Java_me_weishu_kernelsu_Natives_getInfoSnapshot(JNIEnv *env, jclass clazz) {
+    struct ksu_get_info_cmd info = refresh_info();
+    jint values[4];
+    values[0] = (jint) info.version;
+    values[1] = (info.flags & KSU_GET_INFO_FLAG_MANAGER) ? 1 : 0;
+    values[2] = (jint) info.uapi_version;
+    values[3] = (jint) get_manager_uapi_version();
+
+    jintArray array = env->NewIntArray(4);
+    if (array == nullptr) {
+        return env->NewIntArray(0);
+    }
+    env->SetIntArrayRegion(array, 0, 4, values);
+    return array;
+}
+
 extern "C"
 JNIEXPORT jint JNICALL
 Java_me_weishu_kernelsu_Natives_getSuperuserCount(JNIEnv *env, jobject) {

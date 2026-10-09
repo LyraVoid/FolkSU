@@ -61,14 +61,20 @@ fun HomePager(
 
     var hasActivated by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(isCurrentPage) {
-        if (isCurrentPage && !hasActivated) {
-            hasActivated = true
-            viewModel.refresh()
+        if (isCurrentPage) {
+            // Returning to the home page re-reads the shared capability snapshot so the layout,
+            // warnings and navigation agree again.
+            CapabilityRepository.refresh()
+            if (!hasActivated) {
+                hasActivated = true
+                viewModel.refresh()
+            }
         }
     }
 
     LifecycleResumeEffect(Unit) {
         if (initialResumeHandled.value && latestIsCurrentPage) {
+            CapabilityRepository.refresh()
             viewModel.refresh()
         }
         initialResumeHandled.value = true

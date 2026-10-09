@@ -1,140 +1,239 @@
 package me.weishu.kernelsu.ui.util
 
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import com.topjohnwu.superuser.Shell
-import java.io.File
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.BuildConfig
 import me.weishu.kernelsu.ksuApp
+import java.io.File
+import java.util.concurrent.TimeUnit
+
+/**
+ * State of one root-shell slot. [Probing] means a build is running or scheduled; it is emphatically
+ * not a failure, so the UI shows a placeholder instead of a warning while it is set.
+ */
+enum class RootShellStatus { Probing, Ready, Unavailable }
 
 private const val ROOT_SHELL_TAG = "RootShell"
 
-/** Recoverable root-access state of one shell slot. */
-enum class RootShellStatus { Probing, Ready, Unavailable }
-
-private fun ksuDaemonPath(): String =
-    ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
+private fun ksuDaemonPath() = ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud.so"
 
 /**
- * Thread-safe owner of the two privileged shells (normal and global-mount).
+ * Owns the two root shells (default and global-mount) and rebuilds them on demand.
  *
- * The previous implementation kept the `Shell` values in object-init `val`s and cached a
- * non-root `sh` fallback forever, so a single failed probe made the app report "no root" until
- * the process was restarted. Here a slot rebuilds itself when its shell is missing, dead or
- * non-root, and a non-root result is never treated as final: callers may probe again after a
- * backoff cooldown once the underlying grant is restored.
- *
- * [status] is a lock-free snapshot safe to read from the Compose main thread; only
- * [obtain]/[awaitReady] build a shell and they run off the main thread.
+ * The shells are never cached as a permanent result: a non-root fallback (plain `sh`) is treated as
+ * a failed probe and is retried, so authorizing the app or fixing the kernel can restore root
+ * without restarting the process. Concurrent probes are single-flight per slot, and a replaced
+ * shell is drained rather than killed so tasks already queued on it can finish.
  */
 object RootShell {
     private const val RETRY_COOLDOWN_MS = 4_000L
+    private const val MAX_COOLDOWN_SHIFT = 4
     private const val DRAIN_TIMEOUT_SECONDS = 5L
     private const val MAX_CONSECUTIVE_FAILURES = 6
 
     private class Slot(val globalMnt: Boolean) {
+        val mutex = Any()
+
         @Volatile
         var shell: Shell? = null
 
         @Volatile
-        var status: RootShellStatus = RootShellStatus.Probing
+        var status = RootShellStatus.Probing
 
         @Volatile
-        var consecutiveFailures: Int = 0
+        var consecutiveFailures = 0
 
         @Volatile
-        var lastAttemptElapsed: Long = 0L
+        var lastAttemptElapsed = 0L
+
+        /** The build currently in progress, shared by every concurrent caller. */
+        @Volatile
+        var inFlight: Deferred<Shell?>? = null
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val defaultSlot = Slot(false)
     private val globalSlot = Slot(true)
-    private val buildLock = Any()
 
     private val _status = MutableStateFlow(RootShellStatus.Probing)
-
-    /** Root availability of the default shell, for the UI capability snapshot. */
     val status: StateFlow<RootShellStatus> = _status.asStateFlow()
 
     private val _generation = MutableStateFlow(0L)
-
-    /** Bumped on every (re)build so observers can invalidate identity/shell caches. */
     val generation: StateFlow<Long> = _generation.asStateFlow()
 
-    private fun slot(globalMnt: Boolean): Slot = if (globalMnt) globalSlot else defaultSlot
+    private fun slot(globalMnt: Boolean) = if (globalMnt) globalSlot else defaultSlot
 
-    /** Non-blocking snapshot: last known root status of the default shell. */
-    fun isRootAvailable(): Boolean = defaultSlot.status == RootShellStatus.Ready
+    private fun ready(s: Slot): Shell? = s.shell?.takeIf { it.isAlive && it.isRoot }
 
-    fun currentStatus(globalMnt: Boolean = false): RootShellStatus = slot(globalMnt).status
+    fun isRootAvailable(): Boolean = ready(defaultSlot) != null
 
-    /** The cached shell, or null when no build has completed yet. Never blocks. */
-    fun peek(globalMnt: Boolean = false): Shell? = slot(globalMnt).shell
+    fun currentStatus(globalMnt: Boolean = false): RootShellStatus {
+        val s = slot(globalMnt)
+        return if (ready(s) != null) RootShellStatus.Ready else s.status
+    }
+
+    fun peek(globalMnt: Boolean = false): Shell? = ready(slot(globalMnt))
 
     /**
-     * Returns a shell to run privileged commands with. Rebuilds when the cached one is missing,
-     * dead or non-root, then caches the result. A non-root build is only served until the next
-     * retry cooldown so a transient failure can recover without restarting the app.
+     * Blocking accessor for legacy synchronous call sites. It never builds on the main thread:
+     * there it only kicks a background probe and returns whatever shell already exists. Code that
+     * needs a real root shell must use [awaitRoot].
      */
     fun obtain(globalMnt: Boolean = false): Shell {
         val s = slot(globalMnt)
-        val cached = s.shell
-        if (cached != null && cached.isAlive && cached.isRoot) return cached
-
-        val now = SystemClock.elapsedRealtime()
-        synchronized(buildLock) {
-            val current = s.shell
-            if (current != null && current.isAlive && current.isRoot) return current
-            if (s.lastAttemptElapsed != 0L && now - s.lastAttemptElapsed < cooldownFor(s)) {
-                // Within the backoff window: serve whatever we have (possibly a stale shell) so
-                // callers fail cleanly instead of blocking again; a later call retries.
-                current?.let { return it }
-            }
-            s.lastAttemptElapsed = now
+        ready(s)?.let { return it }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            probe(globalMnt)
+        } else {
+            runBlocking { ensure(globalMnt) }
         }
-        val built = build(globalMnt)
-        publish(globalMnt, built)
-        return s.shell ?: built
+        return ready(s) ?: s.shell ?: error("Root shell is not available")
     }
 
     /**
-     * Suspending refresh used by the capability repository: resolves once a shell has been
-     * (re)built. Never throws; a non-root result is reported as [RootShellStatus.Unavailable].
+     * Waits for a ready root shell, rebuilding once if needed. Returns [RootShellStatus.Unavailable]
+     * when no root shell could be obtained, and never reports a plain shell as ready.
      */
     suspend fun awaitReady(globalMnt: Boolean = false): RootShellStatus {
         val s = slot(globalMnt)
-        if (s.shell?.let { it.isAlive && it.isRoot } == true) return RootShellStatus.Ready
-        val built = withContext(Dispatchers.IO) { obtain(globalMnt) }
-        return if (built.isAlive && built.isRoot) RootShellStatus.Ready else RootShellStatus.Unavailable
+        if (ready(s) != null) return RootShellStatus.Ready
+        ensure(globalMnt)
+        return if (ready(s) != null) RootShellStatus.Ready else RootShellStatus.Unavailable
     }
 
-    /** Fire-and-forget rebuild; safe to call from the main thread. */
+    /**
+     * Returns a ready root shell or throws. Privileged operations must go through this so a failed
+     * probe can never silently run a command on a non-root fallback shell.
+     */
+    suspend fun awaitRoot(globalMnt: Boolean = false): Shell {
+        if (awaitReady(globalMnt) != RootShellStatus.Ready) {
+            throw IllegalStateException("Root shell is not available")
+        }
+        return ready(slot(globalMnt)) ?: throw IllegalStateException("Root shell is not available")
+    }
+
     fun probe(globalMnt: Boolean = false) {
-        scope.launch { obtain(globalMnt) }
+        scope.launch { ensure(globalMnt) }
     }
 
-    /** Process-wide warm-up so the first snapshot is produced away from the main thread. */
     fun initialize() {
         probe(false)
         probe(true)
     }
 
-    private fun cooldownFor(s: Slot): Long {
-        val failures = s.consecutiveFailures
-        if (failures == 0) return RETRY_COOLDOWN_MS
-        return RETRY_COOLDOWN_MS shl (failures - 1).coerceAtMost(4)
+    private fun cooldownFor(s: Slot): Long =
+        if (s.consecutiveFailures == 0) RETRY_COOLDOWN_MS
+        else RETRY_COOLDOWN_MS shl (s.consecutiveFailures - 1).coerceAtMost(MAX_COOLDOWN_SHIFT)
+
+    /**
+     * Single-flight rebuild. The first caller starts the build; every concurrent caller awaits the
+     * same [Deferred], so a probe burst produces exactly one shell. A failed probe schedules one
+     * bounded backoff retry, which stops after [MAX_CONSECUTIVE_FAILURES].
+     */
+    private suspend fun ensure(globalMnt: Boolean): Shell? {
+        val s = slot(globalMnt)
+        ready(s)?.let { return it }
+
+        val deferred: Deferred<Shell?> = synchronized(s.mutex) {
+            ready(s)?.let { return it }
+
+            val now = SystemClock.elapsedRealtime()
+            // Still inside the backoff window: serve the stale shell (if any) instead of hammering.
+            if (s.shell != null && now - s.lastAttemptElapsed < cooldownFor(s)) {
+                return s.shell
+            }
+
+            val existing = s.inFlight
+            if (existing != null && existing.isActive) {
+                return@synchronized existing
+            }
+
+            s.status = RootShellStatus.Probing
+            if (!globalMnt) _status.value = RootShellStatus.Probing
+            s.lastAttemptElapsed = now
+
+            val build = scope.async(start = CoroutineStart.LAZY) {
+                val built = try {
+                    withContext(Dispatchers.IO) { buildShell(globalMnt) }
+                } catch (t: Throwable) {
+                    Log.w(ROOT_SHELL_TAG, "root shell build failed", t)
+                    null
+                }
+                publish(s, globalMnt, built)
+                if (ready(s) == null) scheduleRetry(globalMnt, s)
+                built
+            }
+            build.invokeOnCompletion {
+                synchronized(s.mutex) { if (s.inFlight === build) s.inFlight = null }
+            }
+            s.inFlight = build
+            build
+        }
+
+        return deferred.await()
     }
 
-    private fun build(globalMnt: Boolean): Shell {
+    /** One bounded backoff retry, scheduled off the caller so a failure cannot spin. */
+    private fun scheduleRetry(globalMnt: Boolean, s: Slot) {
+        if (s.consecutiveFailures > MAX_CONSECUTIVE_FAILURES) return
+        val delayMs = cooldownFor(s)
+        scope.launch {
+            delay(delayMs)
+            if (ready(s) == null) ensure(globalMnt)
+        }
+    }
+
+    private fun publish(s: Slot, globalMnt: Boolean, shell: Shell?) {
+        var replaced: Shell? = null
+        synchronized(s.mutex) {
+            if (shell != null && shell.isAlive && shell.isRoot) {
+                replaced = s.shell
+                s.shell = shell
+                s.status = RootShellStatus.Ready
+                s.consecutiveFailures = 0
+            } else {
+                // Never store a non-root fallback as the result: record the failure and retry.
+                s.status = RootShellStatus.Unavailable
+                s.consecutiveFailures =
+                    (s.consecutiveFailures + 1).coerceAtMost(MAX_CONSECUTIVE_FAILURES + 1)
+            }
+            if (!globalMnt) _status.value = s.status
+            _generation.value += 1
+        }
+        val previous = replaced
+        if (shell != null && previous != null && previous !== shell) {
+            scope.launch {
+                try {
+                    // Drain queued tasks first; on timeout the old shell is left alive on purpose
+                    // so in-flight work is not aborted.
+                    previous.waitAndClose(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                } catch (t: Throwable) {
+                    Log.w(ROOT_SHELL_TAG, "draining replaced root shell failed", t)
+                }
+            }
+        }
+    }
+
+    /**
+     * Tries the embedded ksud daemon first, then a PATH `su`. The final `sh` fallback is returned
+     * only so the caller can observe a non-root shell; [publish] treats it as a failure.
+     */
+    private fun buildShell(globalMnt: Boolean): Shell {
         Shell.enableVerboseLogging = BuildConfig.DEBUG
         val builder = Shell.Builder.create()
         return try {
@@ -143,40 +242,13 @@ object RootShell {
             } else {
                 builder.build(ksuDaemonPath(), "debug", "su")
             }
-        } catch (e: Throwable) {
-            Log.w(ROOT_SHELL_TAG, "ksu shell failed (globalMnt=$globalMnt)", e)
+        } catch (t: Throwable) {
+            Log.w(ROOT_SHELL_TAG, "ksud root shell failed, trying su", t)
             try {
                 if (globalMnt) builder.build("su", "-mm") else builder.build("su")
-            } catch (e2: Throwable) {
-                Log.e(ROOT_SHELL_TAG, "su shell failed (globalMnt=$globalMnt)", e2)
+            } catch (t2: Throwable) {
+                Log.e(ROOT_SHELL_TAG, "su failed, falling back to sh", t2)
                 builder.build("sh")
-            }
-        }
-    }
-
-    private fun publish(globalMnt: Boolean, shell: Shell) {
-        val s = slot(globalMnt)
-        val previous: Shell?
-        synchronized(buildLock) {
-            previous = s.shell
-            s.shell = shell
-            if (shell.isAlive && shell.isRoot) {
-                s.status = RootShellStatus.Ready
-                s.consecutiveFailures = 0
-            } else {
-                s.status = RootShellStatus.Unavailable
-                s.consecutiveFailures =
-                    (s.consecutiveFailures + 1).coerceAtMost(MAX_CONSECUTIVE_FAILURES + 1)
-            }
-        }
-        if (!globalMnt) _status.value = s.status
-        _generation.value += 1
-        // Retire the replaced shell without killing tasks still running on it. waitAndClose
-        // drains the current/pending jobs first, then closes.
-        if (previous != null && previous !== shell) {
-            scope.launch {
-                runCatching { previous.waitAndClose(DRAIN_TIMEOUT_SECONDS, TimeUnit.SECONDS) }
-                    .onFailure { Log.w(ROOT_SHELL_TAG, "failed to retire previous shell", it) }
             }
         }
     }

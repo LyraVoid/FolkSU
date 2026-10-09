@@ -112,13 +112,27 @@ object CapabilityRepository {
         scope.launch { identity.value = readIdentity() }
     }
 
+    /**
+     * Fresh, consistent privileged gate for a new operation: re-reads identity (forcing a kernel
+     * refresh so a just-revoked manager is observed) and probes root. Returns false when the app no
+     * longer holds a manager identity with matching UAPI, or has no ready root shell.
+     */
+    suspend fun currentPrivileged(): Boolean {
+        val id = readIdentity()
+        if (!(id.isManager && id.uapiCompatible)) return false
+        return RootShell.awaitReady(false) == RootShellStatus.Ready
+    }
+
     private fun readIdentity(): Identity {
-        val manager = runCatching { Natives.isManager }.getOrDefault(false)
-        val kernelUapi = runCatching { Natives.kernelUAPIVersion }.getOrDefault(0)
-        val managerUapi = runCatching { Natives.managerUAPIVersion }.getOrDefault(0)
-        val driverPresent = runCatching { Natives.version > 0 }.getOrDefault(false)
+        // A single JNI snapshot keeps the four fields mutually consistent under a concurrent
+        // grant/revoke; the cache TTL alone cannot describe an identity change.
+        val snapshot = runCatching { Natives.getInfoSnapshot() }.getOrNull()
+        val version = snapshot?.getOrNull(0) ?: 0
+        val manager = snapshot?.getOrNull(1) == 1
+        val kernelUapi = snapshot?.getOrNull(2) ?: 0
+        val managerUapi = snapshot?.getOrNull(3) ?: 0
         return Identity(
-            kernelAvailable = driverPresent || kernelUapi > 0,
+            kernelAvailable = version > 0 || kernelUapi > 0,
             isManager = manager,
             uapiCompatible = manager && kernelUapi > 0 && kernelUapi == managerUapi,
         )

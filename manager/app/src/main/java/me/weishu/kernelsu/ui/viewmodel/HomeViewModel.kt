@@ -43,6 +43,36 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     /**
+     * The home screen must follow the same capability snapshot as the layout and navigation, so a
+     * root probe that finishes, fails or recovers updates the warnings and counts without a manual
+     * refresh. Identity changes rebuild the whole state (version/UAPI/lkm fields depend on it); a
+     * mere root-state change only patches the root fields, keeping the layout stable.
+     */
+    private var lastIsManager: Boolean? = null
+    private var lastUapiCompatible: Boolean? = null
+
+    init {
+        viewModelScope.launch {
+            CapabilityRepository.state.collect { capability ->
+                val identityChanged =
+                    capability.isManager != lastIsManager || capability.uapiCompatible != lastUapiCompatible
+                lastIsManager = capability.isManager
+                lastUapiCompatible = capability.uapiCompatible
+                if (identityChanged) {
+                    refresh()
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isRootAvailable = capability.rootStatus == RootShellStatus.Ready,
+                            rootStatus = capability.rootStatus,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Live device/storage metrics for the home screen. Polled only while a consumer collects the
      * flow (the focus layout), and stopped a few seconds after it leaves.
      */

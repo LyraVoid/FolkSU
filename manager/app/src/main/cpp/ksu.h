@@ -18,6 +18,10 @@ uint32_t get_manager_uapi_version();
 
 uint32_t get_version();
 
+// Re-reads the kernel info explicitly and returns the fresh snapshot, bypassing the TTL cache.
+// Used when the caller must observe a just-changed identity (dynamic-manager grant/revoke).
+struct ksu_get_info_cmd refresh_info();
+
 bool uid_should_umount(int uid);
 
 bool is_safe_mode();

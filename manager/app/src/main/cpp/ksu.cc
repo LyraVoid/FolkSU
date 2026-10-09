@@ -15,11 +15,13 @@
 
 #include <unistd.h>
 #include <climits>
+#include <mutex>
 #include <sys/syscall.h>
 #include <cerrno>
 #include "ksu.h"
 
 static int fd = -1;
+static std::mutex g_fd_mutex;
 
 static inline int scan_driver_fd() {
     const char *kName = "[ksu_driver]";
@@ -67,18 +69,28 @@ static inline int scan_driver_fd() {
 template<typename... Args>
 static int ksuctl(unsigned long op, Args &&... args) {
 
-    if (fd < 0) {
-        fd = scan_driver_fd();
+    int local_fd = fd;
+    if (local_fd < 0) {
+        std::lock_guard<std::mutex> lock(g_fd_mutex);
+        if (fd < 0) {
+            fd = scan_driver_fd();
+        }
+        local_fd = fd;
     }
 
     static_assert(sizeof...(Args) <= 1, "ioctl expects at most one extra argument");
 
-    return ioctl(fd, op, std::forward<Args>(args)...);
+    return ioctl(local_fd, op, std::forward<Args>(args)...);
 }
 
 static struct ksu_get_info_cmd g_version {};
 static bool g_version_valid = false;
 static int64_t g_version_at_ms = 0;
+
+// get_info() is called from several threads (Compose recomposition, background probes), so the
+// cache is guarded. The TTL is a *staleness bound for incidental reads*, not a state-update
+// mechanism: identity revocation must be observed via an explicit refresh (see refresh_info()).
+static std::mutex g_info_mutex;
 
 // The MANAGER flag and the dynamic-manager version are mutable: a manager can be
 // authorized or revoked while this process runs. A cached answer must therefore
@@ -92,20 +104,33 @@ static int64_t now_ms() {
     return static_cast<int64_t>(ts.tv_sec) * 1000 + ts.tv_nsec / 1000000;
 }
 
-struct ksu_get_info_cmd get_info() {
-    int64_t now = now_ms();
-    if (!g_version_valid || now - g_version_at_ms >= INFO_CACHE_TTL_MS) {
-        struct ksu_get_info_cmd info {};
-        if (ksuctl(KSU_IOCTL_GET_INFO, &info) == 0) {
-            g_version = info;
-        } else {
-            ksuctl(KSU_IOCTL_GET_INFO_LEGACY, &info);
-            info.uapi_version = 0;
-            g_version = info;
-        }
-        g_version_valid = true;
-        g_version_at_ms = now;
+// Re-queries the kernel and replaces the cache. Caller must hold g_info_mutex.
+static void query_info_locked() {
+    struct ksu_get_info_cmd info {};
+    if (ksuctl(KSU_IOCTL_GET_INFO, &info) == 0) {
+        g_version = info;
+    } else {
+        ksuctl(KSU_IOCTL_GET_INFO_LEGACY, &info);
+        info.uapi_version = 0;
+        g_version = info;
     }
+    g_version_valid = true;
+    g_version_at_ms = now_ms();
+}
+
+struct ksu_get_info_cmd get_info() {
+    std::lock_guard<std::mutex> lock(g_info_mutex);
+    if (!g_version_valid || now_ms() - g_version_at_ms >= INFO_CACHE_TTL_MS) {
+        query_info_locked();
+    }
+    return g_version;
+}
+
+// Explicitly invalidate and re-read, so a caller that must observe a just-changed identity
+// (grant/revoke) is not served the TTL cache.
+struct ksu_get_info_cmd refresh_info() {
+    std::lock_guard<std::mutex> lock(g_info_mutex);
+    query_info_locked();
     return g_version;
 }
 
