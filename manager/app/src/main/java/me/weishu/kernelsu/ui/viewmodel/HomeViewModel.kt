@@ -51,6 +51,9 @@ class HomeViewModel(
     private var lastIsManager: Boolean? = null
     private var lastUapiCompatible: Boolean? = null
 
+    /** Monotonic guard so an older refresh cannot overwrite a newer one. */
+    private var refreshToken = 0L
+
     init {
         viewModelScope.launch {
             CapabilityRepository.state.collect { capability ->
@@ -100,11 +103,16 @@ class HomeViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(METRICS_STOP_TIMEOUT_MS), HomeMetrics())
 
     fun refresh() {
+        // Guard against overlapping refreshes: a slower, older build must not overwrite a newer
+        // snapshot (or clobber the capability collector's root update).
+        val token = ++refreshToken
         viewModelScope.launch {
             val baseState = withContext(Dispatchers.IO) { buildState() }
+            if (token != refreshToken) return@launch
             _uiState.update { baseState }
             if (baseState.checkUpdateEnabled) {
                 val latestVersionInfo = withContext(Dispatchers.IO) { checkNewVersion() }
+                if (token != refreshToken) return@launch
                 _uiState.update { it.copy(latestVersionInfo = latestVersionInfo) }
             }
         }
