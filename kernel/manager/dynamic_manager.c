@@ -143,19 +143,16 @@ static void clear_signs_locked(void)
     }
 }
 
-static void rebuild_trusted_cache_locked(void)
+static struct dynamic_manager_trusted *alloc_trusted_snapshot(void)
 {
-    struct dynamic_manager_trusted *snap;
-    struct dynamic_manager_trusted *old;
+    return kzalloc(sizeof(struct dynamic_manager_trusted), GFP_KERNEL);
+}
+
+static void fill_trusted_snapshot(struct dynamic_manager_trusted *snap)
+{
     struct dynamic_manager_app *app;
     u32 count = 0;
     int bucket;
-
-    snap = kzalloc(sizeof(*snap), GFP_KERNEL);
-    if (!snap) {
-        pr_warn("dynamic_manager: snapshot alloc failed, keeping previous\n");
-        return;
-    }
 
     hash_for_each(dynamic_manager_apps, bucket, app, node)
     {
@@ -166,11 +163,30 @@ static void rebuild_trusted_cache_locked(void)
         snap->appids[count++] = app->appid;
     }
     snap->count = count;
+}
+
+/* Publishes a fully built snapshot and retires the previous one after a grace period. */
+static void publish_trusted_snapshot(struct dynamic_manager_trusted *snap)
+{
+    struct dynamic_manager_trusted *old;
 
     old = rcu_dereference_protected(trusted_dynamic, true);
     rcu_assign_pointer(trusted_dynamic, snap);
     if (old)
         kfree_rcu(old, rcu);
+}
+
+static void rebuild_trusted_cache_locked(void)
+{
+    struct dynamic_manager_trusted *snap = alloc_trusted_snapshot();
+
+    if (!snap) {
+        pr_warn("dynamic_manager: snapshot alloc failed, keeping previous\n");
+        return;
+    }
+
+    fill_trusted_snapshot(snap);
+    publish_trusted_snapshot(snap);
 }
 
 static int dynamic_manager_feature_get(u64 *value)
@@ -344,6 +360,7 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
                             bool *need_rescan)
 {
     struct dynamic_manager_sign *pending[KSU_DYNAMIC_MANAGER_MAX_SIGNS];
+    struct dynamic_manager_trusted *snapshot = NULL;
     u32 i, pending_count = 0;
     bool unmatched = false;
     u32 valid_count = 0;
@@ -376,6 +393,16 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
         strscpy(sign->hash, normalized_hash, sizeof(sign->hash));
         pending[pending_count++] = sign;
     }
+
+    /*
+     * Preallocate the replacement trusted snapshot as well, so a failed
+     * allocation can never commit the new sign table while the previous
+     * authorization snapshot stays in effect (a "succeeded but not applied"
+     * state).
+     */
+    snapshot = alloc_trusted_snapshot();
+    if (!snapshot)
+        goto nomem;
 
     mutex_lock(&dynamic_manager_lock);
     clear_signs_locked();
@@ -421,7 +448,9 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
         }
     }
 
-    rebuild_trusted_cache_locked();
+    fill_trusted_snapshot(snapshot);
+    publish_trusted_snapshot(snapshot);
+    snapshot = NULL;
 
     if (valid_count && unmatched && need_rescan)
         *need_rescan = true;
@@ -432,6 +461,7 @@ int ksu_dynamic_manager_set(const struct ksu_dynamic_manager_sign *signs, u32 co
 nomem:
     for (i = 0; i < pending_count; i++)
         kfree(pending[i]);
+    kfree(snapshot);
     return -ENOMEM;
 }
 
