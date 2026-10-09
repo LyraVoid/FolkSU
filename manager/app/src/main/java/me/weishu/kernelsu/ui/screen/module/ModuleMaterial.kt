@@ -73,12 +73,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -97,7 +95,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.FixedScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -155,7 +152,6 @@ fun ModulePagerMaterial(
     val context = LocalContext.current
     val resource = LocalResources.current
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     val pullToRefreshState = rememberPullToRefreshState()
 
@@ -269,6 +265,8 @@ fun ModulePagerMaterial(
     ExpressiveScaffold(
         topBar = {
             SearchAppBar(
+                largeTitle = false,
+                topSearch = true,
                 title = { Text(stringResource(R.string.module)) },
                 searchText = uiState.searchStatus.searchText,
                 onSearchTextChange = actions.onSearchTextChange,
@@ -294,7 +292,6 @@ fun ModulePagerMaterial(
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior,
                 searchContent = { bottomPadding, closeSearch ->
                     val latestSearchResults = rememberUpdatedState(uiState.searchResults)
                     ScrollToTopOnChange(
@@ -409,7 +406,6 @@ fun ModulePagerMaterial(
             ) { latestModuleList.value }
             ModuleList(
                 bottomInnerPadding = bottomInnerPadding,
-                modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
                 listState = listState,
                 displayModules = uiState.moduleList,
                 updateInfoMap = uiState.updateInfo,

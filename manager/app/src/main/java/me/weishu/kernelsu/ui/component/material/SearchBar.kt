@@ -34,6 +34,7 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberContainedSearchBarState
 import androidx.compose.runtime.Composable
@@ -69,6 +70,8 @@ fun SearchAppBar(
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (() -> Unit)? = null,
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    largeTitle: Boolean = true,
+    topSearch: Boolean = false,
     defaultContent: @Composable BoxScope.(bottomPadding: Dp, closeSearch: () -> Unit) -> Unit = { _, _ -> },
     searchContent: @Composable BoxScope.(bottomPadding: Dp, closeSearch: () -> Unit) -> Unit = { _, _ -> }
 ) {
@@ -194,29 +197,50 @@ fun SearchAppBar(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            LargeFlexibleTopAppBar(
-                title = title,
-                colors = expressiveTopAppBarColors(),
-                navigationIcon = { if (navigationIcon != null) navigationIcon() },
-                actions = { if (actions != null) actions() },
-                windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                scrollBehavior = scrollBehavior
-            )
+            if (largeTitle) {
+                LargeFlexibleTopAppBar(
+                    title = title,
+                    colors = expressiveTopAppBarColors(),
+                    navigationIcon = { if (navigationIcon != null) navigationIcon() },
+                    actions = { if (actions != null) actions() },
+                    windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                    scrollBehavior = scrollBehavior
+                )
+            } else {
+                TopAppBar(
+                    title = title,
+                    colors = expressiveTopAppBarColors(),
+                    navigationIcon = { if (navigationIcon != null) navigationIcon() },
+                    actions = {
+                        if (actions != null) actions()
+                        if (topSearch) {
+                            FolkIconButton(
+                                onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                            ) {
+                                Icon(Icons.Filled.Search, contentDescription = null)
+                            }
+                        }
+                    },
+                    windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                )
+            }
 
-            SearchBar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 13.dp),
+            if (!topSearch) {
+                SearchBar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 13.dp),
 
-                state = searchBarState,
-                inputField = inputField,
-                colors = SearchBarDefaults.colors(
-                    containerColor = wallpaperTokens?.raised?.fill
-                        ?: MaterialTheme.colorScheme.surfaceContainerHighest
-                ),
-            )
+                    state = searchBarState,
+                    inputField = inputField,
+                    colors = SearchBarDefaults.colors(
+                        containerColor = wallpaperTokens?.raised?.fill
+                            ?: MaterialTheme.colorScheme.surfaceContainerHighest
+                    ),
+                )
+            }
         }
     }
 

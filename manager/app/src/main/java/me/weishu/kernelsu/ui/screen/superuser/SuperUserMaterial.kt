@@ -37,11 +37,9 @@ import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,7 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,7 +77,6 @@ fun SuperUserPagerMaterial(
     actions: SuperUserActions,
     bottomInnerPadding: Dp,
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val listState = rememberLazyListState()
     val searchListState = rememberLazyListState()
     val refreshTick = remember { mutableIntStateOf(0) }
@@ -97,6 +93,8 @@ fun SuperUserPagerMaterial(
     ExpressiveScaffold(
         topBar = {
             SearchAppBar(
+                largeTitle = false,
+                topSearch = true,
                 snackbarHostState = snackbarHostState,
                 title = { Text(stringResource(R.string.superuser)) },
                 searchText = localSearchText,
@@ -243,7 +241,6 @@ fun SuperUserPagerMaterial(
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior,
                 defaultContent = { bottomPadding, closeSearch ->
                     LaunchedEffect(localSearchText) {
                         searchListState.scrollToItem(0)
@@ -251,8 +248,7 @@ fun SuperUserPagerMaterial(
                     LazyColumn(
                         state = searchListState,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            .fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                         contentPadding = PaddingValues(
                             start = 16.dp,
@@ -285,8 +281,7 @@ fun SuperUserPagerMaterial(
                     LazyColumn(
                         state = searchListState,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            .fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                         contentPadding = PaddingValues(
                             start = 16.dp,
@@ -345,8 +340,7 @@ fun SuperUserPagerMaterial(
             LazyColumn(
                 state = listState,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    .fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
                 contentPadding = PaddingValues(
                     start = 16.dp,
