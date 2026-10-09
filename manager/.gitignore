@@ -9,5 +9,6 @@ captures
 local.properties
 key.jks
 keystore.properties
+auth.properties
 *.jks
 *.keystore

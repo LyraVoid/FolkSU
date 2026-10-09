@@ -1,6 +1,8 @@
 @file:Suppress("UnstableApiUsage")
 
 import com.google.protobuf.gradle.id
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.agp.app)
@@ -156,6 +158,23 @@ android {
                 arguments += "-DANDROID_STL=none"
                 cFlags += baseCFlags + "-std=c2x"
                 cppFlags += baseCppFlags + "-std=c++2b"
+
+                // Online-store credentials, baked into cpp/security.cc. auth.properties is local and
+                // gitignored; without it the token resolves to "" and the store falls back to public.
+                val authProps = Properties()
+                val authFile = rootProject.file("auth.properties")
+                if (authFile.exists()) {
+                    authProps.load(FileInputStream(authFile))
+                }
+                val apiToken = authProps.getProperty("api.token", "")
+                val signatureHash = authProps.getProperty("app.signature.hash", "")
+                if (apiToken.isNotEmpty()) {
+                    cppFlags += "-DAPI_TOKEN=$apiToken"
+                }
+                if (signatureHash.isNotEmpty()) {
+                    cppFlags += "-DAPP_SIGNATURE_HASH=$signatureHash"
+                }
+                cppFlags += "-DAPP_PACKAGE_NAME=$managerPackageName"
             }
         }
 
@@ -235,6 +254,8 @@ dependencies {
     implementation(libs.material.kolor)
 
     implementation(libs.liquid.android)
+
+    implementation(libs.coil.compose)
 
     implementation(libs.appiconloader)
 

@@ -202,7 +202,16 @@ fun SearchAppBar(
                     title = title,
                     colors = expressiveTopAppBarColors(),
                     navigationIcon = { if (navigationIcon != null) navigationIcon() },
-                    actions = { if (actions != null) actions() },
+                    actions = {
+                        if (actions != null) actions()
+                        if (topSearch) {
+                            FolkIconButton(
+                                onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                            ) {
+                                Icon(Icons.Filled.Search, contentDescription = null)
+                            }
+                        }
+                    },
                     windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                     scrollBehavior = scrollBehavior
                 )

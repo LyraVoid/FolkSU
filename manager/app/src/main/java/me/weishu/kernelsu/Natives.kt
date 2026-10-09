@@ -1,5 +1,6 @@
 package me.weishu.kernelsu
 
+import android.content.Context
 import android.os.Parcelable
 import androidx.annotation.Keep
 import androidx.compose.runtime.Immutable
@@ -118,6 +119,14 @@ object Natives {
      * advertise `KSU_FEATURE_DYNAMIC_MANAGER` (probed in cpp/ksu.cc).
      */
     external fun isDynamicManagerEnabled(): Boolean
+
+    /**
+     * Online-store token. Returns "" when the app package name or signing-certificate hash does not
+     * match the values baked in at build time (see cpp/security.cc and auth.properties).
+     */
+    external fun nativeGetApiToken(context: Context): String
+
+    fun getApiToken(context: Context): String = nativeGetApiToken(context)
 
     private const val NON_ROOT_DEFAULT_PROFILE_KEY = "$"
     private const val NOBODY_UID = 9999

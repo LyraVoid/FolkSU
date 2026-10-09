@@ -26,6 +26,7 @@ xz = "1.12"
 junit = "4.13.2"
 json = "20250517"
 liquid = "1.1.1"
+coil = "2.7.0"
 
 [plugins]
 agp-app = { id = "com.android.application", version.ref = "agp" }
@@ -85,6 +86,7 @@ hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", vers
 
 material-kolor = { group = "com.materialkolor", name = "material-kolor", version.ref = "materialKolor" }
 liquid-android = { group = "io.github.fletchmckee.liquid", name = "liquid-android", version.ref = "liquid" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 appiconloader = { module = "me.zhanghai.android.appiconloader:appiconloader", version.ref = "appiconloader" }
 

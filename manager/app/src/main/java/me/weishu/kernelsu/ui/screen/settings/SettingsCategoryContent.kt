@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.LayersClear
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.SystemUpdateAlt
 import androidx.compose.material.icons.filled.Wallpaper
@@ -124,6 +125,17 @@ fun AppearanceCategoryContent(uiState: SettingsUiState, actions: SettingsScreenA
                     headlineContent = { Text(stringResource(id = R.string.font_title)) },
                     supportingContent = { Text(stringResource(id = R.string.settings_font_summary)) },
                     leadingContent = { Icon(Icons.Filled.FontDownload, stringResource(id = R.string.font_title)) },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
+                    }
+                )
+            }
+            add {
+                SegmentedListItem(
+                    onClick = actions.onOpenThemeStore,
+                    headlineContent = { Text(stringResource(id = R.string.theme_store_title)) },
+                    supportingContent = { Text(stringResource(id = R.string.theme_store_subtitle)) },
+                    leadingContent = { Icon(Icons.Filled.ShoppingBag, stringResource(id = R.string.theme_store_title)) },
                     trailingContent = {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                     }

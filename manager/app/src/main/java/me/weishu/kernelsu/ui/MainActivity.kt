@@ -110,6 +110,8 @@ import me.weishu.kernelsu.ui.screen.superuser.SuperUserPager
 import me.weishu.kernelsu.ui.screen.template.AppProfileTemplateScreen
 import me.weishu.kernelsu.ui.screen.templateeditor.TemplateEditorScreen
 import me.weishu.kernelsu.ui.screen.font.FontScreen
+import me.weishu.kernelsu.ui.screen.themestore.MyThemesScreen
+import me.weishu.kernelsu.ui.screen.themestore.ThemeStoreScreen
 import me.weishu.kernelsu.ui.screen.wallpaper.WallpaperScreen
 import me.weishu.kernelsu.ui.theme.KernelSUTheme
 import me.weishu.kernelsu.ui.theme.LocalColorMode
@@ -253,6 +255,8 @@ class MainActivity : ComponentActivity() {
                                 entry<Route.Wallpaper> { WallpaperScreen() }
                                 entry<Route.Font> { FontScreen() }
                                 entry<Route.SettingsCategory> { key -> CategorySettingsScreen(key.key) }
+                                entry<Route.ThemeStore> { ThemeStoreScreen() }
+                                entry<Route.MyThemes> { MyThemesScreen() }
                             },
                         )
                     }
