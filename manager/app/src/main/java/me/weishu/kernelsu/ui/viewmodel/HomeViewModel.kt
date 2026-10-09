@@ -109,7 +109,15 @@ class HomeViewModel(
         viewModelScope.launch {
             val baseState = withContext(Dispatchers.IO) { buildState() }
             if (token != refreshToken) return@launch
-            _uiState.update { baseState }
+            // Re-read the root fields from the latest capability snapshot at commit time, so a
+            // completion of this refresh cannot clobber a root update the collector already applied.
+            val capability = CapabilityRepository.current()
+            _uiState.update {
+                baseState.copy(
+                    isRootAvailable = capability.rootStatus == RootShellStatus.Ready,
+                    rootStatus = capability.rootStatus,
+                )
+            }
             if (baseState.checkUpdateEnabled) {
                 val latestVersionInfo = withContext(Dispatchers.IO) { checkNewVersion() }
                 if (token != refreshToken) return@launch

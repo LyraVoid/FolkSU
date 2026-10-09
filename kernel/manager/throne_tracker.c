@@ -310,15 +310,22 @@ static void do_track_throne(bool prune_only)
     bool parse_ok = true;
     for (;;) {
         ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
-        if (count != sizeof(chr))
-            break;
+        if (count == 0)
+            break; // normal EOF
+        if (count < 0) {
+            parse_ok = false;
+            break; // read error: the list is incomplete
+        }
         if (chr != '\n')
             continue;
 
         count = kernel_read(fp, buf, sizeof(buf) - 1, &line_start);
-        if (count <= 0) {
+        if (count < 0) {
+            parse_ok = false;
             break;
         }
+        if (count == 0)
+            break;
         buf[count] = '\0';
 
         struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_KERNEL);

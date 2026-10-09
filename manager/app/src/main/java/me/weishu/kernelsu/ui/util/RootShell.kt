@@ -155,18 +155,20 @@ object RootShell {
         val deferred: Deferred<Shell?> = synchronized(s.mutex) {
             ready(s)?.let { return it }
 
+            // Reuse an unfinished build first: a concurrent caller must await the same Deferred
+            // rather than mistake the fresh backoff window for a reason to give up. A LAZY
+            // Deferred is still in the New state and therefore not "active"; only isCompleted
+            // reliably tells whether the shared build has finished.
+            val existing = s.inFlight
+            if (existing != null && !existing.isCompleted) {
+                return@synchronized existing
+            }
+
             val now = SystemClock.elapsedRealtime()
             // Still inside the backoff window: do not hammer the driver. This must not depend on
             // s.shell, because a failed probe deliberately does not store any shell.
             if (s.lastAttemptElapsed != 0L && now - s.lastAttemptElapsed < cooldownFor(s)) {
                 return s.shell
-            }
-
-            val existing = s.inFlight
-            // A LAZY Deferred is still in the New state and therefore not "active"; only
-            // isCompleted reliably tells whether the shared build has finished.
-            if (existing != null && !existing.isCompleted) {
-                return@synchronized existing
             }
 
             s.status = RootShellStatus.Probing
