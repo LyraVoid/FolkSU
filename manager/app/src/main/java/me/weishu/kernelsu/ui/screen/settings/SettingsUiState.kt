@@ -83,8 +83,13 @@ data class SettingsScreenActions(
     val onSetDefaultUmountModules: (Boolean) -> Unit,
     val onSetEnableWebDebugging: (Boolean) -> Unit,
     val onSetHomeLayoutStyle: (String) -> Unit,
+    val onSetEnableNavigationBadge: (Boolean) -> Unit,
+    val onSetEnablePredictiveBack: (Boolean) -> Unit,
+    val onSetPageScale: (Float) -> Unit,
+    val onSetModuleDescriptionMaxLines: (Int) -> Unit,
     val onSetAutoJailbreak: (Boolean) -> Unit,
     val onSetUseSoftReboot: (Boolean) -> Unit,
     val onSetAllowAnyDynamicManager: (Boolean) -> Unit,
+    val onOpenCategory: (String) -> Unit,
     val onOpenAbout: () -> Unit,
 )

@@ -99,6 +99,8 @@ import me.weishu.kernelsu.ui.screen.install.InstallScreen
 import me.weishu.kernelsu.ui.screen.module.ModulePager
 import me.weishu.kernelsu.ui.screen.modulerepo.ModuleRepoDetailScreen
 import me.weishu.kernelsu.ui.screen.modulerepo.ModuleRepoScreen
+import me.weishu.kernelsu.ui.component.settings.ProfileConfig
+import me.weishu.kernelsu.ui.screen.settings.CategorySettingsScreen
 import me.weishu.kernelsu.ui.screen.settings.SettingPager
 import me.weishu.kernelsu.ui.screen.sulog.SulogScreen
 import me.weishu.kernelsu.ui.screen.superuser.SuperUserPager
@@ -156,6 +158,7 @@ class MainActivity : ComponentActivity() {
 
         WallpaperConfig.load(this)
         FontConfig.load(this)
+        ProfileConfig.load(this)
 
         setContent {
             val viewModel = viewModel<MainActivityViewModel>()
@@ -246,6 +249,7 @@ class MainActivity : ComponentActivity() {
                                 entry<Route.Settings> { mainScreenEntry() }
                                 entry<Route.Wallpaper> { WallpaperScreen() }
                                 entry<Route.Font> { FontScreen() }
+                                entry<Route.SettingsCategory> { key -> CategorySettingsScreen(key.key) }
                             },
                         )
                     }

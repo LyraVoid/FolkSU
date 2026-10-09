@@ -1,15 +1,12 @@
 package me.weishu.kernelsu.ui.screen.colorpalette
 
-import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.dropUnlessResumed
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec
-import me.weishu.kernelsu.KernelSUApplication
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.ui.theme.ColorMode
 import me.weishu.kernelsu.ui.viewmodel.SettingsViewModel
@@ -17,8 +14,6 @@ import me.weishu.kernelsu.ui.viewmodel.SettingsViewModel
 @Composable
 fun ColorPaletteScreen() {
     val navigator = LocalNavigator.current
-    val context = LocalContext.current
-    val activity = LocalActivity.current
     val viewModel = viewModel<SettingsViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentPaletteStyle = try {
@@ -44,14 +39,6 @@ fun ColorPaletteScreen() {
         onSetColorMode = viewModel::setColorMode,
         onSetColorStyle = viewModel::setColorStyle,
         onSetColorSpec = viewModel::setColorSpec,
-        onSetEnableNavigationBadge = viewModel::setEnableNavigationBadge,
-        onSetEnablePredictiveBack = {
-            viewModel.setEnablePredictiveBack(it)
-            KernelSUApplication.setEnableOnBackInvokedCallback(context.applicationInfo, it)
-            activity?.recreate()
-        },
-        onSetPageScale = viewModel::setPageScale,
-        onSetModuleDescriptionMaxLines = viewModel::setModuleDescriptionMaxLines,
     )
 
     ColorPaletteScreenMaterial(state, actions)

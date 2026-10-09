@@ -22,8 +22,4 @@ data class ColorPaletteScreenActions(
     val onSetColorMode: (ColorMode) -> Unit,
     val onSetColorStyle: (String) -> Unit,
     val onSetColorSpec: (String) -> Unit,
-    val onSetEnableNavigationBadge: (Boolean) -> Unit,
-    val onSetEnablePredictiveBack: (Boolean) -> Unit,
-    val onSetPageScale: (Float) -> Unit,
-    val onSetModuleDescriptionMaxLines: (Int) -> Unit,
 )
