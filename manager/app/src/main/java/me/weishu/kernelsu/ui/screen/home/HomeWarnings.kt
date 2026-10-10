@@ -50,7 +50,8 @@ internal fun HomeWarnings(
         WarningCard(
             stringResource(
                 id = R.string.require_manager_version
-            )
+            ),
+            onClick = actions::openManagerReleases,
         )
     }
     if (state.showLkmUpdate) {

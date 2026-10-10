@@ -144,6 +144,8 @@
     <string name="dynamic_manager_badge">DYNAMIC KSU</string>
     <string name="dynamic_manager_preset_badge">KSU</string>
     <string name="require_manager_version">需要更新管理器</string>
+    <string name="home_update_manager">更新管理器</string>
+    <string name="metric_unavailable">不可用</string>
     <string name="require_kernel_version">需要更新内核，点击此处安装</string>
     <string name="require_kernel_version_gki">需要更新内核</string>
     <string name="settings_umount_modules_default">默认卸载模块</string>

@@ -36,6 +36,7 @@ data class HomeUiState(
     val showLkmUpdate: Boolean
         get() = isManager &&
                 lkmMode == true &&
+                !isLateLoadMode &&
                 isLkmBundled &&
                 ksuVersion?.toLong() != currentManagerVersionCode &&
                 !requiresNewKernel &&
@@ -44,6 +45,9 @@ data class HomeUiState(
     // Jailbreak mode runs on locked bootloaders, so flashing a boot image would brick the device.
     val canInstallKernelUpdate: Boolean
         get() = lkmMode == true && !isLateLoadMode
+
+    val showKernelUpdateAction: Boolean
+        get() = canInstallKernelUpdate && (requiresNewKernel || showLkmUpdate)
 
     val showCustomLkmBadge: Boolean
         get() = lkmMode == true && !isLkmBundled
@@ -74,4 +78,6 @@ data class HomeActions(
     val onOpenSuperUser: () -> Unit = {},
     val onOpenModule: () -> Unit = {},
     val onRetryRoot: () -> Unit = {},
-)
+) {
+    fun openManagerReleases() = onOpenUrl("https://github.com/LyraVoid/FolkSU/releases")
+}

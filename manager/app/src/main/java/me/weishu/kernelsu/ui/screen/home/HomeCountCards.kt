@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.FolkMetricValue
 import me.weishu.kernelsu.ui.theme.FolkType
 
 /** The axis a host lays the two count cards along. */
@@ -72,6 +73,7 @@ internal fun CountCardPair(
     pairSpacing: Dp = CountCardDefaults.PairSpacing,
     contentPadding: PaddingValues = CountCardDefaults.ContentPadding,
     emphasis: CountCardEmphasis = CountCardEmphasis.Label,
+    available: Boolean = true,
 ) {
     @Composable
     fun card(modifier: Modifier, icon: ImageVector, label: String, count: Int, onClick: () -> Unit) {
@@ -83,6 +85,7 @@ internal fun CountCardPair(
             modifier = modifier,
             contentPadding = contentPadding,
             emphasis = emphasis,
+            available = available,
         )
     }
 
@@ -118,6 +121,7 @@ internal fun CountCard(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = CountCardDefaults.ContentPadding,
     emphasis: CountCardEmphasis = CountCardEmphasis.Label,
+    available: Boolean = true,
 ) {
     val labelStyle = when (emphasis) {
         CountCardEmphasis.Label -> FolkType.Summary
@@ -136,7 +140,7 @@ internal fun CountCard(
         CountCardEmphasis.Value -> MaterialTheme.colorScheme.onSurface
     }
 
-    HomeCard(modifier = modifier, onClick = onClick) {
+    HomeCard(modifier = modifier, onClick = onClick.takeIf { available }) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -160,9 +164,11 @@ internal fun CountCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = count.toString(),
+                    FolkMetricValue(
+                        value = count.toString().takeIf { available },
+                        unavailableLabel = stringResource(R.string.metric_unavailable),
                         style = valueStyle,
+                        unavailableStyle = FolkType.Caption,
                         color = valueColor
                     )
                 }

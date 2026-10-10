@@ -44,6 +44,59 @@ class HomeUiStateTest {
     )
 
     @Test
+    fun `bundled LKM version mismatch offers a kernel update`() {
+        val update = state(RootShellStatus.Ready).copy(currentManagerVersionCode = 32751)
+        assertTrue(update.showLkmUpdate)
+        assertTrue(update.showKernelUpdateAction)
+    }
+
+    @Test
+    fun `UAPI mismatch chooses the required component`() {
+        val ready = state(RootShellStatus.Ready)
+        val kernelUpdate = ready.copy(requiresNewKernel = true, kernelUAPIVersion = 4)
+        assertFalse(kernelUpdate.showLkmUpdate)
+        assertTrue(kernelUpdate.showKernelUpdateAction)
+        val managerUpdate = ready.copy(requiresNewManager = true, kernelUAPIVersion = 6)
+        assertFalse(managerUpdate.showLkmUpdate)
+        assertFalse(managerUpdate.showKernelUpdateAction)
+        assertFalse(kernelUpdate.copy(lkmMode = false).showKernelUpdateAction)
+    }
+
+    @Test
+    fun `matching versions and custom LKMs do not offer bundled updates`() {
+        val ready = state(RootShellStatus.Ready)
+        assertFalse(ready.showKernelUpdateAction)
+        val custom = ready.copy(isLkmBundled = false, currentManagerVersionCode = 32751)
+        assertFalse(custom.showLkmUpdate)
+        assertFalse(custom.showKernelUpdateAction)
+    }
+
+    @Test
+    fun `late load never offers boot image updates`() {
+        val lateLoad = state(RootShellStatus.Ready).copy(
+            isLateLoadMode = true,
+            currentManagerVersionCode = 32751,
+        )
+        assertFalse(lateLoad.canInstallKernelUpdate)
+        assertFalse(lateLoad.showLkmUpdate)
+        assertFalse(lateLoad.showKernelUpdateAction)
+        assertFalse(lateLoad.copy(requiresNewKernel = true).showKernelUpdateAction)
+    }
+
+    @Test
+    fun `manager update opens FolkSU releases without installing a kernel`() {
+        var openedUrl = ""
+        var installClicked = false
+        val actions = HomeActions(
+            onInstallClick = { installClicked = true },
+            onOpenUrl = { openedUrl = it },
+        )
+        actions.openManagerReleases()
+        assertEquals("https://github.com/LyraVoid/FolkSU/releases", openedUrl)
+        assertFalse(installClicked)
+    }
+
+    @Test
     fun `probing shows recovering, never the failure card`() {
         val probing = state(RootShellStatus.Probing)
         assertTrue(probing.showRootRecovering)

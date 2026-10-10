@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -50,7 +51,7 @@ fun HomePagerMaterial(
     metrics: HomeMetrics = HomeMetrics(),
 ) {
     ExpressiveScaffold(
-        topBar = { TopBar() },
+        topBar = { TopBar(state = state, actions = actions) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         Column(
@@ -114,7 +115,7 @@ fun HomePagerMaterial(
 }
 
 @Composable
-private fun TopBar() {
+private fun TopBar(state: HomeUiState, actions: HomeActions) {
     TopAppBar(
         title = { me.weishu.kernelsu.ui.component.HomeTitleImage() },
         actions = {
@@ -126,6 +127,12 @@ private fun TopBar() {
                         contentDescription = stringResource(if (playing) R.string.media_pause else R.string.media_play),
                     )
                 }
+            }
+            IconButton(onClick = actions.onInstallClick, enabled = !state.isLateLoadMode) {
+                Icon(
+                    imageVector = Icons.Filled.AutoFixHigh,
+                    contentDescription = stringResource(R.string.install),
+                )
             }
             RebootListPopup()
         },

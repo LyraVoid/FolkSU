@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,8 +63,7 @@ private val GridTileSpacing = 12.dp
 
 /**
  * The two-column grid: a hero status card on the left with the two count cards stacked on the
- * right. On a device without the kernel module there are no counts, so the hero takes the full
- * width.
+ * right. Unavailable counts keep their place so changes in capability do not rearrange the grid.
  */
 @Composable
 internal fun GridHomeContent(
@@ -72,42 +72,34 @@ internal fun GridHomeContent(
     superuserCount: Int,
     moduleEnabledCount: Int,
 ) {
-    if (useFullFeaturedLayout()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(GridTileSpacing)
-        ) {
-            GridStatusCard(
-                state = state,
-                actions = actions,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-            )
-            CountCardPair(
-                superuserCount = superuserCount,
-                moduleEnabledCount = moduleEnabledCount,
-                onOpenSuperUser = actions.onOpenSuperUser,
-                onOpenModule = actions.onOpenModule,
-                layout = CountCardLayout.Vertical,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                pairSpacing = GridTileSpacing,
-                // The type ladder's line boxes sit closer together than the plain Material ones, so
-                // the extra inset is what brings the two tiles to the height this grid is meant to
-                // have.
-                contentPadding = PaddingValues(18.dp),
-                emphasis = CountCardEmphasis.Value,
-            )
-        }
-    } else {
+    val countsAvailable = useFullFeaturedLayout() && state.isRootAvailable
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(GridTileSpacing)
+    ) {
         GridStatusCard(
             state = state,
             actions = actions,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+        )
+        CountCardPair(
+            superuserCount = superuserCount,
+            moduleEnabledCount = moduleEnabledCount,
+            onOpenSuperUser = actions.onOpenSuperUser,
+            onOpenModule = actions.onOpenModule,
+            layout = CountCardLayout.Vertical,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            pairSpacing = GridTileSpacing,
+            // Keep enough room for the label and value in each tile.
+            contentPadding = PaddingValues(18.dp),
+            emphasis = CountCardEmphasis.Value,
+            available = countsAvailable,
         )
     }
 }
@@ -171,6 +163,8 @@ private fun GridStatusCard(
     ) {
         Box(
             modifier = Modifier
+                // Size the image's actual parent, not only the outer Card's Column.
+                .heightIn(min = 160.dp)
                 .fillMaxSize()
                 .onSizeChanged { SurfaceBounds.report(SurfaceRegistry.GRID_WORK_CARD, it.width, it.height) },
         ) {

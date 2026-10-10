@@ -158,6 +158,8 @@
     <string name="dynamic_manager_badge">DYNAMIC KSU</string>
     <string name="dynamic_manager_preset_badge">KSU</string>
     <string name="require_manager_version">Manager update required</string>
+    <string name="home_update_manager">Update manager</string>
+    <string name="metric_unavailable">Unavailable</string>
     <string name="require_kernel_version">Kernel update required. Tap to install.</string>
     <string name="require_kernel_version_gki">Kernel update required</string>
     <string name="settings_umount_modules_default">Umount modules by default</string>

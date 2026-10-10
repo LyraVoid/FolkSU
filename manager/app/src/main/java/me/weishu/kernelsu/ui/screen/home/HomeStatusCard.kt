@@ -60,13 +60,14 @@ internal fun statusStateTexts(state: HomeUiState): List<Pair<String, String>> {
 internal fun StatusInstallButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    label: String = stringResource(R.string.install),
 ) {
     FolkButton(
         onClick = onClick,
         modifier = modifier,
         contentPadding = ButtonDefaults.MediumContentPadding,
     ) {
-        Text(stringResource(R.string.install))
+        Text(label)
     }
 }
 
