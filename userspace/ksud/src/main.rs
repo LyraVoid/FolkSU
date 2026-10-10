@@ -58,6 +58,8 @@ mod soft_reboot;
 mod su;
 #[cfg(target_os = "android")]
 mod sulog;
+// SUSFS is an Android control interface; Linux hosts only compile it for tests.
+#[cfg(any(target_os = "android", all(test, target_os = "linux")))]
 mod susfs;
 #[cfg(target_os = "android")]
 mod unload;
