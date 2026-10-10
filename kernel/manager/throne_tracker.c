@@ -262,8 +262,8 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
                 if (!cached) {
                     struct apk_sign_match match = { .index = -1 };
                     bool matched = match_apk_signature(candidate_path, &match);
-                    pr_info("Found new base.apk at path: %s, matched: %d, trusted: %d\n", candidate_path,
-                            matched, matched && match.trusted);
+                    pr_info("Found new base.apk at path: %s, matched: %d, trusted: %d\n", candidate_path, matched,
+                            matched && match.trusted);
 
                     if (matched && match.trusted && match.index >= 0) {
                         crown_manager(candidate_path, uid_data);
@@ -321,6 +321,41 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
     return exist;
 }
 
+static int read_package_uid(struct file *fp, loff_t line_start, loff_t line_end, struct list_head *uid_list)
+{
+    /* Keep the complete package and u32 UID, but ignore optional trailing fields. */
+    char buf[KSU_MAX_PACKAGE_NAME + 12];
+    size_t len = min_t(loff_t, line_end - line_start, sizeof(buf) - 1);
+    ssize_t count = kernel_read(fp, buf, len, &line_start);
+    struct uid_data *data;
+    char *tmp, *package, *uid;
+    u32 res;
+
+    if (count < 0)
+        return count;
+    if ((size_t)count != len || !len || memchr(buf, '\0', len))
+        return -EINVAL;
+    buf[len] = '\0';
+
+    tmp = buf;
+    package = strsep(&tmp, " \t\r");
+    while (tmp && (*tmp == ' ' || *tmp == '\t'))
+        tmp++;
+    uid = strsep(&tmp, " \t\r");
+    /* A truncated prefix must contain the delimiter after the complete UID. */
+    if (!package || !*package || strlen(package) >= KSU_MAX_PACKAGE_NAME || !uid || !*uid ||
+        (!tmp && line_start < line_end) || kstrtou32(uid, 10, &res))
+        return -EINVAL;
+
+    data = kzalloc(sizeof(*data), GFP_KERNEL);
+    if (!data)
+        return -ENOMEM;
+    data->uid = res;
+    strscpy(data->package, package, sizeof(data->package));
+    list_add_tail(&data->list, uid_list);
+    return 0;
+}
+
 static void do_track_throne(bool prune_only)
 {
     const struct cred *old_cred = override_creds(ksu_cred);
@@ -336,57 +371,28 @@ static void do_track_throne(bool prune_only)
     char chr = 0;
     loff_t pos = 0;
     loff_t line_start = 0;
-    char buf[KSU_MAX_PACKAGE_NAME];
     bool parse_ok = true;
     for (;;) {
         ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
-        if (count == 0)
-            break; // normal EOF
         if (count < 0) {
             parse_ok = false;
             break; // read error: the list is incomplete
         }
-        if (chr != '\n')
+        if (count == 0 && pos == line_start)
+            break; // normal EOF
+        if (count > 0 && chr != '\n')
             continue;
 
-        count = kernel_read(fp, buf, sizeof(buf) - 1, &line_start);
-        if (count < 0) {
+        /* Do not read into the next record, including for two-field shared UIDs. */
+        int rc = read_package_uid(fp, line_start, count > 0 ? pos - 1 : pos, &uid_list);
+        if (rc) {
+            pr_err("update_uid: invalid package record at offset %lld: %d\n", (long long)line_start, rc);
             parse_ok = false;
             break;
         }
-        if (count == 0)
-            break;
-        buf[count] = '\0';
-
-        struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_KERNEL);
-        if (!data) {
-            filp_close(fp, 0);
-            goto out;
-        }
-
-        char *tmp = buf;
-        const char *delim = " ";
-        char *package = strsep(&tmp, delim);
-        char *uid = strsep(&tmp, delim);
-        if (!uid || !package) {
-            kfree(data);
-            pr_err("update_uid: package or uid is NULL!\n");
-            parse_ok = false;
-            break;
-        }
-
-        u32 res;
-        if (kstrtou32(uid, 10, &res)) {
-            kfree(data);
-            pr_err("update_uid: uid parse err\n");
-            parse_ok = false;
-            break;
-        }
-        data->uid = res;
-        strscpy(data->package, package, sizeof(data->package));
-        list_add_tail(&data->list, &uid_list);
-        // reset line start
         line_start = pos;
+        if (count == 0)
+            break; // the final record need not end with a newline
     }
     filp_close(fp, 0);
 
