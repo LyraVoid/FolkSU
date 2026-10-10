@@ -63,4 +63,4 @@ zip = { version = "8", features = ["deflate"], default-features = false }
 
 [build-dependencies]
 cc = "1"
-bindgen = "0.72"
+bindgen = "0.73"
