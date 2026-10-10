@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="install_anykernel">Flash AnyKernel3 ZIP</string>
+    <string name="install_anykernel_summary">Run a trusted kernel installer using the current slot. Root required.</string>
+    <string name="install_anykernel_warning">This ZIP runs with root and may modify multiple partitions. The installer controls which partitions and slots are written; FolkSU does not override the slot or refresh ksud. A successful install does not guarantee bootability, and failure may leave partial changes. Existing boot-image backups may not cover these changes. Confirm device compatibility and prepare a recovery image before continuing.</string>
+    <string name="install_anykernel_root_required">Root is required to flash AnyKernel3.</string>
+    <string name="install_anykernel_read_failed">Unable to read the AnyKernel3 ZIP.</string>
     <string name="home">Home</string>
     <string name="home_not_installed">Not installed</string>
     <string name="home_click_to_install">Tap to install</string>

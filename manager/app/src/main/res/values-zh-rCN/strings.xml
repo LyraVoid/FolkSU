@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="install_anykernel">刷入 AnyKernel3 ZIP</string>
+    <string name="install_anykernel_summary">以当前槽运行可信内核安装器，需要 root 权限。</string>
+    <string name="install_anykernel_warning">此 ZIP 将以 root 执行，可能修改多个分区。实际写入的分区和槽位由安装脚本决定，FolkSU 不覆盖槽位，也不更新 ksud。安装成功不保证能够启动，失败也可能已产生部分写入。现有启动镜像备份未必覆盖这些改动。请确认设备兼容性并准备回滚镜像，再继续。</string>
+    <string name="install_anykernel_root_required">刷入 AnyKernel3 需要 root 权限。</string>
+    <string name="install_anykernel_read_failed">无法读取 AnyKernel3 ZIP。</string>
     <string name="home">主页</string>
     <string name="home_not_installed">未安装</string>
     <string name="home_click_to_install">点击安装</string>

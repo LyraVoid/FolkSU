@@ -11,6 +11,12 @@ import me.weishu.kernelsu.R
 
 @Parcelize
 internal sealed class InstallMethod : Parcelable {
+    data class AnyKernel(
+        val uri: Uri? = null,
+        @get:StringRes override val label: Int = R.string.install_anykernel,
+        override val summary: String?
+    ) : InstallMethod()
+
     data class SelectFile(
         val uri: Uri? = null,
         @get:StringRes override val label: Int = R.string.select_file,

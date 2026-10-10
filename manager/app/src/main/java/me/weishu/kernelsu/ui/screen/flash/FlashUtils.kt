@@ -70,6 +70,8 @@ enum class UninstallType(val icon: ImageVector, val title: Int, val message: Int
 @Parcelize
 sealed class FlashIt : Parcelable {
     @Parcelize
+    data class FlashAnyKernel(val uri: Uri) : FlashIt()
+    @Parcelize
     data class FlashBoot(
         val boot: Uri? = null,
         val lkm: LkmSelection,
@@ -121,6 +123,9 @@ fun flashIt(
     onStderr: (String) -> Unit
 ): FlashResult {
     return when (flashIt) {
+        is FlashIt.FlashAnyKernel -> me.weishu.kernelsu.ui.util.flashAnyKernel(
+            flashIt.uri, onStdout, onStderr
+        )
         is FlashIt.FlashBoot -> installBoot(
             flashIt.boot,
             flashIt.lkm,

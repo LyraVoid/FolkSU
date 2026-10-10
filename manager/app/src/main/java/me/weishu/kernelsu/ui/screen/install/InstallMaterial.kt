@@ -84,8 +84,10 @@ internal fun InstallScreenMaterial(
                 onSelected = actions.onSelectMethod,
                 onDownloadFile = actions.onDownloadFile,
                 onSelectBootImage = actions.onSelectBootImage,
+                onSelectAnyKernel = actions.onSelectAnyKernel,
             )
 
+            if (uiState.installMethod !is InstallMethod.AnyKernel) {
             SegmentedColumn(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 content = buildList {
@@ -196,11 +198,25 @@ internal fun InstallScreenMaterial(
                     )
                 }
             }
+            } else {
+                SegmentedColumn(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    item {
+                        SegmentedListItem(
+                            headlineContent = { Text(stringResource(R.string.install_anykernel)) },
+                            supportingContent = {
+                                Text(uiState.installMethod.uri?.lastPathSegment ?: "")
+                            },
+                            onClick = actions.onSelectAnyKernel
+                        )
+                    }
+                }
+            }
             FolkButton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                enabled = uiState.installMethod != null,
+                enabled = uiState.installMethod != null &&
+                    (uiState.installMethod !is InstallMethod.AnyKernel || uiState.installMethod.uri != null),
                 onClick = actions.onNext
             ) { Text(stringResource(R.string.install_next)) }
         }
@@ -213,6 +229,7 @@ private fun SelectInstallMethod(
     onSelected: (InstallMethod) -> Unit,
     onDownloadFile: () -> Unit,
     onSelectBootImage: () -> Unit,
+    onSelectAnyKernel: () -> Unit,
 ) {
     val confirmDialog = rememberConfirmDialog(
         onConfirm = {
@@ -225,6 +242,7 @@ private fun SelectInstallMethod(
 
     val onClick = { option: InstallMethod ->
         when (option) {
+            is InstallMethod.AnyKernel -> onSelectAnyKernel()
             is InstallMethod.SelectFile -> onSelectBootImage()
             is InstallMethod.DownloadFile -> onDownloadFile()
             is InstallMethod.DirectInstall -> onSelected(option)

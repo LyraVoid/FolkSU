@@ -11,6 +11,8 @@
     clippy::redundant_field_names
 )]
 
+#[cfg(any(target_os = "android", test))]
+mod anykernel3;
 mod apk_sign;
 mod assets;
 mod boot_patch;

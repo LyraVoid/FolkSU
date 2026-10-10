@@ -1000,6 +1000,7 @@ dependencies = [
  "anyhow",
  "base16ct",
  "bindgen",
+ "cc",
  "chrono",
  "clap",
  "const_format",

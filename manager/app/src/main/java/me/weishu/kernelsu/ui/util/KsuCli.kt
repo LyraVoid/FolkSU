@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import me.weishu.kernelsu.BuildConfig
 import me.weishu.kernelsu.Natives
+import me.weishu.kernelsu.R
 import me.weishu.kernelsu.core.tasks.BootKernelVersion
 import me.weishu.kernelsu.core.tasks.ExtractImage
 import me.weishu.kernelsu.core.tasks.ProbeResult
@@ -289,6 +290,31 @@ private fun flashWithIO(
 
     return withNewRootShell {
         newJob().add(cmd).to(stdoutCallback, stderrCallback).exec()
+    }
+}
+
+fun flashAnyKernel(
+    uri: Uri,
+    onStdout: (String) -> Unit,
+    onStderr: (String) -> Unit
+): FlashResult {
+    var file: File? = null
+    return try {
+        check(rootAvailable()) { ksuApp.getString(R.string.install_anykernel_root_required) }
+        val archive = File.createTempFile("anykernel3-", ".zip", ksuApp.cacheDir)
+        file = archive
+        val input = requireNotNull(ksuApp.contentResolver.openInputStream(uri)) {
+            ksuApp.getString(R.string.install_anykernel_read_failed)
+        }
+        input.use { source -> archive.outputStream().use { source.copyTo(it) } }
+        val quotedPath = "'" + archive.absolutePath.replace("'", "'\"'\"'") + "'"
+        val result = flashWithIO("${getKsuDaemonPath()} anykernel3 $quotedPath", onStdout, onStderr)
+        FlashResult(result, result.isSuccess)
+    } catch (e: Exception) {
+        onStderr(e.toString())
+        FlashResult(-1, e.message ?: ksuApp.getString(R.string.install_anykernel_read_failed), false)
+    } finally {
+        file?.delete()
     }
 }
 

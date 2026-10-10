@@ -253,9 +253,54 @@ fn warn_on_single_kmi() {
     }
 }
 
+fn build_mkbootfs() {
+    let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
+    let directory = match arch.as_str() {
+        "aarch64" => "aarch64",
+        "x86_64" => "x86_64",
+        "riscv64" => "riscv64",
+        _ => panic!("unsupported mkbootfs architecture: {arch}"),
+    };
+    let source = Path::new("src/mkbootfs.cpp");
+    println!("cargo:rerun-if-changed={}", source.display());
+    let output = PathBuf::from(env::var_os("OUT_DIR").unwrap()).join("mkbootfs");
+    let compiler = cc::Build::new().cpp(true).get_compiler();
+    let status = compiler
+        .to_command()
+        .arg(source)
+        .args([
+            "-std=c++20",
+            "-Oz",
+            "-fPIE",
+            "-pie",
+            "-static-libstdc++",
+            "-fno-exceptions",
+            "-fno-rtti",
+            "-D_FILE_OFFSET_BITS=64",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-Wl,-z,relro,-z,now",
+            "-Wl,--strip-all",
+        ])
+        .arg("-o")
+        .arg(&output)
+        .status()
+        .expect("failed to start mkbootfs compiler");
+    assert!(status.success(), "mkbootfs compilation failed: {status}");
+    let destination = PathBuf::from(format!("bin/{directory}/mkbootfs"));
+    let binary = fs::read(&output).expect("failed to read mkbootfs");
+    if fs::read(&destination).ok().as_deref() != Some(binary.as_slice()) {
+        fs::write(destination, binary).expect("failed to install mkbootfs asset");
+    }
+}
+
 fn main() {
     assemble_bootstrap();
     warn_on_single_kmi();
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("android") {
+        build_mkbootfs();
+    }
 
     let (code, name) = match get_git_version() {
         Ok((code, name)) => (code, name),

@@ -59,4 +59,5 @@ adb_client = { git = "https://github.com/KernelSU2/adb_client" }
 prop-rs-android = { git = "https://github.com/KernelSU2/ksu_props", rev = "ddb6ee7294467f7f25bad2118e9e24eee104144b" }
 
 [build-dependencies]
+cc = "1"
 bindgen = "0.72"

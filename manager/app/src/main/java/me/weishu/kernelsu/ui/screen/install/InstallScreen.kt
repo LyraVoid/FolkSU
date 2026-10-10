@@ -27,6 +27,7 @@ import me.weishu.kernelsu.getKernelVersion
 import me.weishu.kernelsu.ui.component.choosekmidialog.ChooseKmiDialog
 import me.weishu.kernelsu.ui.component.dialog.DownloadDialog
 import me.weishu.kernelsu.ui.component.dialog.rememberLoadingDialog
+import me.weishu.kernelsu.ui.component.dialog.rememberConfirmDialog
 import me.weishu.kernelsu.ui.navigation3.LocalNavigator
 import me.weishu.kernelsu.ui.navigation3.Route
 import me.weishu.kernelsu.ui.screen.flash.FlashIt
@@ -72,10 +73,12 @@ fun InstallScreen() {
     val selectFileTip = stringResource(id = R.string.select_file_tip, defaultPartition)
     val selectFileTipNoGki = stringResource(id = R.string.select_file_tip_nogki)
     val downloadFileMsg = stringResource(id = R.string.download_dialog_msg)
-    val installMethodOptions = remember(rootAvailable, isAbDevice, isGkiDevice, selectFileTip, selectFileTipNoGki, downloadFileMsg) {
+    val anyKernelSummary = stringResource(R.string.install_anykernel_summary)
+    val installMethodOptions = remember(rootAvailable, isAbDevice, isGkiDevice, selectFileTip, selectFileTipNoGki, downloadFileMsg, anyKernelSummary) {
         buildList {
             add(InstallMethod.SelectFile(summary = if (isGkiDevice) selectFileTip else selectFileTipNoGki))
             add(InstallMethod.DownloadFile(summary = downloadFileMsg))
+            if (rootAvailable) add(InstallMethod.AnyKernel(summary = anyKernelSummary))
             if (rootAvailable && isGkiDevice) {
                 add(InstallMethod.DirectInstall)
                 if (isAbDevice) add(InstallMethod.DirectInstallToInactiveSlot)
@@ -111,11 +114,12 @@ fun InstallScreen() {
         }
     }
 
-    val onInstall = {
+    val onInstall: () -> Unit = {
         installMethod?.let { method ->
             navigator.push(
                 Route.Flash(
                     when (method) {
+                        is InstallMethod.AnyKernel -> FlashIt.FlashAnyKernel(method.uri ?: return@let)
                         is InstallMethod.DownloadFile -> FlashIt.DownloadBoot(
                             url = method.url ?: return@let,
                             partition = method.partition ?: return@let,
@@ -137,6 +141,13 @@ fun InstallScreen() {
                 )
             )
         }
+    }
+
+    val anyKernelConfirm = rememberConfirmDialog(onConfirm = onInstall, onDismiss = null)
+    val anyKernelTitle = stringResource(R.string.install_anykernel)
+    val anyKernelWarning = stringResource(R.string.install_anykernel_warning)
+    val selectAnyKernelLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { installMethod = InstallMethod.AnyKernel(it, summary = anyKernelSummary) }
     }
 
     ChooseKmiDialog(
@@ -235,6 +246,7 @@ fun InstallScreen() {
         onSelectBootImage = {
             selectImageLauncher.launch(Intent(Intent.ACTION_GET_CONTENT).apply { type = "application/octet-stream" })
         },
+        onSelectAnyKernel = { selectAnyKernelLauncher.launch("application/zip") },
         onUploadLkm = {
             selectLkmLauncher.launch(Intent(Intent.ACTION_GET_CONTENT).apply { type = "application/octet-stream" })
         },
@@ -250,19 +262,23 @@ fun InstallScreen() {
             }
         },
         onNext = {
-            val isLkmSelected = lkmSelection != LkmSelection.KmiNone
-            val isKmiUnknown = currentKmi.isBlank()
-            val isKmiUnresolved = when (installMethod) {
-                // The download flow extracts the KMI itself; no manual
-                // selection needed.
-                is InstallMethod.DownloadFile -> false
-                is InstallMethod.SelectFile -> true
-                else -> isKmiUnknown
-            }
-            if (!isLkmSelected && isKmiUnresolved) {
-                showChooseKmiDialog.value = true
+            if (installMethod is InstallMethod.AnyKernel) {
+                anyKernelConfirm.showConfirm(anyKernelTitle, anyKernelWarning)
             } else {
-                onInstall()
+                val isLkmSelected = lkmSelection != LkmSelection.KmiNone
+                val isKmiUnknown = currentKmi.isBlank()
+                val isKmiUnresolved = when (installMethod) {
+                    // The download flow extracts the KMI itself; no manual
+                    // selection needed.
+                    is InstallMethod.DownloadFile -> false
+                    is InstallMethod.SelectFile -> true
+                    else -> isKmiUnknown
+                }
+                if (!isLkmSelected && isKmiUnresolved) {
+                    showChooseKmiDialog.value = true
+                } else {
+                    onInstall()
+                }
             }
         },
         onAdvancedOptionsClicked = {

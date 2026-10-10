@@ -11,3 +11,4 @@ __pycache__
 /userspace/ksud/.lkm_image_bootstrap.o
 /.research
 /design
+/userspace/ksud/bin/*/mkbootfs
