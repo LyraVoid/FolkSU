@@ -63,9 +63,8 @@ object ThemeExportService {
                     }
                 }
                 ThemeValidation.validate(JSONObject(json.toString()), entries)
-                val bytes = FptContainer.write(json, entries)
                 val output = context.contentResolver.openOutputStream(target) ?: error("Cannot write theme")
-                output.use { it.write(bytes) }
+                output.use { FptContainer.write(json, entries, it) }
                 metadata.save(context)
             }
         }

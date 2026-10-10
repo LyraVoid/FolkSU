@@ -32,6 +32,13 @@ class ThemeValidationTest {
         }
     }
 
+    @Test fun legacyFontEnabledWithoutFontFileFallsBackToAppFont() {
+        val json = JSONObject().put("isFontEnabled", true)
+        val warnings = ThemeValidation.validate(json, emptyMap())
+        assertTrue(warnings.any { it.contains("font", ignoreCase = true) })
+        assertTrue(json.has("isFontEnabled"))
+    }
+
     @Test fun unknownEnumsPreserveLocalValuesAndExplainLayoutMapping() {
         val json = JSONObject().put("colorContrast", "FUTURE").put("fontMode", "future")
             .put("isFontEnabled", true).put("homeLayoutStyle", "sign")

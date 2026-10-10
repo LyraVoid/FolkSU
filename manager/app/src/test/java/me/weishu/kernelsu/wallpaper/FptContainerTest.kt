@@ -103,9 +103,71 @@ class FptContainerTest {
         assertThrows(Exception::class.java) {
             FptContainer.read(ByteArrayInputStream(bytes.copyOf(bytes.size - 1)), temporary.newFolder())
         }
-        bytes[bytes.lastIndex] = (bytes.last().toInt() xor 1).toByte()
+        // Corrupt the first ciphertext block: the decrypted local header is no longer a zip entry.
+        bytes[16] = (bytes[16].toInt() xor 1).toByte()
         assertThrows(Exception::class.java) {
             FptContainer.read(ByteArrayInputStream(bytes), temporary.newFolder())
+        }
+    }
+
+    @Test fun streamingWriteProducesAContainerTheReaderAccepts() {
+        val resource = temporary.newFile("background.png")
+        val payload = ByteArray(256 * 1024) { (it % 251).toByte() }
+        resource.writeBytes(payload)
+        val json = JSONObject().put("isBackgroundEnabled", true).put("meta_type", "tablet")
+        val target = ByteArrayOutputStream()
+        FptContainer.write(json, mapOf("background.png" to resource), target)
+        val bytes = target.toByteArray()
+        assertEquals(0, bytes.size % 16)
+        val (imported, files) = FptContainer.read(ByteArrayInputStream(bytes), temporary.newFolder())
+        assertEquals("tablet", imported.getString("meta_type"))
+        assertArrayEquals(payload, files.getValue("background.png").readBytes())
+    }
+
+    @Test fun misalignedContainerLengthIsRejected() {
+        val bytes = fpExport(mapOf("theme.json" to "{}".toByteArray()))
+        assertThrows(Exception::class.java) {
+            FptContainer.read(ByteArrayInputStream(bytes + ByteArray(8)), temporary.newFolder())
+        }
+    }
+
+    @Test fun ciphertextBudgetCountsBulkAndSingleByteReads() {
+        val bulk = BoundedInputStream(ByteArrayInputStream(ByteArray(9)), 8)
+        assertEquals(4, bulk.read(ByteArray(4)))
+        assertEquals(4, bulk.read(ByteArray(4)))
+        assertThrows(IllegalArgumentException::class.java) { bulk.read() }
+        val single = BoundedInputStream(ByteArrayInputStream(ByteArray(3)), 2)
+        assertEquals(0, single.read())
+        assertEquals(0, single.read())
+        assertThrows(IllegalArgumentException::class.java) { single.read(ByteArray(1)) }
+    }
+
+    @Test fun invalidExportEntryIsRejectedBeforeWritingToTarget() {
+        val file = temporary.newFile("resource")
+        file.writeBytes(byteArrayOf(1))
+        val target = ByteArrayOutputStream()
+        assertThrows(IllegalArgumentException::class.java) {
+            FptContainer.write(JSONObject(), mapOf("../outside" to file), target)
+        }
+        assertEquals(0, target.size())
+    }
+
+    @Test fun invalidFinalPaddingIsRejectedEvenAfterACompleteZip() {
+        val zipBytes = ByteArrayOutputStream().also { output ->
+            ZipOutputStream(output).use { zip ->
+                zip.putNextEntry(ZipEntry("theme.json"))
+                zip.write("{}".toByteArray())
+                zip.closeEntry()
+            }
+        }.toByteArray()
+        // Preserve the complete archive but deliberately end the decrypted payload in zero,
+        // which is never a valid PKCS5 padding length.
+        val plain = zipBytes.copyOf((zipBytes.size / 16 + 1) * 16)
+        val iv = ByteArray(16)
+        val cipher = Cipher.getInstance("AES/CBC/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, key, IvParameterSpec(iv))
+        assertThrows(Exception::class.java) {
+            FptContainer.read(ByteArrayInputStream(iv + cipher.doFinal(plain)), temporary.newFolder())
         }
     }
 }

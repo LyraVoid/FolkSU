@@ -110,8 +110,13 @@ internal object ThemeValidation {
         validateBackground(json, files.keys)
         requireAsset("isVideoBackgroundEnabled", "video_background")
         requireAsset("isAdvancedTitleStyleEnabled", "title_image")
-        if (json.optString("fontMode") == "custom" || (!json.has("fontMode") && json.optBoolean("isFontEnabled"))) {
+        if (json.optString("fontMode") == "custom") {
             require(files.keys.any { stem(it) == "font" }) { "Custom font is missing" }
+        } else if (!json.has("fontMode") && json.optBoolean("isFontEnabled") &&
+            files.keys.none { stem(it) == "font" }) {
+            // Themes written before the three-mode setting can enable a font without shipping one;
+            // the wider ecosystem falls back to the app font, so keep the theme rather than reject it.
+            warnings += "Legacy theme enables a custom font without a font file; the app font is used"
         }
         SurfaceRegistry.themeSlots().forEach { slot ->
             if (SurfaceField.Image in slot.fields) {
