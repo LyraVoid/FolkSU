@@ -46,3 +46,13 @@ cargo ndk -t arm64-v8a --platform 31 build --release
 Do not use a ZIP that writes real partitions merely to test the UI. Host unit
 tests cover marker validation, script argument construction, output routing
 and exit-status handling; on-device flashing remains a separate validation.
+
+Run `cargo test -p ksud anykernel3::` for host ZIP-validation tests. These also
+exercise raw central-directory duplicate checks: the ZIP library's name index
+can otherwise collapse duplicate records before inspection.
+
+`python3 scripts/test_anykernel3_device.py --serial <serial>` uses the installed
+Manager daemon with three self-authored, non-flashing fixtures. It checks
+successful and failed installer execution, mkbootfs execution, output routing,
+marker rejection, and temporary-directory cleanup. It does not validate real
+AnyKernel3 upstream extraction, device partition writes, or bootability.

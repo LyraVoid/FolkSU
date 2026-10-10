@@ -151,18 +151,29 @@ fn ensure_installer_success(success: bool, status: impl Display) -> Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", test))]
 mod android {
+    #[cfg(any(target_os = "android", test))]
+    use std::fs;
     use std::{
-        fs::{self, File},
-        io::{BufReader, Read},
-        path::{Path, PathBuf},
+        fs::File,
+        io::{Read, Seek, SeekFrom},
+        path::Path,
+    };
+    #[cfg(target_os = "android")]
+    use std::{
+        io::BufReader,
+        path::PathBuf,
         process::{Command, Stdio},
     };
 
     use anyhow::{Context, Result, ensure};
+    #[cfg(target_os = "android")]
     use tempfile::{Builder, TempDir};
 
+    #[cfg(not(target_os = "android"))]
+    use super::{UPDATE_BINARY_ENTRY, select_update_binary};
+    #[cfg(target_os = "android")]
     use crate::{
         anykernel3::{
             UPDATE_BINARY_ENTRY, combine_results, ensure_installer_success,
@@ -179,6 +190,34 @@ mod android {
             .with_context(|| format!("failed to open {}", zip_path.display()))?;
         let mut archive = zip::ZipArchive::new(file)
             .with_context(|| format!("invalid ZIP archive {}", zip_path.display()))?;
+
+        // zip indexes names in a map and can silently collapse duplicates.
+        // Inspect raw central-directory records before trusting that index.
+        let mut raw = File::open(zip_path)?;
+        raw.seek(SeekFrom::Start(archive.central_directory_start()))?;
+        let mut raw_names = std::collections::HashSet::new();
+        loop {
+            let mut signature = [0; 4];
+            raw.read_exact(&mut signature)?;
+            if signature != *b"PK\x01\x02" {
+                break;
+            }
+            let mut header = [0; 42];
+            raw.read_exact(&mut header)?;
+            let name_len = u16::from_le_bytes([header[24], header[25]]);
+            let extra_len = u16::from_le_bytes([header[26], header[27]]);
+            let comment_len = u16::from_le_bytes([header[28], header[29]]);
+            let mut name = vec![0; usize::from(name_len)];
+            raw.read_exact(&mut name)?;
+            ensure!(raw_names.insert(name), "duplicate raw ZIP entry");
+            raw.seek(SeekFrom::Current(
+                i64::from(extra_len) + i64::from(comment_len),
+            ))?;
+        }
+        ensure!(
+            raw_names.len() == archive.len(),
+            "ZIP entry index differs from central directory"
+        );
 
         let mut names = Vec::with_capacity(archive.len());
         for index in 0..archive.len() {
@@ -244,6 +283,7 @@ mod android {
         Ok(script)
     }
 
+    #[cfg(target_os = "android")]
     fn prepare(temp_dir: &TempDir, zip_path: &Path) -> Result<PathBuf> {
         eprintln!("- Preparing AnyKernel3 package");
         let script = read_update_binary(zip_path)?;
@@ -268,6 +308,7 @@ mod android {
         Ok(update_binary)
     }
 
+    #[cfg(target_os = "android")]
     fn run_installer(temp_dir: &TempDir, update_binary: &Path, zip_path: &Path) -> Result<()> {
         eprintln!("- Running AnyKernel3 installer");
         let mut command = Command::new("/system/bin/sh");
@@ -305,11 +346,13 @@ mod android {
         )
     }
 
+    #[cfg(target_os = "android")]
     fn flash_inner(temp_dir: &TempDir, zip_path: &Path) -> Result<()> {
         let update_binary = prepare(temp_dir, zip_path)?;
         run_installer(temp_dir, &update_binary, zip_path)
     }
 
+    #[cfg(target_os = "android")]
     pub fn flash(zip_path: &Path) -> Result<()> {
         ensure!(
             unsafe { libc::geteuid() } == 0,
@@ -346,6 +389,106 @@ mod android {
         )?;
         eprintln!("- AnyKernel3 installation completed");
         Ok(())
+    }
+
+    #[cfg(test)]
+    mod zip_tests {
+        use super::*;
+        use std::io::Write;
+
+        fn fixture(script: &[u8], extra: Option<&str>) -> tempfile::NamedTempFile {
+            let file = tempfile::NamedTempFile::new().unwrap();
+            let mut zip = zip::ZipWriter::new(File::create(file.path()).unwrap());
+            let options = zip::write::SimpleFileOptions::default();
+            for (name, data) in [
+                ("anykernel.sh", &b"# fixture"[..]),
+                ("tools/helper", &b""[..]),
+                (UPDATE_BINARY_ENTRY, script),
+            ] {
+                zip.start_file(name, options).unwrap();
+                zip.write_all(data).unwrap();
+            }
+            if let Some(name) = extra {
+                zip.start_file(name, options).unwrap();
+                zip.write_all(b"extra").unwrap();
+            }
+            zip.finish().unwrap();
+            file
+        }
+
+        #[test]
+        fn reads_real_zip_and_rejects_unsafe_entries() {
+            let script = b"#!/system/bin/sh\nchmod -R 755 tools bin;\n";
+            let file = fixture(script, None);
+            assert_eq!(read_update_binary(file.path()).unwrap(), script);
+            for name in [
+                "../escape",
+                "/absolute",
+                "module.prop",
+                "nested/module.prop",
+            ] {
+                let file = fixture(script, Some(name));
+                assert!(read_update_binary(file.path()).is_err(), "accepted {name}");
+            }
+        }
+
+        #[test]
+        fn rejects_nul_oversized_and_corrupt_zip() {
+            let nul = fixture(b"echo\0bad", None);
+            assert!(read_update_binary(nul.path()).is_err());
+            let large = fixture(&vec![b'x'; MAX_UPDATE_BINARY_SIZE as usize + 1], None);
+            assert!(read_update_binary(large.path()).is_err());
+            let corrupt = tempfile::NamedTempFile::new().unwrap();
+            fs::write(corrupt.path(), b"not a zip").unwrap();
+            assert!(read_update_binary(corrupt.path()).is_err());
+            let valid = fixture(b"test", None);
+            let bytes = fs::read(valid.path()).unwrap();
+            fs::write(valid.path(), &bytes[..bytes.len() / 2]).unwrap();
+            assert!(read_update_binary(valid.path()).is_err());
+        }
+
+        #[test]
+        fn rejects_duplicate_and_missing_root_entries() {
+            let duplicate = fixture(b"test", Some("anykernel.sX"));
+            let bytes = fs::read(duplicate.path()).unwrap();
+            let bytes = bytes
+                .windows(12)
+                .enumerate()
+                .filter_map(|(i, b)| (b == b"anykernel.sX").then_some(i))
+                .collect::<Vec<_>>()
+                .into_iter()
+                .fold(bytes, |mut bytes, i| {
+                    bytes[i..i + 12].copy_from_slice(b"anykernel.sh");
+                    bytes
+                });
+            fs::write(duplicate.path(), bytes).unwrap();
+            assert!(read_update_binary(duplicate.path()).is_err());
+            for (original, replacement) in [
+                ("anykernel.sh", "nestedxxx.sh"),
+                ("tools/helper", "other/helper"),
+                (
+                    UPDATE_BINARY_ENTRY,
+                    "META-INF/com/google/android/other-binaryX",
+                ),
+            ] {
+                let file = fixture(b"test", None);
+                let mut bytes = fs::read(file.path()).unwrap();
+                assert_eq!(original.len(), replacement.len());
+                let offsets = bytes
+                    .windows(original.len())
+                    .enumerate()
+                    .filter_map(|(i, b)| (b == original.as_bytes()).then_some(i))
+                    .collect::<Vec<_>>();
+                for i in offsets {
+                    bytes[i..i + original.len()].copy_from_slice(replacement.as_bytes());
+                }
+                fs::write(file.path(), bytes).unwrap();
+                assert!(
+                    read_update_binary(file.path()).is_err(),
+                    "accepted missing {original}"
+                );
+            }
+        }
     }
 }
 
