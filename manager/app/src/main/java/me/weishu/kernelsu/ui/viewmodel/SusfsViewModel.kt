@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.data.susfs.SusfsRepository
 import me.weishu.kernelsu.data.susfs.SusfsStatus
+import me.weishu.kernelsu.data.susfs.SusfsApplyReport
 import me.weishu.kernelsu.ui.util.RootShell
 import me.weishu.kernelsu.ui.util.RootShellStatus
 import org.json.JSONObject
@@ -19,6 +20,8 @@ data class SusfsUiState(
     val config: String? = null,
     val busy: Boolean = false,
     val message: String? = null,
+    val report: SusfsApplyReport? = null,
+    val savedNotice: Boolean = false,
 )
 
 class SusfsViewModel(private val repository: SusfsRepository = SusfsRepository()) : ViewModel() {
@@ -33,7 +36,7 @@ class SusfsViewModel(private val repository: SusfsRepository = SusfsRepository()
                     if (status == RootShellStatus.Ready) refresh()
                     else {
                         token++
-                        mutable.update { it.copy(status = SusfsStatus(protocol = "root_unavailable"), config = null, busy = false) }
+                        mutable.update { it.copy(status = SusfsStatus(protocol = "root_unavailable"), config = null, busy = false, report = null, savedNotice = false) }
                     }
                 }
         }
@@ -59,16 +62,17 @@ class SusfsViewModel(private val repository: SusfsRepository = SusfsRepository()
         }
     }
 
-    private fun operation(block: suspend () -> String) {
+    private fun operation(applying: Boolean = false, block: suspend () -> String) {
         if (mutable.value.busy) return
         val request = ++token
         val generation = RootShell.generation.value
-        mutable.update { it.copy(busy = true, message = null) }
+        mutable.update { it.copy(busy = true, message = null, savedNotice = false, report = if (applying) null else it.report) }
         viewModelScope.launch {
             try {
                 val result = block()
+                val report = if (applying) SusfsApplyReport.parse(result) else null
                 if (request == token && generation == RootShell.generation.value) {
-                    mutable.update { it.copy(message = result) }
+                    mutable.update { it.copy(message = null, report = report ?: it.report, savedNotice = !applying) }
                 }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
@@ -91,12 +95,12 @@ class SusfsViewModel(private val repository: SusfsRepository = SusfsRepository()
     }
     fun apply() {
         if (!mutable.value.status.writable) return
-        operation { repository.apply() }
+        operation(applying = true) { repository.apply() }
     }
     fun change(edit: (JSONObject) -> Unit) {
         if (!mutable.value.status.detected || mutable.value.status.protocol != "compatible") return
-        // Read-modify-write against the on-disk config so an edit never clobbers a change that was
-        // made elsewhere (CLI or another surface) while this screen was open.
+        // Read fresh on-disk data rather than writing the screen's stale snapshot. This is not a
+        // cross-process transaction: the daemon validates and atomically saves the complete file.
         operation {
             val json = JSONObject(repository.export())
             edit(json)
