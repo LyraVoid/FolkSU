@@ -26,6 +26,7 @@ data class HomeUiState(
     val latestVersionInfo: LatestVersionInfo,
     val currentManagerVersionCode: Long,
     val systemInfo: SystemInfo,
+    val susfs: me.weishu.kernelsu.data.susfs.SusfsStatus = me.weishu.kernelsu.data.susfs.SusfsStatus(),
 ) {
     val isSELinuxPermissive: Boolean
         get() = systemInfo.selinuxStatus == "Permissive"
@@ -78,6 +79,7 @@ data class HomeActions(
     val onOpenSuperUser: () -> Unit = {},
     val onOpenModule: () -> Unit = {},
     val onRetryRoot: () -> Unit = {},
+    val onSusfs: () -> Unit = {},
 ) {
     fun openManagerReleases() = onOpenUrl("https://github.com/LyraVoid/FolkSU/releases")
 }

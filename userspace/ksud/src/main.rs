@@ -58,6 +58,7 @@ mod soft_reboot;
 mod su;
 #[cfg(target_os = "android")]
 mod sulog;
+mod susfs;
 #[cfg(target_os = "android")]
 mod unload;
 #[cfg(target_os = "android")]

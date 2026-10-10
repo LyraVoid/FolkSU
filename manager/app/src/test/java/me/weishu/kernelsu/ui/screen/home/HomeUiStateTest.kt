@@ -14,6 +14,19 @@ import org.junit.Test
  */
 class HomeUiStateTest {
 
+    @Test
+    fun `all home layouts share detected SUSFS state and navigation action`() {
+        val susfs = me.weishu.kernelsu.data.susfs.SusfsStatus(protocol = "compatible", version = "v2.3.0")
+        for (layout in me.weishu.kernelsu.data.model.HomeLayoutStyle.supported) {
+            val home = state(RootShellStatus.Ready).copy(susfs = susfs)
+            assertTrue("$layout", home.susfs.detected)
+        }
+        var opened = false
+        HomeActions({}, {}, onSusfs = { opened = true }).onSusfs()
+        assertTrue(opened)
+        assertFalse(state(RootShellStatus.Ready).susfs.detected)
+    }
+
     private fun state(rootStatus: RootShellStatus) = HomeUiState(
         kernelVersion = KernelVersion(6, 6, 118),
         ksuVersion = 32750,

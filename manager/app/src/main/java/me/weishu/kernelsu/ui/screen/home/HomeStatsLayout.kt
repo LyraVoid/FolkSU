@@ -73,6 +73,7 @@ internal fun StatsHomeContent(
                 )
                 HomeFactsTile(
                     state = state,
+                    onSusfs = actions.onSusfs,
                     title = stringResource(R.string.home_tile_system),
                     icon = Icons.Outlined.Info,
                 )
@@ -90,6 +91,7 @@ internal fun StatsHomeContent(
         )
         HomeFactsTile(
             state = state,
+            onSusfs = actions.onSusfs,
             title = stringResource(R.string.home_tile_system),
             icon = Icons.Outlined.Info,
         )

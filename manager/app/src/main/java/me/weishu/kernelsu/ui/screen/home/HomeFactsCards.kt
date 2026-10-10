@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.FilterList
@@ -15,19 +17,24 @@ import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.material.folkPressScale
 import me.weishu.kernelsu.ui.theme.FolkType
 import me.weishu.kernelsu.wallpaper.surface.SurfaceConfig
 import me.weishu.kernelsu.wallpaper.surface.SurfaceId
@@ -42,6 +49,7 @@ internal fun HomeFactsTile(
     background: SurfaceConfig? = null,
     onLongClick: (() -> Unit)? = null,
     surfaceId: SurfaceId? = null,
+    onSusfs: () -> Unit = {},
 ) {
     HomeTileCard(
         title = title,
@@ -75,6 +83,7 @@ internal fun HomeFactsTile(
             label = stringResource(R.string.home_seccomp_status),
             value = seccompDisplayName(state.systemInfo.seccompStatus),
         )
+        SusfsHomeRow(state.susfs, onSusfs)
     }
 }
 
@@ -104,6 +113,8 @@ internal fun HomeFactRow(
 internal fun InfoCard(
     systemInfo: SystemInfo,
     modifier: Modifier = Modifier,
+    susfs: me.weishu.kernelsu.data.susfs.SusfsStatus = me.weishu.kernelsu.data.susfs.SusfsStatus(),
+    onSusfs: () -> Unit = {},
 ) {
     val selinuxDisplay = selinuxDisplayName(systemInfo.selinuxStatus)
     val seccompDisplay = seccompDisplayName(systemInfo.seccompStatus)
@@ -145,7 +156,50 @@ internal fun InfoCard(
                 label = stringResource(R.string.home_seccomp_status),
                 value = seccompDisplay,
             )
+            if (susfs.detected) {
+                val interactionSource = remember { MutableInteractionSource() }
+                val haptic = LocalHapticFeedback.current
+                val management = me.weishu.kernelsu.ui.screen.susfsManagementLabel(susfs.management)
+                InfoRow(
+                    icon = Icons.Rounded.VisibilityOff,
+                    label = stringResource(R.string.susfs_title),
+                    value = "${susfs.version} · ${susfs.implementation} · $management",
+                    modifier = Modifier
+                        .folkPressScale(interactionSource)
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onSusfs()
+                            },
+                        ),
+                    trailingContent = {
+                        Text(
+                            text = stringResource(R.string.susfs_manage),
+                            style = FolkType.Summary,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun SusfsHomeRow(status: me.weishu.kernelsu.data.susfs.SusfsStatus, onClick: () -> Unit) {
+    if (!status.detected) return
+    val overColor = LocalHomeTileCardContentColor.current
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text("SUSFS · ${status.version} · ${status.implementation}", style = FolkType.Summary,
+                color = overColor ?: MaterialTheme.colorScheme.onSurface)
+            Text(me.weishu.kernelsu.ui.screen.susfsManagementLabel(status.management), style = FolkType.Machine,
+                color = overColor?.copy(alpha = 0.8f) ?: MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(stringResource(R.string.susfs_manage), style = FolkType.Summary,
+            color = overColor ?: MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -154,9 +208,11 @@ internal fun InfoRow(
     icon: ImageVector,
     label: String,
     value: String,
+    modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -166,13 +222,17 @@ internal fun InfoRow(
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.width(16.dp))
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(text = label, style = FolkType.Summary)
             Text(
                 text = value,
                 style = FolkType.Machine,
                 color = MaterialTheme.colorScheme.outline
             )
+        }
+        if (trailingContent != null) {
+            Spacer(Modifier.width(16.dp))
+            trailingContent()
         }
     }
 }

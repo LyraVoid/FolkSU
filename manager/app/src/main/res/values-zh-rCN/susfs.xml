@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="susfs_title">SUSFS</string>
+    <string name="susfs_manage">管理</string>
+    <string name="susfs_overview">概览</string>
+    <string name="susfs_capabilities">能力</string>
+    <string name="susfs_settings">基础设置</string>
+    <string name="susfs_rules">规则</string>
+    <string name="susfs_lkm">LKM 扩展</string>
+    <string name="susfs_config">配置</string>
+    <string name="susfs_automatic">开机自动应用</string>
+    <string name="susfs_automatic_hint">默认关闭；安全模式跳过所有应用操作。</string>
+    <string name="susfs_apply">立即应用</string>
+    <string name="susfs_apply_hint">仅应用支持的实时操作；动态 kstat 需要下次正常启动。</string>
+    <string name="susfs_saved">已保存，未应用</string>
+    <string name="susfs_applied">本次启动已应用</string>
+    <string name="susfs_failed">应用失败</string>
+    <string name="susfs_pending">待重启</string>
+    <string name="susfs_probe">正在检测 SUSFS…</string>
+    <string name="susfs_absent">未检测到 SUSFS</string>
+    <string name="susfs_readonly">未知协议 · 只读</string>
+    <string name="susfs_root">Root 暂不可用 · 授权后重试</string>
+    <string name="susfs_compatible">控制协议兼容</string>
+    <string name="susfs_hide_mounts">隐藏 SUSFS 挂载</string>
+    <string name="susfs_logging">SUSFS 日志</string>
+    <string name="susfs_avc">AVC 伪装</string>
+    <string name="susfs_uname">伪装 uname</string>
+    <string name="susfs_cmdline">伪装 cmdline / bootconfig</string>
+    <string name="susfs_add_rule">添加规则</string>
+    <string name="susfs_edit_rule">编辑已保存规则</string>
+    <string name="susfs_empty">尚未保存规则</string>
+    <string name="susfs_path">路径</string>
+    <string name="susfs_destination">重定向目标</string>
+    <string name="susfs_uid">UID 方案（0–4；LKM：0–2）</string>
+    <string name="susfs_loop">监控路径重新创建</string>
+    <string name="susfs_clone">完整克隆（LKM 需要 proc 控制）</string>
+    <string name="susfs_kstat_hint">挂载前采样、挂载后更新；晚加载无法还原原始快照。</string>
+    <string name="susfs_remove">移除已保存规则</string>
+    <string name="susfs_removal_hint">修改或移除已应用规则需要重启；不会清空第三方规则。</string>
+    <string name="susfs_modules">隐藏模块名称</string>
+    <string name="susfs_prefixes">隐藏挂载前缀</string>
+    <string name="susfs_proc_hint">没有可写 proc 控制时不可用（包括 expose_proc=0）。</string>
+    <string name="susfs_lines">每行一个条目</string>
+    <string name="susfs_import">导入 JSON</string>
+    <string name="susfs_export">导出 JSON</string>
+    <string name="susfs_refresh">刷新</string>
+    <string name="susfs_save">仅保存</string>
+    <string name="susfs_cancel">取消</string>
+    <string name="susfs_release">Release</string>
+    <string name="susfs_version">Version</string>
+    <string name="susfs_ownership">使用独立 FolkSU 配置，不安装 SUSFS，不修改 ksu_susfs 或第三方设置。</string>
+    <string name="susfs_unsupported">检测到的能力集不支持此操作</string>
+</resources>

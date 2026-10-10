@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.TopAppBar
@@ -101,7 +102,7 @@ fun HomePagerMaterial(
             }
             // The tile layouts place the facts card inside their own board.
             if (layout == HomeLayoutStyle.CIRCLE || layout == HomeLayoutStyle.GRID) {
-                InfoCard(systemInfo = state.systemInfo)
+                InfoCard(systemInfo = state.systemInfo, susfs = state.susfs, onSusfs = actions.onSusfs)
             }
             SupportLinks(onOpenUrl = actions.onOpenUrl)
             Spacer(
@@ -119,6 +120,11 @@ private fun TopBar(state: HomeUiState, actions: HomeActions) {
     TopAppBar(
         title = { me.weishu.kernelsu.ui.component.HomeTitleImage() },
         actions = {
+            if (state.susfs.detected) {
+                IconButton(onClick = actions.onSusfs) {
+                    Icon(androidx.compose.material.icons.Icons.Rounded.VisibilityOff, stringResource(R.string.susfs_title))
+                }
+            }
             if (MusicConfig.isMusicEnabled && MusicConfig.getMusicFile(LocalContext.current) != null) {
                 val playing by MusicManager.isPlaying.collectAsStateWithLifecycle()
                 IconButton(onClick = { MusicManager.toggle() }) {

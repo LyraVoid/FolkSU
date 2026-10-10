@@ -65,6 +65,7 @@ fun HomePager(
             // Returning to the home page re-reads the shared capability snapshot so the layout,
             // warnings and navigation agree again.
             CapabilityRepository.refresh()
+            viewModel.refreshSusfs()
             if (!hasActivated) {
                 hasActivated = true
                 viewModel.refresh()
@@ -100,6 +101,7 @@ fun HomePager(
         onOpenSuperUser = { mainPagerState.animateToPage(BottomBarDestination.SuperUser.ordinal) },
         onOpenModule = { mainPagerState.animateToPage(BottomBarDestination.Module.ordinal) },
         onRetryRoot = { CapabilityRepository.refresh() },
+        onSusfs = { navigator.push(Route.Susfs) },
     )
 
     HomePagerMaterial(

@@ -72,7 +72,7 @@ internal fun DashboardHomeContent(
                 emphasis = CountCardEmphasis.Value,
             )
         }
-        InfoCard(systemInfo = state.systemInfo)
+        InfoCard(systemInfo = state.systemInfo, susfs = state.susfs, onSusfs = actions.onSusfs)
     }
 }
 

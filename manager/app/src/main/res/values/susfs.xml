@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="susfs_title">SUSFS</string>
+    <string name="susfs_manage">Manage</string>
+    <string name="susfs_overview">Overview</string>
+    <string name="susfs_capabilities">Capabilities</string>
+    <string name="susfs_settings">Basic settings</string>
+    <string name="susfs_rules">Rules</string>
+    <string name="susfs_lkm">LKM extensions</string>
+    <string name="susfs_config">Configuration</string>
+    <string name="susfs_automatic">Apply on boot</string>
+    <string name="susfs_automatic_hint">Off by default. Safe mode skips all operations.</string>
+    <string name="susfs_apply">Apply now</string>
+    <string name="susfs_apply_hint">Only supported live operations. Dynamic kstat requires the next normal boot.</string>
+    <string name="susfs_saved">Saved, not applied</string>
+    <string name="susfs_applied">Applied this boot</string>
+    <string name="susfs_failed">Application failed</string>
+    <string name="susfs_pending">Pending reboot</string>
+    <string name="susfs_probe">Checking SUSFS…</string>
+    <string name="susfs_absent">SUSFS not detected</string>
+    <string name="susfs_readonly">Unknown protocol · read-only</string>
+    <string name="susfs_root">Root temporarily unavailable · retry after authorization</string>
+    <string name="susfs_compatible">Compatible control protocol</string>
+    <string name="susfs_hide_mounts">Hide SUSFS mounts</string>
+    <string name="susfs_logging">SUSFS logging</string>
+    <string name="susfs_avc">AVC spoofing</string>
+    <string name="susfs_uname">Spoof uname</string>
+    <string name="susfs_cmdline">Spoof cmdline / bootconfig</string>
+    <string name="susfs_add_rule">Add rule</string>
+    <string name="susfs_edit_rule">Edit saved rule</string>
+    <string name="susfs_empty">No rules saved</string>
+    <string name="susfs_path">Path</string>
+    <string name="susfs_destination">Redirect destination</string>
+    <string name="susfs_uid">UID scheme (0–4; LKM: 0–2)</string>
+    <string name="susfs_loop">Watch path recreation</string>
+    <string name="susfs_clone">Full clone (LKM requires proc control)</string>
+    <string name="susfs_kstat_hint">Snapshot before mounting, update after mounting. Late-load cannot recreate the original snapshot.</string>
+    <string name="susfs_remove">Remove saved rule</string>
+    <string name="susfs_removal_hint">Changing or removing applied rules needs a reboot. Third-party rules are never cleared.</string>
+    <string name="susfs_modules">Hidden module names</string>
+    <string name="susfs_prefixes">Hidden mount prefixes</string>
+    <string name="susfs_proc_hint">Unavailable without writable proc controls (including expose_proc=0).</string>
+    <string name="susfs_lines">One entry per line</string>
+    <string name="susfs_import">Import JSON</string>
+    <string name="susfs_export">Export JSON</string>
+    <string name="susfs_refresh">Refresh</string>
+    <string name="susfs_save">Save only</string>
+    <string name="susfs_cancel">Cancel</string>
+    <string name="susfs_release">Release</string>
+    <string name="susfs_version">Version</string>
+    <string name="susfs_ownership">Independent FolkSU configuration. Does not install SUSFS or modify ksu_susfs / third-party settings.</string>
+    <string name="susfs_unsupported">Not supported by the detected capability set</string>
+</resources>

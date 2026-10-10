@@ -66,6 +66,7 @@ internal fun FocusHomeContent(
             )
             HomeFactsTile(
                 state = state,
+                onSusfs = actions.onSusfs,
                 title = stringResource(R.string.home_tile_manager),
                 icon = Icons.Outlined.AdminPanelSettings,
                 background = focusBackground(SurfaceRegistry.FOCUS_CARD_APP),
@@ -105,6 +106,7 @@ internal fun FocusHomeContent(
                 )
                 HomeFactsTile(
                     state = state,
+                    onSusfs = actions.onSusfs,
                     title = stringResource(R.string.home_tile_manager),
                     icon = Icons.Outlined.AdminPanelSettings,
                     modifier = Modifier

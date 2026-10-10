@@ -53,8 +53,22 @@ class HomeViewModel(
 
     /** Monotonic guard so an older refresh cannot overwrite a newer one. */
     private var refreshToken = 0L
+    private val susfsRepository = me.weishu.kernelsu.data.susfs.SusfsRepository()
+    private var susfsToken = 0L
 
     init {
+        viewModelScope.launch {
+            kotlinx.coroutines.flow.combine(
+                me.weishu.kernelsu.ui.util.RootShell.status,
+                me.weishu.kernelsu.ui.util.RootShell.generation,
+            ) { status, generation -> status to generation }.collect { (status, _) ->
+                if (status == RootShellStatus.Ready) refreshSusfs()
+                else {
+                    susfsToken++
+                    _uiState.update { it.copy(susfs = me.weishu.kernelsu.data.susfs.SusfsStatus(protocol = "root_unavailable")) }
+                }
+            }
+        }
         viewModelScope.launch {
             CapabilityRepository.state.collect { capability ->
                 val identityChanged =
@@ -103,6 +117,7 @@ class HomeViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(METRICS_STOP_TIMEOUT_MS), HomeMetrics())
 
     fun refresh() {
+        refreshSusfs()
         // Guard against overlapping refreshes: a slower, older build must not overwrite a newer
         // snapshot (or clobber the capability collector's root update).
         val token = ++refreshToken
@@ -114,6 +129,7 @@ class HomeViewModel(
             val capability = CapabilityRepository.current()
             _uiState.update {
                 baseState.copy(
+                    susfs = it.susfs,
                     isRootAvailable = capability.rootStatus == RootShellStatus.Ready,
                     rootStatus = capability.rootStatus,
                 )
@@ -122,6 +138,19 @@ class HomeViewModel(
                 val latestVersionInfo = withContext(Dispatchers.IO) { checkNewVersion() }
                 if (token != refreshToken) return@launch
                 _uiState.update { it.copy(latestVersionInfo = latestVersionInfo) }
+            }
+        }
+    }
+
+    fun refreshSusfs() {
+        val request = ++susfsToken
+        val generation = me.weishu.kernelsu.ui.util.RootShell.generation.value
+        viewModelScope.launch {
+            val status = try { susfsRepository.status() }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) { me.weishu.kernelsu.data.susfs.SusfsStatus(protocol = "root_unavailable", error = e.message) }
+            if (request == susfsToken && generation == me.weishu.kernelsu.ui.util.RootShell.generation.value) {
+                _uiState.update { it.copy(susfs = status) }
             }
         }
     }

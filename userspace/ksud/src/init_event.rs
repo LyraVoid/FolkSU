@@ -45,6 +45,9 @@ pub fn on_post_fs_data() -> Result<()> {
         // because we may need to operate the module dir in safe mode
         warn!("safe mode, skip common post-fs-data.d scripts");
     } else {
+        // Capture before common/module scripts can mount or replace any target.
+        // A late-loaded SUSFS cannot recreate this snapshot at later stages.
+        crate::susfs::boot("pre-mount");
         // Then exec common post-fs-data scripts
         if let Err(e) = crate::module::exec_common_scripts("post-fs-data.d", wait) {
             warn!("exec common post-fs-data scripts failed: {e}");
@@ -119,6 +122,7 @@ pub fn on_post_fs_data() -> Result<()> {
         warn!("module mount failed: {e:#}");
     }
 
+    crate::susfs::boot("post-mount");
     run_stage("post-mount", wait);
 
     std::env::set_current_dir("/").with_context(|| "failed to chdir to /")?;
@@ -138,6 +142,8 @@ pub fn run_stage(stage: &str, wait: ScriptWait) {
         warn!("safe mode, skip {stage} scripts");
         return;
     }
+
+    crate::susfs::boot(stage);
 
     if let Err(e) = crate::module::exec_common_scripts(&format!("{stage}.d"), wait) {
         warn!("Failed to exec common {stage} scripts: {e}");
