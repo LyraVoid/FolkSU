@@ -85,8 +85,15 @@ object WallpaperManager {
      * When [enableParent] is set and [id] is a child of a grouped feature, the parent's master
      * switch is turned on too, so a fresh pick is visible without a second step. Theme import
      * passes false so it can restore the parent's own explicit enabled bit afterwards.
+     * [validateImage] remains enabled for interactive picks; imports copy optional resources like FP.
      */
-    suspend fun saveSurfaceImage(context: Context, id: SurfaceId, source: Uri, enableParent: Boolean = true): Boolean =
+    suspend fun saveSurfaceImage(
+        context: Context,
+        id: SurfaceId,
+        source: Uri,
+        enableParent: Boolean = true,
+        validateImage: Boolean = true,
+    ): Boolean =
         withContext(Dispatchers.IO) {
             val stem = surfaceStem(id) ?: return@withContext false
             surfaceLocks.getOrPut(id) { Mutex() }.withLock {
@@ -95,12 +102,12 @@ object WallpaperManager {
                     val target = replaceSurfaceImage(context.filesDir, stem, ext) {
                         if (!copyToFile(context, source, it)) {
                             false
-                        } else {
+                        } else if (validateImage) {
                             val probe = decodeSampled(it, 64)
                             val valid = probe != null
                             probe?.recycle()
                             valid
-                        }
+                        } else true
                     }
                     // Once the file is replaced, publish even if the initiating UI is disposed.
                     withContext(NonCancellable + Dispatchers.Main.immediate) {

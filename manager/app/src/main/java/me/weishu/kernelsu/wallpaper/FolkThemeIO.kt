@@ -35,8 +35,12 @@ object FolkThemeIO {
 
     internal suspend fun applyAssets(context: Context, json: JSONObject, imported: Map<String, File>) {
         assets.forEach { asset ->
-            asset.apply(context, json, imported.entries.firstOrNull { zipStem(it.key) == asset.base }?.value)
+            asset.apply(context, json, ThemeResourcePolicy.select(asset.base, imported))
         }
+        // Page import helpers enable the feature for interactive picks. Theme switches are
+        // independent of the files, so restore them after all page resources have been copied.
+        WallpaperConfig.updateEnabled(json.optBoolean("isBackgroundEnabled", false))
+        WallpaperConfig.updateMultiBackgroundEnabled(json.optBoolean("isMultiBackgroundEnabled", false))
         groups.forEach { it.apply(context, json, imported) }
         WallpaperConfig.save(context)
     }

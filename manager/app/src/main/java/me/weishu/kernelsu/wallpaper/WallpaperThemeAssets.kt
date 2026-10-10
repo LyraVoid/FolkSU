@@ -40,34 +40,33 @@ internal object MainWallpaperAsset : ThemedAsset {
             val extension = WallpaperManager.resolveExtension(context, Uri.fromFile(file))
             val target = WallpaperManager.replaceFile(context, file, extension)
             WallpaperManager.applyFile(context, target)
-        } else {
-            WallpaperManager.clear(context)
         }
+        WallpaperConfig.updateEnabled(enabled)
         // Apply before the per-page assets so a multi-mode theme is remembered even when no page
         // image survives; each page asset still turns multi mode on when it restores an image.
         WallpaperConfig.updateMultiBackgroundEnabled(
-            json.optBoolean("isMultiBackgroundEnabled", WallpaperConfig.multiBackgroundEnabled)
+            json.optBoolean("isMultiBackgroundEnabled", false)
         )
         WallpaperConfig.updateOpacity(
-            json.optDouble("backgroundOpacity", WallpaperConfig.opacity.toDouble()).toFloat()
+            json.optDouble("backgroundOpacity", 0.5).toFloat()
         )
         WallpaperConfig.updateBlur(
-            json.optDouble("backgroundBlur", WallpaperConfig.blur.toDouble()).toFloat()
+            json.optDouble("backgroundBlur", 0.0).toFloat()
         )
         WallpaperConfig.updateDim(
-            json.optDouble("backgroundDim", WallpaperConfig.dim.toDouble()).toFloat()
+            json.optDouble("backgroundDim", 0.2).toFloat()
         )
         WallpaperConfig.updateDualDimEnabled(
-            json.optBoolean("isDualBackgroundDimEnabled", WallpaperConfig.dualDimEnabled)
+            json.optBoolean("isDualBackgroundDimEnabled", false)
         )
         WallpaperConfig.updateDayDim(
-            json.optDouble("backgroundDayDim", WallpaperConfig.dayDim.toDouble()).toFloat()
+            json.optDouble("backgroundDayDim", WallpaperConfig.dim.toDouble()).toFloat()
         )
         WallpaperConfig.updateNightDim(
-            json.optDouble("backgroundNightDim", WallpaperConfig.nightDim.toDouble()).toFloat()
+            json.optDouble("backgroundNightDim", WallpaperConfig.dim.toDouble()).toFloat()
         )
         WallpaperConfig.updateUseWallpaperColor(
-            json.optBoolean("wallpaper_use_color", WallpaperConfig.useWallpaperColor)
+            json.optBoolean("wallpaper_use_color", false)
         )
     }
 
@@ -91,9 +90,6 @@ internal class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor)
 
     /** Whether the surface has a per-surface enable flag, as opposed to a bare image slot. */
     private val hasEnabledField = SurfaceField.Enabled in descriptor.fields
-
-    /** Surfaces whose shared master switch this one owns; empty for a leaf surface. */
-    private val children = SurfaceRegistry.all.filter { it.parentId == id }
 
     override val base: String = descriptor.themeBase ?: id.value
 
@@ -124,68 +120,25 @@ internal class SurfaceBackgroundAsset(private val descriptor: SurfaceDescriptor)
     }
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
-        val current = SurfaceStore.config(id)
-        var parsed = current
-        descriptor.fields.forEach { field ->
-            if (field == SurfaceField.Image) return@forEach
-            val legacyKey = descriptor.legacyThemeFields[field]
-            if (field.isToggle) {
-                // A grouped parent (the focus master) has no legacy image of its own, so when the
-                // theme carries no explicit master bit it follows the wider ecosystem's default:
-                // enabled as soon as any child card ships an image.
-                val inherited = if (field == SurfaceField.Enabled && children.isNotEmpty()) {
-                    children.any { child ->
-                        val childLegacy = child.legacyThemeFields[SurfaceField.Enabled]
-                        json.optBoolean(SurfaceStore.key(child.id, SurfaceField.Enabled), false) ||
-                            (childLegacy != null && json.optBoolean(childLegacy, false))
-                    }
-                } else {
-                    current.toggle(field)
-                }
-                val fallback = if (legacyKey != null) {
-                    json.optBoolean(legacyKey, inherited)
-                } else {
-                    inherited
-                }
-                parsed = parsed.withToggle(field, json.optBoolean(SurfaceStore.key(id, field), fallback))
-            } else {
-                val fallback = if (legacyKey != null) {
-                    json.optDouble(legacyKey, current.scalar(field).toDouble())
-                } else {
-                    current.scalar(field).toDouble()
-                }
-                parsed = parsed.withScalar(
-                    field,
-                    json.optDouble(SurfaceStore.key(id, field), fallback).toFloat(),
-                )
-            }
-        }
-        descriptor.flags.forEach { flag ->
-            val legacyKey = descriptor.legacyThemeFlags[flag]
-            val fallback = if (legacyKey != null) {
-                json.optBoolean(legacyKey, current.hasFlag(flag))
-            } else {
-                current.hasFlag(flag)
-            }
-            parsed = parsed.withFlag(flag, json.optBoolean(SurfaceStore.key(id, flag), fallback))
-        }
+        val parsed = ThemeSurfaceMapping.read(descriptor, json)
         if (ownsImage) {
-            // A surface with its own enable flag follows that flag; a bare image slot follows the
-            // file, because the wider ecosystem stores such cards as an entry plus a presence bool.
-            val wantsImage = if (hasEnabledField) parsed.enabled else file != null
+            // Dashboard's presence flag is independent of its enable switch. Focus children use
+            // their enable field as presence; grid has only an enable switch and retains old files.
+            val presenceKey = ThemeSurfaceMapping.presenceKey(descriptor)
+            val wantsImage = ThemeSurfaceMapping.wantsImage(descriptor, json, parsed, file != null)
             if (wantsImage && file != null) {
                 // Import must not flip a group parent on as a side effect; the parent's own bit is
                 // restored below from the theme (or inferred from the children).
-                check(WallpaperManager.saveSurfaceImage(context, id, Uri.fromFile(file), enableParent = false))
-            } else {
+                check(WallpaperManager.saveSurfaceImage(context, id, Uri.fromFile(file), enableParent = false, validateImage = false))
+            } else if (presenceKey != null) {
                 WallpaperManager.clearSurfaceImage(context, id)
             }
         }
-        // Saving/clearing the file already set the image and, for image-backed surfaces, the enable
-        // flag; carry the numbers and flags over, and the enable flag only when there is no image.
+        // Focus children follow installed-file presence; top-level surfaces keep their independent
+        // feature switch even when an optional image is absent.
         SurfaceStore.update(id) { s ->
             s.copy(
-                enabled = if (ownsImage) s.enabled else parsed.enabled,
+                enabled = if (descriptor.parentId != null) s.enabled else if (hasEnabledField) parsed.enabled else s.enabled,
                 opacity = parsed.opacity,
                 dim = parsed.dim,
                 dualOpacity = parsed.dualOpacity,
@@ -235,6 +188,7 @@ internal object HomeBackgroundAsset : ThemedAsset {
     override fun writeConfig(json: JSONObject) = Unit
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        if (!json.optBoolean("isMultiBackgroundEnabled")) return
         applyPageBackground(context, WallpaperConfig.PAGE_HOME, file)
     }
 
@@ -252,6 +206,7 @@ internal object SuperuserBackgroundAsset : ThemedAsset {
     override fun writeConfig(json: JSONObject) = Unit
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        if (!json.optBoolean("isMultiBackgroundEnabled")) return
         applyPageBackground(context, WallpaperConfig.PAGE_SUPERUSER, file)
     }
 
@@ -269,6 +224,7 @@ internal object ModuleBackgroundAsset : ThemedAsset {
     override fun writeConfig(json: JSONObject) = Unit
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        if (!json.optBoolean("isMultiBackgroundEnabled")) return
         applyPageBackground(context, WallpaperConfig.PAGE_MODULE, file)
     }
 
@@ -286,6 +242,7 @@ internal object SettingsBackgroundAsset : ThemedAsset {
     override fun writeConfig(json: JSONObject) = Unit
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
+        if (!json.optBoolean("isMultiBackgroundEnabled")) return
         applyPageBackground(context, WallpaperConfig.PAGE_SETTINGS, file)
     }
 
@@ -320,9 +277,8 @@ internal object FontAsset : ThemedAsset {
 
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
         // Themes written before the three-mode setting only carry the legacy boolean.
-        if (!json.has("fontMode") && !json.has("isFontEnabled")) return
         val mode = FontMode.fromSerializedName(json.optString("fontMode").ifEmpty { null })
-            ?: if (json.optBoolean("isFontEnabled", false)) FontMode.CUSTOM else FontMode.SYSTEM_DEFAULT
+            ?: if (json.optBoolean("isFontEnabled", false)) FontMode.CUSTOM else FontMode.APP_DEFAULT
 
         when {
             mode != FontMode.CUSTOM -> FontConfig.setFontMode(context, mode)

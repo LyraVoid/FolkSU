@@ -26,7 +26,7 @@ internal object MusicThemeAsset : ThemedAssetGroup {
 
     override suspend fun apply(context: Context, json: JSONObject, imported: Map<String, File>) {
         val name = json.optString("musicFilename")
-        val source = imported[name]
+        val source = if (json.optBoolean("isMusicEnabled")) imported[name] else null
         // Never turn untrusted theme metadata into a filesystem path.
         val target = source?.let {
             File(MusicConfig.getMusicDir(context), it.name).also { target -> it.copyTo(target, true) }
@@ -36,7 +36,7 @@ internal object MusicThemeAsset : ThemedAssetGroup {
             val old = MusicConfig.getMusicFile(context)
             if (old != target) old?.delete()
             MusicConfig.setMusicFilenameValue(target?.name)
-            MusicConfig.setMusicEnabledState(json.optBoolean("isMusicEnabled") && target != null)
+            MusicConfig.setMusicEnabledState(json.optBoolean("isMusicEnabled"))
             MusicConfig.setVolumeValue(json.optDouble("musicVolume", 1.0).toFloat().coerceIn(0f, 1f))
             MusicConfig.setAutoPlayEnabledState(json.optBoolean("isAutoPlayEnabled"))
             MusicConfig.setLoopingEnabledState(json.optBoolean("isLoopingEnabled"))
@@ -72,7 +72,7 @@ internal object SoundThemeAsset : ThemedAssetGroup {
     }
 
     override suspend fun apply(context: Context, json: JSONObject, imported: Map<String, File>) {
-        val source = imported[json.optString("soundEffectFilename")]
+        val source = if (json.optBoolean("isSoundEffectEnabled")) imported[json.optString("soundEffectFilename")] else null
         val target = source?.let {
             File(SoundEffectConfig.getSoundEffectDir(context), it.name).also { target -> it.copyTo(target, true) }
         }
@@ -80,9 +80,9 @@ internal object SoundThemeAsset : ThemedAssetGroup {
             val old = SoundEffectConfig.getSoundEffectFile(context)
             if (old != target) old?.delete()
             SoundEffectConfig.setFilenameValue(target?.name)
-            SoundEffectConfig.setEnabledState(json.optBoolean("isSoundEffectEnabled") && target != null)
+            SoundEffectConfig.setEnabledState(json.optBoolean("isSoundEffectEnabled"))
             SoundEffectConfig.setSourceTypeValue(SoundEffectConfig.SOURCE_TYPE_LOCAL)
-            SoundEffectConfig.setScopeValue(json.optString("soundEffectScope", SoundEffectConfig.scope))
+            SoundEffectConfig.setScopeValue(json.optString("soundEffectScope", SoundEffectConfig.SCOPE_GLOBAL))
             SoundEffectConfig.save(context)
         }
     }
@@ -96,7 +96,9 @@ internal class VisualMediaThemeAsset(private val video: Boolean) : ThemedAsset {
     override fun extension(file: File): String = if (video) file.extension else super.extension(file)
     override fun writeConfig(json: JSONObject) = VisualMediaConfig.writeConfig(json)
     override suspend fun apply(context: Context, json: JSONObject, file: File?) {
-        VisualMediaConfig.replace(context, video, file)
+        val enabled = json.optBoolean(if (video) "isVideoBackgroundEnabled" else "isAdvancedTitleStyleEnabled")
+        if (enabled && file != null) VisualMediaConfig.replace(context, video, file)
+        else if (!video && !enabled) VisualMediaConfig.replace(context, false, null)
         withContext(Dispatchers.Main) {
             VisualMediaConfig.applySettings(json)
             VisualMediaConfig.save(context)

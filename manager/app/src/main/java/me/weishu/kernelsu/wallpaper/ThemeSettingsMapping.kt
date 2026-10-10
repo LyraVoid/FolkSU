@@ -12,6 +12,16 @@ import org.json.JSONObject
 
 /** Protocol names map onto the existing settings repository; no second settings store. */
 internal object ThemeSettingsMapping {
+    // FP applies these defaults for old/config-only themes. Language is intentionally absent:
+    // a missing language field keeps the user's locale, while an explicit empty field resets it.
+    val importDefaults: Map<String, Any> = mapOf(
+        "customColor" to "indigo", "homeLayoutStyle" to "circle", "statsTopLayout" to "list",
+        "nightModeEnabled" to true, "nightModeFollowSys" to true, "useSystemDynamicColor" to true,
+        "colorGenerationMode" to "classic", "colorStandard" to "MD3_2021",
+        "colorStyle" to "TONAL_SPOT", "colorContrast" to "STANDARD",
+        "isListWorkingCardModeHidden" to false,
+    )
+
     val colors = linkedMapOf(
         "indigo" to 0xFF4355B9, "blue" to 0xFF0061A4, "light_blue" to 0xFF006493,
         "cyan" to 0xFF006876, "teal" to 0xFF006A60, "green" to 0xFF006E1A,

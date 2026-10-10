@@ -1,8 +1,5 @@
 package me.weishu.kernelsu.wallpaper
 
-import android.graphics.BitmapFactory
-import android.graphics.Typeface
-import android.media.MediaMetadataRetriever
 import me.weishu.kernelsu.wallpaper.surface.SurfaceField
 import me.weishu.kernelsu.wallpaper.surface.SurfaceRegistry
 import me.weishu.kernelsu.wallpaper.surface.SurfaceStore
@@ -11,20 +8,23 @@ import org.json.JSONObject
 import java.io.File
 import java.util.Locale
 
-/** Validate all recognized fields and referenced payloads before the confirmation step. */
+/** Normalize optional settings like FP's opt accessors; container safety is checked separately. */
 internal object ThemeValidation {
-    internal fun validateBackground(json: JSONObject, names: Set<String>) {
-        if (!json.optBoolean("isBackgroundEnabled")) return
+    internal fun validateBackground(json: JSONObject, names: Set<String>): Boolean {
+        if (!json.optBoolean("isBackgroundEnabled")) return true
         val stems = names.map { it.substringBefore('.') }.toSet()
         val hasBackground = if (json.optBoolean("isMultiBackgroundEnabled")) {
             stems.any { it in setOf("background_home", "background_kernel", "background_superuser",
                 "background_system_module", "background_settings") }
         } else "background" in stems
-        require(hasBackground) { "Enabled wallpaper requires a background for its selected mode" }
+        return hasBackground
     }
 
     fun validate(json: JSONObject, files: Map<String, File>): List<String> {
         val warnings = mutableListOf<String>()
+        ThemeSettingsMapping.importDefaults.forEach { (key, value) ->
+            if (!json.has(key)) json.put(key, value)
+        }
         val booleans = mutableSetOf(
             "isBackgroundEnabled", "isDualBackgroundDimEnabled", "isMultiBackgroundEnabled",
             "wallpaper_use_color", "isFontEnabled", "nightModeEnabled", "nightModeFollowSys",
@@ -50,14 +50,29 @@ internal object ThemeValidation {
             slot.flags.forEach { booleans += SurfaceStore.key(slot.id, it) }
             booleans.addAll(slot.legacyThemeFlags.values)
         }
-        booleans.filter(json::has).forEach { require(json.get(it) is Boolean) { "$it must be boolean" } }
-        numbers.filterKeys(json::has).forEach { (key, range) ->
-            val value = json.get(key)
-            require(value is Number && value.toDouble().isFinite() && value.toDouble() in range) {
-                "$key is outside its valid range"
+        booleans.filter(json::has).forEach { key ->
+            val value = json.opt(key)
+            when {
+                value is Boolean -> Unit
+                value is String && value.equals("true", true) -> json.put(key, true)
+                value is String && value.equals("false", true) -> json.put(key, false)
+                else -> {
+                    json.remove(key)
+                    warnings += "$key: invalid boolean; default used"
+                }
             }
         }
-        if (json.has("folksu_keyColor")) require(json.getDouble("folksu_keyColor") == json.getInt("folksu_keyColor").toDouble())
+        numbers.filterKeys(json::has).forEach { (key, range) ->
+            val value = json.optDouble(key, Double.NaN)
+            if (!value.isFinite()) {
+                json.remove(key)
+                warnings += "$key: invalid number; default used"
+            } else {
+                val normalized = value.coerceIn(range.start, range.endInclusive)
+                json.put(key, if (key == "folksu_keyColor") normalized.toInt() else normalized)
+                if (normalized != value) warnings += "$key: adjusted to supported range"
+            }
+        }
         val enums = mapOf(
             "customColor" to ThemeSettingsMapping.colors.keys,
             "colorGenerationMode" to setOf("classic", "custom"),
@@ -70,22 +85,22 @@ internal object ThemeValidation {
             "soundEffectScope" to setOf("global", "bottom_bar"),
         )
         enums.filterKeys(json::has).forEach { (key, values) ->
-            require(json.get(key) is String) { "$key must be text" }
+            json.put(key, json.optString(key))
             if (json.getString(key) !in values) {
                 warnings += "$key=${json.getString(key)}: unsupported; current setting retained"
                 json.remove(key)
-                if (key == "fontMode") json.remove("isFontEnabled")
             }
         }
         listOf("meta_name", "meta_type", "meta_author", "meta_description", "appLanguage").filter(json::has)
-            .forEach { require(json.get(it) is String) { "$it must be text" } }
-        if (json.has("meta_version")) require(json.get("meta_version") is String || json.get("meta_version") is Number)
+            .forEach { json.put(it, json.optString(it)) }
         if (json.has("appLanguage")) {
             val tags = json.getString("appLanguage")
-            require(tags.isEmpty() || tags.split(',').all { tag ->
+            if (!(tags.isEmpty() || tags.split(',').all { tag ->
                 runCatching { Locale.Builder().setLanguageTag(tag).build() }.isSuccess
-            }) { "Invalid appLanguage" }
-            if (tags.isNotEmpty()) warnings += "Application language follows $tags; untranslated content uses Android resource fallback"
+            })) {
+                json.remove("appLanguage")
+                warnings += "Invalid appLanguage; current language retained"
+            } else if (tags.isNotEmpty()) warnings += "Application language follows $tags; untranslated content uses Android resource fallback"
         }
         if (json.optString("meta_type", "phone") !in setOf("phone", "tablet")) {
             warnings += "Legacy or unknown theme type retained as metadata"
@@ -102,21 +117,19 @@ internal object ThemeValidation {
         }
         fun stem(name: String) = name.substringBefore('.')
         files.keys.groupBy(::stem).filterValues { it.size > 1 }.keys.forEach {
-            require(FolkThemeIO.assets.none { asset -> asset.base == it }) { "Ambiguous resource: $it" }
+            warnings += "Multiple resources for $it; FP format priority used"
         }
         fun requireAsset(enabled: String, base: String) {
-            if (json.optBoolean(enabled)) require(files.keys.any { stem(it) == base }) { "$enabled requires $base" }
+            if (json.optBoolean(enabled) && ThemeResourcePolicy.select(base, files) == null) {
+                warnings += "$enabled: $base is missing; resource fallback used"
+            }
         }
-        validateBackground(json, files.keys)
+        if (!validateBackground(json, files.keys)) warnings += "Wallpaper image is missing; resource fallback used"
         requireAsset("isVideoBackgroundEnabled", "video_background")
         requireAsset("isAdvancedTitleStyleEnabled", "title_image")
-        if (json.optString("fontMode") == "custom") {
-            require(files.keys.any { stem(it) == "font" }) { "Custom font is missing" }
-        } else if (!json.has("fontMode") && json.optBoolean("isFontEnabled") &&
-            files.keys.none { stem(it) == "font" }) {
-            // Themes written before the three-mode setting can enable a font without shipping one;
-            // the wider ecosystem falls back to the app font, so keep the theme rather than reject it.
-            warnings += "Legacy theme enables a custom font without a font file; the app font is used"
+        if ((json.optString("fontMode") == "custom" || json.optBoolean("isFontEnabled")) &&
+            ThemeResourcePolicy.select("font", files) == null) {
+            warnings += "Custom font is missing; the app font is used"
         }
         SurfaceRegistry.themeSlots().forEach { slot ->
             if (SurfaceField.Image in slot.fields) {
@@ -126,51 +139,22 @@ internal object ThemeValidation {
             }
         }
         listOf("isMusicEnabled" to "musicFilename", "isSoundEffectEnabled" to "soundEffectFilename").forEach { (enabled, key) ->
-            if (json.has(key) && !json.isNull(key)) require(json.get(key) is String) { "$key must be text" }
-            if (json.optBoolean(enabled)) require(files.containsKey(json.optString(key))) { "$key resource is missing" }
+            if (json.has(key)) json.put(key, json.optString(key))
+            if (json.optBoolean(enabled) && !files.containsKey(json.optString(key))) warnings += "$key resource is missing; no audio file installed"
         }
         if (json.has("navIcons")) {
-            val icons = json.getJSONObject("navIcons")
-            icons.keys().forEach { key ->
-                require(icons.get(key) is String && files.containsKey(icons.getString(key))) { "Missing navigation icon: $key" }
+            val icons = json.optJSONObject("navIcons")
+            if (icons == null) {
+                json.remove("navIcons")
+                warnings += "Invalid navIcons; current icons retained"
+            }
+            icons?.keys()?.forEach { key ->
+                if (!files.containsKey(icons.optString(key))) warnings += "Missing navigation icon: $key; current icon retained"
                 if (key !in setOf("Home", "SuperUser", "AModule", "Settings")) warnings += "Navigation destination $key has no FolkSU page; resource retained"
             }
         }
-        files.forEach { (name, file) ->
-            val extension = file.extension.lowercase()
-            val base = stem(name)
-            val images = setOf("png", "jpg", "jpeg", "webp", "gif")
-            if (FolkThemeIO.assets.any { it.base == base }) {
-                val allowed = when (base) {
-                    "font" -> setOf("ttf", "otf")
-                    "video_background" -> setOf("mp4", "webm", "mkv")
-                    else -> images
-                }
-                require(extension in allowed) { "Invalid resource format: $name" }
-            }
-            if (json.optJSONObject("navIcons")?.let { icons -> icons.keys().asSequence().any { icons.optString(it) == name } } == true) {
-                require(extension in images) { "Invalid navigation icon: $name" }
-            }
-            if (name in listOf(json.optString("musicFilename"), json.optString("soundEffectFilename"))) {
-                require(extension in setOf("mp3", "wav", "ogg", "m4a", "flac", "aac")) { "Invalid audio format: $name" }
-            }
-            when (file.extension.lowercase()) {
-                "png", "jpg", "jpeg", "webp", "gif" -> {
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeFile(file.path, bounds)
-                    require(bounds.outWidth in 1..16384 && bounds.outHeight in 1..16384) { "Invalid image: $name" }
-                }
-                "ttf", "otf" -> Typeface.createFromFile(file)
-                "mp3", "wav", "ogg", "m4a", "flac", "aac", "mp4", "webm", "mkv" -> {
-                    val retriever = MediaMetadataRetriever()
-                    try {
-                        retriever.setDataSource(file.path)
-                        require(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() != null) { "Invalid media: $name" }
-                    } finally { retriever.release() }
-                }
-                else -> warnings += "Unrecognized resource $name retained without rendering"
-            }
-        }
+        // FP copies resources without probing every image, font and media file. Unknown/unused
+        // entries remain in passthrough storage; renderer failures must not reject the whole theme.
         return warnings
     }
 }

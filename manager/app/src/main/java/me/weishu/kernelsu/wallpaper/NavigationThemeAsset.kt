@@ -45,7 +45,7 @@ internal object NavIconsAsset : ThemedAssetGroup {
                 target.parentFile?.mkdirs()
                 source.copyTo(target, overwrite = true)
                 BottomBarIconConfig.setCustomIconUri(destination.name, Uri.fromFile(target).toString())
-            } else BottomBarIconConfig.clearCustomIcon(destination.name)
+            }
         }
         BottomBarIconConfig.isEnabled = enabled
         BottomBarIconConfig.notifyChanged()
